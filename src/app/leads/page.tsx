@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
-import { Lead, LeadStatus } from '@/types/crm';
+import { Lead, LeadStatus, Segmentation } from '@/types/crm';
 import { 
   Search, 
   Filter, 
@@ -22,6 +22,14 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  
+  // Filtros
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    status: '',
+    origem: '',
+    estado: ''
+  });
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,6 +69,13 @@ export default function LeadsPage() {
     empresa: '',
     cidade: '',
     estado: ''
+  });
+
+  // Segmentação State
+  const [isSegmentModalOpen, setIsSegmentModalOpen] = useState(false);
+  const [segmentData, setSegmentData] = useState({
+    nome: '',
+    descricao: ''
   });
 
   const refreshLeads = async () => {
@@ -175,6 +190,24 @@ export default function LeadsPage() {
     await refreshLeads();
   };
 
+  const handleCreateSegment = async () => {
+    if (!segmentData.nome) return;
+
+    const segment: Segmentation = {
+      id: Math.random().toString(36).substr(2, 9),
+      nome: segmentData.nome,
+      descricao: segmentData.descricao,
+      leadIds: selectedLeads,
+      dataCriacao: new Date().toISOString()
+    };
+
+    await api.saveSegmentation(segment);
+    setIsSegmentModalOpen(false);
+    setSelectedLeads([]);
+    setSegmentData({ nome: '', descricao: '' });
+    alert('Segmentação criada com sucesso!');
+  };
+
   const handleExportLeads = () => {
     if (leads.length === 0) return;
     
@@ -285,10 +318,22 @@ export default function LeadsPage() {
     reader.readAsText(file);
   };
 
-  const filteredLeads = leads.filter(lead => 
-    lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredLeads = leads.filter(lead => {
+    // Busca inteligente (Nome, Empresa, E-mail ou Contato)
+    const matchesSearch = 
+      lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.empresa || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.telefone || '').includes(searchTerm) ||
+      (lead.celular || '').includes(searchTerm);
+
+    // Filtros
+    const matchesStatus = !filters.status || lead.status === filters.status;
+    const matchesOrigem = !filters.origem || lead.origem === filters.origem;
+    const matchesEstado = !filters.estado || lead.estado === filters.estado;
+
+    return matchesSearch && matchesStatus && matchesOrigem && matchesEstado;
+  });
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
@@ -314,6 +359,10 @@ export default function LeadsPage() {
       setSelectedLeads(filteredLeads.map(l => l.id));
     }
   };
+
+  // Pegar valores únicos para os filtros
+  const uniqueOrigens = Array.from(new Set(leads.map(l => l.origem))).filter(Boolean);
+  const uniqueEstados = Array.from(new Set(leads.map(l => l.estado))).filter(Boolean);
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
@@ -351,7 +400,7 @@ export default function LeadsPage() {
               <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
               <input 
                 type="text" 
-                placeholder="Buscar por nome ou e-mail..." 
+                placeholder="Buscar por nome, empresa ou contato..." 
                 className="btn-outline"
                 style={{ width: '100%', paddingLeft: '2.5rem', borderRadius: 'var(--radius)', height: '42px', border: '1px solid var(--border)' }}
                 value={searchTerm}
@@ -361,9 +410,106 @@ export default function LeadsPage() {
                 }}
               />
             </div>
-            <button className="btn btn-outline">
-              <Filter size={18} /> Filtros
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                className={`btn ${Object.values(filters).some(v => v) ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+              >
+                <Filter size={18} /> Filtros
+                {Object.values(filters).some(v => v) && (
+                  <span style={{ 
+                    marginLeft: '0.5rem', 
+                    background: 'white', 
+                    color: 'var(--primary)', 
+                    borderRadius: '50%', 
+                    width: '20px', 
+                    height: '20px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '0.7rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {Object.values(filters).filter(v => v).length}
+                  </span>
+                )}
+              </button>
+
+              {isFilterMenuOpen && (
+                <div className="card" style={{ 
+                  position: 'absolute', 
+                  right: 0, 
+                  top: '100%', 
+                  marginTop: '0.5rem', 
+                  width: '280px', 
+                  zIndex: 60, 
+                  padding: '1.5rem',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4 style={{ fontWeight: 600 }}>Filtros Avançados</h4>
+                    <button 
+                      style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}
+                      onClick={() => setFilters({ status: '', origem: '', estado: '' })}
+                    >
+                      Limpar
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', opacity: 0.6 }}>Status</label>
+                      <select 
+                        className="btn-outline" 
+                        style={{ width: '100%', height: '36px', padding: '0 0.5rem', fontSize: '0.875rem' }}
+                        value={filters.status}
+                        onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                      >
+                        <option value="">Todos</option>
+                        <option value="novo">Novo</option>
+                        <option value="contatado">Contatado</option>
+                        <option value="convertido">Convertido</option>
+                        <option value="perdido">Perdido</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', opacity: 0.6 }}>Origem</label>
+                      <select 
+                        className="btn-outline" 
+                        style={{ width: '100%', height: '36px', padding: '0 0.5rem', fontSize: '0.875rem' }}
+                        value={filters.origem}
+                        onChange={(e) => setFilters({ ...filters, origem: e.target.value })}
+                      >
+                        <option value="">Todas</option>
+                        {uniqueOrigens.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', opacity: 0.6 }}>Estado (UF)</label>
+                      <select 
+                        className="btn-outline" 
+                        style={{ width: '100%', height: '36px', padding: '0 0.5rem', fontSize: '0.875rem' }}
+                        value={filters.estado}
+                        onChange={(e) => setFilters({ ...filters, estado: e.target.value })}
+                      >
+                        <option value="">Todos</option>
+                        {uniqueEstados.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ width: '100%', marginTop: '1.5rem', height: '36px' }}
+                    onClick={() => setIsFilterMenuOpen(false)}
+                  >
+                    Aplicar Filtros
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -372,6 +518,9 @@ export default function LeadsPage() {
         <div className="card" style={{ marginBottom: '1.5rem', padding: '0.75rem 1.5rem', background: 'var(--primary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{selectedLeads.length} leads selecionados</span>
           <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }} onClick={() => setIsSegmentModalOpen(true)}>
+               Criar Segmento
+            </button>
             <button className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }} onClick={() => handleBulkStatus('contatado')}>
               Mudar p/ Contatado
             </button>
@@ -737,6 +886,44 @@ export default function LeadsPage() {
                 hidden 
                 onChange={handleImportCSV}
               />
+            </div>
+          </div>
+        </div>
+      )}
+      {isSegmentModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div className="card" style={{ width: '400px', position: 'relative' }}>
+            <button style={{ position: 'absolute', right: '1rem', top: '1rem', opacity: 0.5 }} onClick={() => setIsSegmentModalOpen(false)}>
+              <X size={20} />
+            </button>
+            <h3 style={{ marginBottom: '1.5rem' }}>Criar Nova Segmentação</h3>
+            <p style={{ fontSize: '0.875rem', opacity: 0.6, marginBottom: '1.5rem' }}>
+              Você está criando um grupo com os <strong>{selectedLeads.length} leads</strong> selecionados.
+            </p>
+            
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Nome da Segmentação</label>
+                <input 
+                  type="text" className="btn-outline" style={{ width: '100%', height: '40px', padding: '0 0.75rem' }} 
+                  placeholder="Ex: Clientes VIP"
+                  value={segmentData.nome} onChange={e => setSegmentData({...segmentData, nome: e.target.value})}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Descrição (Opcional)</label>
+                <input 
+                  type="text" className="btn-outline" style={{ width: '100%', height: '40px', padding: '0 0.75rem' }} 
+                  value={segmentData.descricao} onChange={e => setSegmentData({...segmentData, descricao: e.target.value})}
+                />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleCreateSegment} disabled={!segmentData.nome}>
+                  <Check size={18} /> Criar Segmento
+                </button>
+                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setIsSegmentModalOpen(false)}>Cancelar</button>
+              </div>
             </div>
           </div>
         </div>

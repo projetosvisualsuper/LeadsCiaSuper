@@ -23,7 +23,8 @@ import {
   Smartphone,
   LogIn,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Filter
 } from 'lucide-react';
 import { 
   collection, 
@@ -53,7 +54,8 @@ export default function ClientLayout({
     '/configuracoes',
     '/whatsapp',
     '/bio',
-    '/usuarios'
+    '/usuarios',
+    '/segmentacoes'
   ];
 
   // Se a rota NÃO estiver na lista acima, consideramos que é uma Página de Captura pública
@@ -182,6 +184,10 @@ export default function ClientLayout({
             <Link href="/campanhas" className={`nav-link ${pathname === '/campanhas' ? 'active' : ''}`}>
               <Mail size={20} />
               <span className="nav-text">Campanhas</span>
+            </Link>
+            <Link href="/segmentacoes" className={`nav-link ${pathname === '/segmentacoes' ? 'active' : ''}`}>
+              <Filter size={20} />
+              <span className="nav-text">Segmentações</span>
             </Link>
             <Link href="/relatorios" className={`nav-link ${pathname === '/relatorios' ? 'active' : ''}`}>
               <BarChart3 size={20} />

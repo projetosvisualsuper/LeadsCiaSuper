@@ -209,3 +209,11 @@ export interface UserProfile {
   dataSolicitacao: string;
   dataAprovacao?: string;
 }
+
+export interface Segmentation {
+  id: string;
+  nome: string;
+  descricao?: string;
+  leadIds: string[];
+  dataCriacao: string;
+}

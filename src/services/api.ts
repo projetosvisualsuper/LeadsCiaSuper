@@ -1,4 +1,4 @@
-import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile } from '@/types/crm';
+import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation } from '@/types/crm';
 import { db } from '@/lib/firebase';
 import { sendEmailBrevoAction } from '@/app/actions/brevo';
 import { processQueueServerAction } from '@/app/actions/queue';
@@ -25,7 +25,8 @@ const COLLECTIONS = {
   SETTINGS: 'settings',
   LANDING_PAGES: 'landing_pages',
   BIO_LINKS: 'bio_links',
-  USERS: 'users'
+  USERS: 'users',
+  SEGMENTATIONS: 'segmentations'
 };
 
 const initialSettings: Settings = {
@@ -395,5 +396,25 @@ export const api = {
     await updateDoc(bioRef, {
       cliquesTotais: increment(1)
     });
+  },
+
+  // --- SEGMENTATIONS ---
+  getSegmentations: async (): Promise<Segmentation[]> => {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.SEGMENTATIONS));
+    const segments: Segmentation[] = [];
+    querySnapshot.forEach((doc) => {
+      segments.push({ id: doc.id, ...doc.data() } as Segmentation);
+    });
+    return segments.sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime());
+  },
+
+  saveSegmentation: async (segment: Segmentation) => {
+    const sanitized = JSON.parse(JSON.stringify(segment));
+    await setDoc(doc(db, COLLECTIONS.SEGMENTATIONS, segment.id), sanitized);
+    return segment;
+  },
+
+  deleteSegmentation: async (id: string) => {
+    await deleteDoc(doc(db, COLLECTIONS.SEGMENTATIONS, id));
   }
 };
