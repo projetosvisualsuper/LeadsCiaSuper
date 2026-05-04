@@ -15,7 +15,11 @@ import {
   Info,
   Download,
   Upload,
-  Check
+  Check,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export default function LeadsPage() {
@@ -604,10 +608,20 @@ export default function LeadsPage() {
           <button 
             className="btn btn-outline" 
             disabled={currentPage === 1}
-            onClick={() => goToPage(currentPage - 1)}
-            style={{ padding: '0.5rem 1rem' }}
+            onClick={() => goToPage(1)}
+            style={{ padding: '0.5rem', minWidth: '40px' }}
+            title="Primeira Página"
           >
-            Anterior
+            <ChevronsLeft size={18} />
+          </button>
+          <button 
+            className="btn btn-outline" 
+            disabled={currentPage === 1}
+            onClick={() => goToPage(currentPage - 1)}
+            style={{ padding: '0.5rem', minWidth: '40px' }}
+            title="Página Anterior"
+          >
+            <ChevronLeft size={18} />
           </button>
           
           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -635,9 +649,19 @@ export default function LeadsPage() {
             className="btn btn-outline" 
             disabled={currentPage === totalPages || totalPages === 0}
             onClick={() => goToPage(currentPage + 1)}
-            style={{ padding: '0.5rem 1rem' }}
+            style={{ padding: '0.5rem', minWidth: '40px' }}
+            title="Próxima Página"
           >
-            Próximo
+            <ChevronRight size={18} />
+          </button>
+          <button 
+            className="btn btn-outline" 
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => goToPage(totalPages)}
+            style={{ padding: '0.5rem', minWidth: '40px' }}
+            title="Última Página"
+          >
+            <ChevronsRight size={18} />
           </button>
         </div>
       </div>
