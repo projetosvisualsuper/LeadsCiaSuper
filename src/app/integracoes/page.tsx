@@ -159,22 +159,37 @@ export default function IntegracoesPage() {
           </p>
         </section>
 
-        <div className="grid grid-cols-2" style={{ gap: '1.5rem' }}>
-          <div className="card" style={{ opacity: 0.6, borderStyle: 'dashed' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <Zap size={20} />
-              <h4 style={{ fontWeight: 600 }}>Webhooks & API</h4>
-            </div>
-            <p style={{ fontSize: '0.875rem' }}>Envie dados de outros apps (Typeform, Elementor) via JSON. Em breve!</p>
+        <section className="card" style={{ border: '1px solid var(--primary)', background: 'rgba(99, 102, 241, 0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <Zap className="color-primary" size={24} />
+            <h3 style={{ fontSize: '1.25rem' }}>Webhook de Conversão (Vendas)</h3>
           </div>
-          <div className="card" style={{ border: '1px solid var(--success)', background: 'rgba(16, 185, 129, 0.05)' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <ShieldCheck className="color-success" size={20} />
-              <h4 style={{ fontWeight: 600 }}>Tracking de Origem</h4>
-            </div>
-            <p style={{ fontSize: '0.875rem', opacity: 0.8 }}><strong>Ativo:</strong> Parâmetros UTM (Source, Medium, Campaign) estão sendo capturados automaticamente em todos os seus formulários.</p>
+          <p style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '1rem' }}>
+            Marque automaticamente um lead como <strong>CONVERTIDO</strong> quando ele finalizar uma compra no seu site. 
+            Envie um POST para a URL abaixo:
+          </p>
+          <div style={{ background: 'var(--background)', padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: '1rem' }}>
+            <code style={{ fontSize: '0.85rem', color: 'var(--primary)' }}>{`${typeof window !== 'undefined' ? window.location.origin : ''}/api/leads/convert`}</code>
           </div>
-        </div>
+          <details style={{ fontSize: '0.85rem', cursor: 'pointer' }}>
+             <summary style={{ fontWeight: 600, color: 'var(--primary)' }}>Ver exemplo de JSON (Payload)</summary>
+             <pre style={{ background: '#1e293b', color: '#f8fafc', padding: '1rem', borderRadius: '8px', marginTop: '0.5rem', fontSize: '0.75rem' }}>
+{`{
+  "email": "cliente@email.com",
+  "valor": "199.90",
+  "pedidoId": "12345"
+}`}
+             </pre>
+          </details>
+        </section>
+
+        <section className="card" style={{ border: '1px solid var(--success)', background: 'rgba(16, 185, 129, 0.05)' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <ShieldCheck className="color-success" size={20} />
+            <h4 style={{ fontWeight: 600 }}>Tracking de Origem</h4>
+          </div>
+          <p style={{ fontSize: '0.875rem', opacity: 0.8 }}><strong>Ativo:</strong> Parâmetros UTM (Source, Medium, Campaign) estão sendo capturados automaticamente em todos os seus formulários.</p>
+        </section>
       </div>
     </div>
   );
