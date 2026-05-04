@@ -49,7 +49,7 @@ export default function WhatsappWidgetStandalone() {
       id: leadId,
       nome: formData.nome,
       email: formData.email,
-      telefone: formData.telefone,
+      celular: formData.telefone,
       origem: `Widget Externo - Atendente: ${selectedAttendant.nome}`,
       consentimentoLGPD: true,
       status: 'novo',

@@ -341,7 +341,7 @@ function WhatsappWidget({ config, pageSlug }: { config: any, pageSlug: string })
   const handleStartChat = async (e: React.FormEvent) => {
     e.preventDefault();
     const leadId = Math.random().toString(36).substr(2, 9);
-    await api.saveLead({ id: leadId, nome: formData.nome, email: formData.email, telefone: formData.telefone, origem: `WhatsApp (${pageSlug})`, consentimentoLGPD: true, status: 'novo', tags: ['whatsapp'], dataCriacao: new Date().toISOString() } as Lead);
+    await api.saveLead({ id: leadId, nome: formData.nome, email: formData.email, celular: formData.telefone, origem: `WhatsApp (${pageSlug})`, consentimentoLGPD: true, status: 'novo', tags: ['whatsapp'], dataCriacao: new Date().toISOString() } as Lead);
     const msg = encodeURIComponent(`Olá ${selectedAttendant.nome}, vim pelo site e gostaria de falar com você.`);
     window.open(`https://wa.me/${selectedAttendant.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
     setOpen(false); setShowForm(false); setSelectedAttendant(null); setFormData({ nome: '', email: '', telefone: '' });
