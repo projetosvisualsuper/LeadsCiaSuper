@@ -176,6 +176,7 @@ export default function IntegracoesPage() {
              <pre style={{ background: '#1e293b', color: '#f8fafc', padding: '1rem', borderRadius: '8px', marginTop: '0.5rem', fontSize: '0.75rem' }}>
 {`{
   "email": "cliente@email.com",
+  "nome": "Nome do Cliente",
   "valor": "199.90",
   "pedidoId": "12345"
 }`}

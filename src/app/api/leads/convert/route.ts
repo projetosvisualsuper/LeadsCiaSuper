@@ -33,17 +33,36 @@ export async function POST(request: Request) {
       if (!email && telefone) {
         const q2 = query(leadsRef, where('telefone', '==', telefone));
         const snap2 = await getDocs(q2);
-        if (snap2.empty) {
-          return NextResponse.json({ message: 'Lead não encontrado para conversão.' }, { status: 404 });
+        if (!snap2.empty) {
+          const leadDoc = snap2.docs[0];
+          await updateLead(leadDoc.id, leadDoc.data().tags || [], valor, pedidoId);
+          return NextResponse.json({ success: true, message: 'Lead convertido com sucesso (via telefone fixo).' });
         }
-        
-        // Processar o lead encontrado pelo telefone fixo
-        const leadDoc = snap2.docs[0];
-        await updateLead(leadDoc.id, leadDoc.data().tags || [], valor, pedidoId);
-        return NextResponse.json({ success: true, message: 'Lead convertido com sucesso (via telefone fixo).' });
       }
 
-      return NextResponse.json({ message: 'Lead não encontrado para conversão.' }, { status: 404 });
+      // NOVO: Se não encontrou de jeito nenhum, cria um novo lead como convertido
+      const leadId = Math.random().toString(36).substr(2, 9);
+      const newLead = {
+        id: leadId,
+        nome: body.nome || 'Cliente do Site',
+        email: email || '',
+        celular: telefone || '',
+        status: 'convertido',
+        tags: ['compra-realizada', 'conversao-direta'],
+        origem: 'Conversão Direta (Site)',
+        dataCriacao: new Date().toISOString(),
+        consentimentoLGPD: true,
+        observacoes: `[CONVERSÃO DIRETA] Lead criado automaticamente a partir de uma compra no site.${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`
+      };
+
+      const { setDoc, doc: firestoreDoc } = await import('firebase/firestore');
+      await setDoc(firestoreDoc(db, 'leads', leadId), newLead);
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Novo lead criado e convertido com sucesso.',
+        leadId: leadId
+      });
     }
 
     // Atualizar o primeiro lead encontrado
