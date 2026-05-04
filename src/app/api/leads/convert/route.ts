@@ -11,7 +11,13 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, telefone, valor, pedidoId } = body;
+    
+    // Normalização de campos para aceitar diferentes padrões (português/inglês)
+    const email = body.email || body.email_address || '';
+    const telefone = String(body.telefone || body.phone || body.celular || body.mobile || '').replace(/\D/g, '');
+    const nome = body.nome || body.name || body.full_name || '';
+    const valor = body.valor || body.total || body.amount || '';
+    const pedidoId = body.pedidoId || body.order_id || body.id || '';
 
     if (!email && !telefone) {
       return NextResponse.json({ error: 'É necessário informar email ou telefone para identificar o lead.' }, { status: 400 });
@@ -35,7 +41,7 @@ export async function POST(request: Request) {
         const snap2 = await getDocs(q2);
         if (!snap2.empty) {
           const leadDoc = snap2.docs[0];
-          await updateLead(leadDoc.id, leadDoc.data().tags || [], valor, pedidoId);
+          await updateLead(leadDoc.id, nome, telefone, valor, pedidoId);
           return NextResponse.json({ success: true, message: 'Lead convertido com sucesso (via telefone fixo).' });
         }
       }
@@ -44,9 +50,9 @@ export async function POST(request: Request) {
       const leadId = Math.random().toString(36).substr(2, 9);
       const newLead = {
         id: leadId,
-        nome: body.nome || 'Cliente do Site',
-        email: email || '',
-        celular: telefone || '',
+        nome: nome || 'Cliente do Site',
+        email: email,
+        celular: telefone,
         status: 'convertido',
         tags: ['compra-realizada', 'conversao-direta'],
         origem: 'Conversão Direta (Site)',
@@ -67,7 +73,7 @@ export async function POST(request: Request) {
 
     // Atualizar o primeiro lead encontrado
     const leadDoc = querySnapshot.docs[0];
-    await updateLead(leadDoc.id, leadDoc.data().tags || [], valor, pedidoId);
+    await updateLead(leadDoc.id, nome, telefone, valor, pedidoId);
 
     return NextResponse.json({ 
       success: true, 
@@ -81,7 +87,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function updateLead(leadId: string, currentTags: string[], valor?: string, pedidoId?: string) {
+async function updateLead(leadId: string, nome?: string, celular?: string, valor?: string, pedidoId?: string) {
   const leadRef = doc(db, 'leads', leadId);
   const snap = await getDoc(leadRef);
   const data = snap.data();
@@ -91,9 +97,21 @@ async function updateLead(leadId: string, currentTags: string[], valor?: string,
   
   const novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${valor ? ` no valor de R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR')}`;
   
-  await updateDoc(leadRef, {
+  const updateData: any = {
     status: 'convertido',
     tags: arrayUnion(...newTags),
     observacoes: (data?.observacoes || '') + novaObs
-  });
+  };
+
+  // Atualiza o nome se o atual for genérico ou estiver vazio
+  if (nome && (!data?.nome || data.nome === 'Cliente do Site' || data.nome === 'Sem Nome')) {
+    updateData.nome = nome;
+  }
+  
+  // Atualiza o celular se estiver vazio no cadastro
+  if (celular && !data?.celular) {
+    updateData.celular = celular;
+  }
+  
+  await updateDoc(leadRef, updateData);
 }
