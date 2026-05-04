@@ -11,6 +11,7 @@ export interface Lead {
   empresa?: string;
   origem: string;
   dataCriacao: string;
+  dataUltimaAtividade?: string;
   status: LeadStatus;
   tags: string[];
   consentimentoLGPD: boolean;

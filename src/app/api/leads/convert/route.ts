@@ -71,6 +71,7 @@ export async function POST(request: Request) {
 
       // Criar novo lead como convertido
       const leadId = Math.random().toString(36).substr(2, 9);
+      const agora = new Date().toISOString();
       const newLead = {
         id: leadId,
         nome: nome || 'Cliente do Site',
@@ -79,7 +80,8 @@ export async function POST(request: Request) {
         status: 'convertido',
         tags: ['compra-realizada', 'conversao-direta'],
         origem: 'Conversão Direta (Site)',
-        dataCriacao: new Date().toISOString(),
+        dataCriacao: agora,
+        dataUltimaAtividade: agora,
         consentimentoLGPD: true,
         observacoes: `[CONVERSÃO DIRETA] Cadastro automático via venda.${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`
       };
@@ -114,6 +116,7 @@ async function updateLead(leadId: string, nome?: string, celular?: string, valor
   
   const updateData: any = {
     status: 'convertido',
+    dataUltimaAtividade: new Date().toISOString(),
     tags: arrayUnion(...newTags),
     observacoes: (data?.observacoes || '') + novaObs
   };
