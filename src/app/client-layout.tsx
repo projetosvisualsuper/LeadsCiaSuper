@@ -25,7 +25,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   Filter,
-  SquareStack
+  SquareStack,
+  MessageSquare
 } from 'lucide-react';
 import { 
   collection, 
@@ -57,7 +58,8 @@ export default function ClientLayout({
     '/bio',
     '/usuarios',
     '/segmentacoes',
-    '/popups'
+    '/popups',
+    '/atendimento'
   ];
 
   // Se a rota NÃO estiver na lista acima, consideramos que é uma Página de Captura pública
@@ -214,6 +216,10 @@ export default function ClientLayout({
             <Link href="/popups" className={`nav-link ${pathname === '/popups' ? 'active' : ''}`}>
               <SquareStack size={20} />
               <span className="nav-text">Pop-ups</span>
+            </Link>
+            <Link href="/atendimento" className={`nav-link ${pathname === '/atendimento' ? 'active' : ''}`}>
+              <MessageSquare size={20} />
+              <span className="nav-text">Atendimento</span>
             </Link>
             <Link href="/configuracoes" className={`nav-link ${pathname === '/configuracoes' ? 'active' : ''}`}>
               <SettingsIcon size={20} />

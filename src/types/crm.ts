@@ -254,3 +254,32 @@ export interface PopupConfig {
     overlayColor?: string;
   };
 }
+
+// --- OMNICHANNEL / CHAT ---
+export type ChannelType = 'whatsapp' | 'instagram' | 'facebook' | 'tiktok' | 'system';
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  senderId: string; // ID do Lead ou ID do Usuário do sistema
+  senderName: string;
+  content: string;
+  timestamp: string;
+  type: 'text' | 'image' | 'video' | 'file';
+  status: 'sent' | 'delivered' | 'read' | 'failed';
+  isIncoming: boolean; // True se veio do lead, False se enviado pelo atendente
+}
+
+export interface ChatSession {
+  id: string;
+  leadId: string;
+  leadName: string;
+  leadAvatar?: string;
+  channel: ChannelType;
+  lastMessage?: string;
+  lastTimestamp?: string;
+  unreadCount: number;
+  status: 'active' | 'archived';
+  assignedTo?: string; // ID do atendente
+  dataCriacao: string;
+}

@@ -1,4 +1,4 @@
-import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig } from '@/types/crm';
+import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage } from '@/types/crm';
 import { db } from '@/lib/firebase';
 import { sendEmailBrevoAction } from '@/app/actions/brevo';
 import { processQueueServerAction } from '@/app/actions/queue';
@@ -27,7 +27,9 @@ const COLLECTIONS = {
   BIO_LINKS: 'bio_links',
   USERS: 'users',
   SEGMENTATIONS: 'segmentations',
-  POPUPS: 'popups'
+  POPUPS: 'popups',
+  CHATS: 'chats',
+  MESSAGES: 'messages'
 };
 
 const initialSettings: Settings = {
@@ -450,5 +452,53 @@ export const api = {
 
   deletePopup: async (id: string) => {
     await deleteDoc(doc(db, COLLECTIONS.POPUPS, id));
+  },
+
+  // Chat / Omnichannel
+  getChats: async (): Promise<ChatSession[]> => {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.CHATS));
+    const chats: ChatSession[] = [];
+    querySnapshot.forEach((doc) => {
+      chats.push({ id: doc.id, ...doc.data() } as ChatSession);
+    });
+    return chats.sort((a, b) => {
+      const dateA = new Date(a.lastTimestamp || a.dataCriacao).getTime();
+      const dateB = new Date(b.lastTimestamp || b.dataCriacao).getTime();
+      return dateB - dateA;
+    });
+  },
+
+  getMessages: async (chatId: string): Promise<ChatMessage[]> => {
+    const q = query(
+      collection(db, COLLECTIONS.MESSAGES),
+      where("chatId", "==", chatId),
+      orderBy("timestamp", "asc")
+    );
+    const querySnapshot = await getDocs(q);
+    const messages: ChatMessage[] = [];
+    querySnapshot.forEach((doc) => {
+      messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+    });
+    return messages;
+  },
+
+  sendMessage: async (message: ChatMessage) => {
+    const sanitized = JSON.parse(JSON.stringify(message));
+    await addDoc(collection(db, COLLECTIONS.MESSAGES), sanitized);
+    
+    // Atualizar o chat session com a última mensagem
+    const chatRef = doc(db, COLLECTIONS.CHATS, message.chatId);
+    await updateDoc(chatRef, {
+      lastMessage: message.content,
+      lastTimestamp: message.timestamp,
+      unreadCount: 0
+    });
+    
+    return message;
+  },
+
+  markChatAsRead: async (chatId: string) => {
+    const chatRef = doc(db, COLLECTIONS.CHATS, chatId);
+    await updateDoc(chatRef, { unreadCount: 0 });
   }
 };
