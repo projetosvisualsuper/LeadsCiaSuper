@@ -113,6 +113,20 @@ export async function POST(req: NextRequest) {
             isMetaLead: true
           };
           await setDoc(leadRef, newLead);
+        } else {
+          // Atualizar última atividade e enriquecer dados se forem genéricos
+          const leadData = leadSnap.data();
+          const updateData: any = { dataUltimaAtividade: new Date().toISOString() };
+          
+          if (profile) {
+            if (!leadData.nome || leadData.nome.startsWith('Lead via')) {
+              updateData.nome = profile.name || leadData.nome;
+            }
+            if (!leadData.avatar) {
+              updateData.avatar = profile.avatar || leadData.avatar;
+            }
+          }
+          await updateDoc(leadRef, updateData);
         }
 
         // 3. Garantir que o ChatSession exista (Usando o ID determinístico)
