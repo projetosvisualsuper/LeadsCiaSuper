@@ -156,9 +156,9 @@ export default function AtendimentoPage() {
     await api.sendMessage(msg);
 
     // Enviar para o Meta (Facebook/Instagram)
-    if (selectedChat?.channel) {
+    if (selectedChat?.channel && selectedChat?.leadId) {
       const result = await sendMetaMessageAction(
-        selectedChat.id, // O ID do chat é o senderId do Meta
+        selectedChat.leadId, // Usar o leadId (ID puro da plataforma)
         selectedChat.channel,
         newMessage
       );
@@ -195,9 +195,9 @@ export default function AtendimentoPage() {
       await api.sendMessage(msg);
 
       // Enviar link da imagem para o Meta
-      if (selectedChat.channel) {
+      if (selectedChat?.channel && selectedChat?.leadId) {
         await sendMetaMessageAction(
-          selectedChat.id,
+          selectedChat.leadId,
           selectedChat.channel,
           `Arquivo enviado: ${url}`
         );
