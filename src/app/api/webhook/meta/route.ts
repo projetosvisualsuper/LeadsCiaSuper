@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         // 4. Salvar a mensagem
         const newMessage: Partial<ChatMessage> = {
           chatId: chatId,
-          senderId: senderId,
+          senderId: leadId,
           senderName: leadName,
           content: messageText,
           timestamp: new Date().toISOString(),
