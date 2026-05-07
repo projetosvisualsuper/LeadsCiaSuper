@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
         const senderId = messaging.sender.id; // ID do usuário no Instagram/FB
         const recipientId = messaging.recipient.id; // ID da sua página/conta
         const messageText = messaging.message.text;
+        // Determinar se é Instagram ou Facebook pelo objeto da requisição
         const channel = body.object === 'instagram' ? 'instagram' : 'facebook';
 
         // 1. Identificador Único e Determinístico (Garante que nunca haverá duplicados)
