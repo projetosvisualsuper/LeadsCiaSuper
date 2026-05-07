@@ -147,14 +147,18 @@ export async function POST(req: NextRequest) {
         // 4. Salvar a mensagem
         const newMessage: Partial<ChatMessage> = {
           chatId: chatId,
-          senderId: leadId,
-          senderName: leadName,
+          senderId: isEcho ? 'atendente_admin' : leadId,
+          senderName: isEcho ? 'Atendente' : leadName,
           content: messageText,
           timestamp: new Date().toISOString(),
           type: 'text',
           status: 'delivered',
-          isIncoming: true
+          isIncoming: !isEcho
         };
+
+        // Evitar duplicidade: Se for um Eco (mensagem que nós enviamos), 
+        // só salvamos se ela tiver vindo de fora do CRM (ex: app do Instagram)
+        // Por enquanto, vamos apenas garantir que a bolinha seja da cor certa
         await addDoc(collection(db, 'messages'), newMessage);
       }
     }
