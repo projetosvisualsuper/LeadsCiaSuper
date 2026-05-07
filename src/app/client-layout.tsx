@@ -218,7 +218,7 @@ export default function ClientLayout({
               <span className="nav-text">Pop-ups</span>
             </Link>
             <Link href="/atendimento" className={`nav-link ${pathname === '/atendimento' ? 'active' : ''}`}>
-              <MessageSquare size={20} />
+              <Zap size={20} />
               <span className="nav-text">Atendimento</span>
             </Link>
             <Link href="/configuracoes" className={`nav-link ${pathname === '/configuracoes' ? 'active' : ''}`}>
@@ -251,7 +251,7 @@ export default function ClientLayout({
               </Link>
             )}
           </nav>
-
+ 
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <button 
               onClick={async () => {
@@ -264,7 +264,7 @@ export default function ClientLayout({
               <LogIn size={20} />
               <span className="nav-text">Sair</span>
             </button>
-            <p style={{ fontSize: '0.75rem', opacity: 0.5, textAlign: 'center' }}>v1.0.1 Beta</p>
+            <p style={{ fontSize: '0.75rem', opacity: 0.5, textAlign: 'center' }}>v1.2.0 - NOVO ATENDIMENTO</p>
           </div>
         </aside>
         
