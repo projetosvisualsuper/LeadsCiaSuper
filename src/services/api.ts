@@ -28,7 +28,7 @@ const COLLECTIONS = {
   USERS: 'users',
   SEGMENTATIONS: 'segmentations',
   POPUPS: 'popups',
-  CHATS: 'chats',
+  CHATS: 'chat_sessions',
   MESSAGES: 'messages'
 };
 

@@ -61,7 +61,7 @@ export default function AtendimentoPage() {
 
   // Listener para as sessões de chat
   useEffect(() => {
-    const q = query(collection(db, 'chats'), orderBy('lastTimestamp', 'desc'));
+    const q = query(collection(db, 'chat_sessions'), orderBy('lastTimestamp', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const chatList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
       setChats(chatList);
@@ -220,14 +220,14 @@ export default function AtendimentoPage() {
 
   const handleArchiveChat = async () => {
     if (!selectedChatId) return;
-    await updateDoc(doc(db, 'chats', selectedChatId), { status: 'archived' });
+    await updateDoc(doc(db, 'chat_sessions', selectedChatId), { status: 'archived' });
     setSelectedChatId(null);
     setShowChatMenu(false);
   };
 
   const handleDeleteChat = async () => {
     if (!selectedChatId || !confirm('Tem certeza que deseja excluir esta conversa permanentemente?')) return;
-    await deleteDoc(doc(db, 'chats', selectedChatId));
+    await deleteDoc(doc(db, 'chat_sessions', selectedChatId));
     setSelectedChatId(null);
     setShowChatMenu(false);
   };
