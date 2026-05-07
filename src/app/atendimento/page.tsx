@@ -306,7 +306,6 @@ export default function AtendimentoPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: '0.8rem', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.lastMessage}</p>
-                      <p style={{ fontSize: '9px', color: 'blue', margin: 0 }}>ID: {chat.id}</p>
                     </div>
                     {chat.unreadCount > 0 && (
                       <span style={{ background: 'var(--primary)', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '10px', minWidth: '18px', textAlign: 'center' }}>
