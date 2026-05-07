@@ -70,10 +70,25 @@ export async function POST(req: NextRequest) {
         const messageText = messaging.message.text;
         const channel = body.object === 'instagram' ? 'instagram' : 'facebook';
 
-        // 1. Verificar se já existe um ChatSession para este senderId usando ID determinístico
-        const chatId = `${channel}_${senderId}`;
-        const chatRef = doc(db, 'chats', chatId);
-        const chatSnap = await getDoc(chatRef);
+        // 1. Verificar se já existe um ChatSession para este senderId
+        const deterministicId = `${channel}_${senderId}`;
+        let chatRef = doc(db, 'chats', deterministicId);
+        let chatSnap = await getDoc(chatRef);
+        let chatId = deterministicId;
+
+        // Se não encontrar pelo ID determinístico, tenta buscar por leadId (para compatibilidade com chats legados)
+        if (!chatSnap.exists()) {
+          const chatsRef = collection(db, 'chats');
+          const q = query(chatsRef, where('leadId', '==', senderId), where('channel', '==', channel));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            const legacyDoc = querySnapshot.docs[0];
+            chatId = legacyDoc.id;
+            chatRef = doc(db, 'chats', chatId);
+            chatSnap = await getDoc(chatRef);
+          }
+        }
 
         let leadName = 'Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook');
         let leadAvatar = null;
