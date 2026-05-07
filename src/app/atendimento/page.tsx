@@ -142,12 +142,13 @@ export default function AtendimentoPage() {
     if (!chat) return;
 
     const msg = {
+      id: Math.random().toString(36).substr(2, 9),
       chatId: chat.id,
       content: newMessage,
       senderId: 'atendente_admin',
       senderName: 'Atendente',
       timestamp: new Date().toISOString(),
-      type: 'text' as const,
+      type: 'text',
       status: 'sent',
       isIncoming: false,
       channel: chat.channel,
@@ -156,20 +157,23 @@ export default function AtendimentoPage() {
 
     const messageToSend = newMessage;
     setNewMessage('');
-    await api.sendMessage(msg);
+    
+    try {
+      await api.sendMessage(msg);
 
-    // Enviar para o Meta (Facebook/Instagram)
-    if (chat?.channel && chat?.leadId) {
-      const result = await sendMetaMessageAction(
-        chat.leadId, 
-        messageToSend,
-        chat.channel as 'instagram' | 'facebook'
-      );
+      if (chat.channel === 'instagram' || chat.channel === 'facebook') {
+        const result = await sendMetaMessageAction(
+          chat.leadId, 
+          messageToSend,
+          chat.channel
+        );
 
-      if (!result.success) {
-        console.error('Erro ao enviar para Meta:', result.error);
-        alert(`A mensagem foi salva no CRM, mas não pôde ser entregue ao ${chat.channel}: ${result.error}`);
+        if (!result.success) {
+          console.error('Erro ao enviar para Meta:', result.error);
+        }
       }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
     }
   };
 
