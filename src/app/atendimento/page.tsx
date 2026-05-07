@@ -244,6 +244,8 @@ export default function AtendimentoPage() {
     chat.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const activeChat = chats.find(c => c.id === selectedChatId);
+
   return (
     <div style={{ 
       height: 'calc(100vh - 4rem)', 
@@ -575,8 +577,12 @@ export default function AtendimentoPage() {
           
           <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-                <User size={40} color="#94a3b8" />
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', overflow: 'hidden' }}>
+                {activeChat?.leadAvatar ? (
+                  <img src={activeChat.leadAvatar} alt={selectedLead?.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <User size={40} color="#94a3b8" />
+                )}
               </div>
               <h4 style={{ fontSize: '1.1rem', fontWeight: 800 }}>{selectedLead?.nome}</h4>
               <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>{selectedLead?.email || 'Sem e-mail cadastrado'}</p>
