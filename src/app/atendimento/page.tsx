@@ -156,16 +156,16 @@ export default function AtendimentoPage() {
     await api.sendMessage(msg);
 
     // Enviar para o Meta (Facebook/Instagram)
-    if (selectedChat?.channel && selectedChat?.leadId) {
+    if (chat?.channel && chat?.leadId) {
       const result = await sendMetaMessageAction(
-        selectedChat.leadId, // Usar o leadId (ID puro da plataforma)
-        selectedChat.channel,
+        chat.leadId, // Usar o leadId (ID puro da plataforma)
+        chat.channel,
         newMessage
       );
 
       if (!result.success) {
         console.error('Erro ao enviar para Meta:', result.error);
-        alert(`A mensagem foi salva no CRM, mas não pôde ser entregue ao ${selectedChat.channel}: ${result.error}`);
+        alert(`A mensagem foi salva no CRM, mas não pôde ser entregue ao ${chat.channel}: ${result.error}`);
       }
     }
   };
@@ -195,10 +195,10 @@ export default function AtendimentoPage() {
       await api.sendMessage(msg);
 
       // Enviar link da imagem para o Meta
-      if (selectedChat?.channel && selectedChat?.leadId) {
+      if (chat?.channel && chat?.leadId) {
         await sendMetaMessageAction(
-          selectedChat.leadId,
-          selectedChat.channel,
+          chat.leadId,
+          chat.channel,
           `Arquivo enviado: ${url}`
         );
       }
