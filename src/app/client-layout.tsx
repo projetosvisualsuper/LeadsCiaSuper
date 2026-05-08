@@ -29,12 +29,7 @@ import {
   MessageSquare,
   Zap
 } from 'lucide-react';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot 
-} from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserProfile } from '@/types/crm';
 
@@ -60,7 +55,8 @@ export default function ClientLayout({
     '/usuarios',
     '/segmentacoes',
     '/popups',
-    '/atendimento'
+    '/atendimento',
+    '/conexoes'
   ];
 
   // Se a rota NÃO estiver na lista acima, consideramos que é uma Página de Captura pública
@@ -123,11 +119,78 @@ export default function ClientLayout({
 
     window.addEventListener('storage', handleStorage);
 
+    // Cleanup do Event Listener de Leads
     return () => {
       window.removeEventListener('crm_new_lead', handleNewLead);
       window.removeEventListener('storage', handleStorage);
     };
   }, []);
+
+  // --- NOVO: Listener Global para Novas Mensagens (Chat/WhatsApp) ---
+  useEffect(() => {
+    let unsubscribeChat: any = null;
+
+    const setupChatListener = async () => {
+      const settings = await api.getSettings();
+      if (settings.notificacoes?.novasMensagens === false) return; // Desativado pelo usuário
+
+      const chatsRef = collection(db, 'atendimentos_v3');
+      const qChats = query(
+        chatsRef, 
+        where('status', '==', 'active'),
+        where('unreadCount', '>', 0)
+      );
+
+      // Usamos uma flag para evitar notificar as mensagens antigas que já estão não lidas ao carregar a página
+      let isInitialLoad = true;
+
+      unsubscribeChat = onSnapshot(qChats, (snapshot) => {
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          return;
+        }
+
+        // Para cada mudança que seja "added" ou "modified", nós tocamos um som/notificação
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added' || change.type === 'modified') {
+            const chatData = change.doc.data();
+            
+            // Só notifica se a última mensagem for realmente nova (podemos basear no timestamp se precisasse, mas unreadCount > 0 e modified já é um bom gatilho)
+            
+            // Tocar Beep via Web Audio API (Para não precisar de arquivo MP3)
+            try {
+              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const oscillator = audioCtx.createOscillator();
+              const gainNode = audioCtx.createGain();
+              oscillator.connect(gainNode);
+              gainNode.connect(audioCtx.destination);
+              oscillator.type = 'sine';
+              oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // Tom alto
+              gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volume baixo
+              oscillator.start();
+              setTimeout(() => oscillator.stop(), 150); // Duração curta
+            } catch (e) {
+              console.log('Audio não suportado ou bloqueado pelo navegador');
+            }
+
+            setNotification({
+              type: 'message',
+              title: `Nova mensagem de ${chatData.leadName}`,
+              message: chatData.lastMessage.substring(0, 50) + (chatData.lastMessage.length > 50 ? '...' : ''),
+              data: chatData
+            });
+          }
+        });
+      });
+    };
+
+    setupChatListener();
+
+    return () => {
+      if (unsubscribeChat) unsubscribeChat();
+    };
+  }, []);
+  // --- FIM Listener Global ---
 
   useEffect(() => {
     if (userProfile?.role !== 'admin') return;
@@ -222,6 +285,10 @@ export default function ClientLayout({
               <Zap size={20} />
               <span className="nav-text">Atendimento</span>
             </Link>
+            <Link href="/conexoes" className={`nav-link ${pathname === '/conexoes' ? 'active' : ''}`}>
+              <MessageSquare size={20} />
+              <span className="nav-text">Conexões WhatsApp</span>
+            </Link>
             <Link href="/configuracoes" className={`nav-link ${pathname === '/configuracoes' ? 'active' : ''}`}>
               <SettingsIcon size={20} />
               <span className="nav-text">Configurações</span>
@@ -291,8 +358,8 @@ export default function ClientLayout({
             animation: 'slideInRight 0.3s ease-out'
           }}>
             <div style={{ 
-              background: notification.type === 'lead' ? 'var(--success-bg)' : notification.type === 'auth' ? 'rgba(245, 158, 11, 0.1)' : 'var(--accent)', 
-              color: notification.type === 'lead' ? 'var(--success)' : notification.type === 'auth' ? '#d97706' : 'var(--primary)',
+              background: notification.type === 'lead' ? 'var(--success-bg)' : notification.type === 'auth' ? 'rgba(245, 158, 11, 0.1)' : notification.type === 'message' ? 'rgba(59, 130, 246, 0.1)' : 'var(--accent)', 
+              color: notification.type === 'lead' ? 'var(--success)' : notification.type === 'auth' ? '#d97706' : notification.type === 'message' ? '#3b82f6' : 'var(--primary)',
               padding: '0.75rem',
               borderRadius: '10px',
               display: 'flex',
@@ -300,7 +367,7 @@ export default function ClientLayout({
               justifyContent: 'center',
               height: 'fit-content'
             }}>
-              {notification.type === 'lead' ? <UserPlus size={24} /> : notification.type === 'auth' ? <ShieldAlert size={24} /> : <Bell size={24} />}
+              {notification.type === 'lead' ? <UserPlus size={24} /> : notification.type === 'auth' ? <ShieldAlert size={24} /> : notification.type === 'message' ? <MessageCircle size={24} /> : <Bell size={24} />}
             </div>
             
             <div style={{ flex: 1 }}>

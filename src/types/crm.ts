@@ -154,8 +154,17 @@ export interface Settings {
     messengerAccessToken?: string;
     instagramAccessToken?: string;
     metaVerifyToken?: string;
-    evolutionApiKey?: string;
+    evolutionApiUrl?: string; // URL base da Evolution API
+    evolutionApiKey?: string; // Global API Key
     evolutionInstanceName?: string;
+  };
+  notificacoes?: {
+    novosLeads?: boolean;
+    novasMensagens?: boolean;
+  };
+  autoresponder?: {
+    enabled: boolean;
+    message: string;
   };
 }
 
@@ -264,6 +273,30 @@ export interface PopupConfig {
   };
 }
 
+// --- CONEXÕES WHATSAPP ---
+export type WhatsappConnectionType = 'meta_official' | 'evolution_api';
+export type WhatsappConnectionStatus = 'connected' | 'disconnected' | 'qr_code_ready' | 'pending';
+
+export interface WhatsappConnection {
+  id: string;
+  name: string;
+  type: WhatsappConnectionType;
+  status: WhatsappConnectionStatus;
+  phoneNumber?: string;
+  
+  // Para API Oficial da Meta
+  metaPhoneNumberId?: string;
+  metaAccessToken?: string;
+
+  // Para Evolution API
+  evolutionInstanceName?: string;
+  evolutionApiKey?: string;
+  qrCodeBase64?: string; // QR Code gerado para leitura
+
+  isDefault: boolean;
+  dataCriacao: string;
+}
+
 // --- OMNICHANNEL / CHAT ---
 export type ChannelType = 'whatsapp' | 'instagram' | 'facebook' | 'tiktok' | 'system';
 
@@ -285,6 +318,8 @@ export interface ChatSession {
   leadName: string;
   leadAvatar?: string;
   channel: ChannelType;
+  connectionId?: string; // ID da WhatsappConnection (se for whatsapp)
+  connectionName?: string; // Nome da conexão (para display)
   lastMessage?: string;
   lastTimestamp?: string;
   unreadCount: number;

@@ -1,4 +1,4 @@
-import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage } from '@/types/crm';
+import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage, WhatsappConnection } from '@/types/crm';
 import { db } from '@/lib/firebase';
 import { sendEmailBrevoAction } from '@/app/actions/brevo';
 import { processQueueServerAction } from '@/app/actions/queue';
@@ -29,7 +29,8 @@ const COLLECTIONS = {
   SEGMENTATIONS: 'segmentations',
   POPUPS: 'popups',
   CHATS: 'atendimentos_v3',
-  MESSAGES: 'messages'
+  MESSAGES: 'messages',
+  WHATSAPP_CONNECTIONS: 'whatsapp_connections'
 };
 
 const initialSettings: Settings = {
@@ -563,5 +564,35 @@ export const api = {
   markChatAsRead: async (chatId: string) => {
     const chatRef = doc(db, COLLECTIONS.CHATS, chatId);
     await updateDoc(chatRef, { unreadCount: 0 });
+  },
+
+  // --- WHATSAPP CONNECTIONS ---
+  getWhatsappConnections: async (): Promise<WhatsappConnection[]> => {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.WHATSAPP_CONNECTIONS));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WhatsappConnection));
+  },
+
+  getWhatsappConnectionById: async (id: string): Promise<WhatsappConnection | null> => {
+    const docRef = doc(db, COLLECTIONS.WHATSAPP_CONNECTIONS, id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as WhatsappConnection;
+    }
+    return null;
+  },
+
+  createWhatsappConnection: async (connection: Omit<WhatsappConnection, 'id'>): Promise<string> => {
+    const docRef = await addDoc(collection(db, COLLECTIONS.WHATSAPP_CONNECTIONS), connection);
+    return docRef.id;
+  },
+
+  updateWhatsappConnection: async (id: string, updates: Partial<WhatsappConnection>) => {
+    const docRef = doc(db, COLLECTIONS.WHATSAPP_CONNECTIONS, id);
+    await updateDoc(docRef, updates);
+  },
+
+  deleteWhatsappConnection: async (id: string) => {
+    const docRef = doc(db, COLLECTIONS.WHATSAPP_CONNECTIONS, id);
+    await deleteDoc(docRef);
   }
 };

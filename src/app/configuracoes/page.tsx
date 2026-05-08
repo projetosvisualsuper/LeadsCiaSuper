@@ -16,18 +16,23 @@ import {
   ExternalLink,
   MessageCircle,
   Trash2,
-  Plus
+  Plus,
+  MessageSquare
 } from 'lucide-react';
 
 export default function ConfigPage() {
-  const [settings, setSettings] = useState<Settings>({
+  const [settings, setSettings] = useState<Partial<Settings>>({
     brevoApiKey: '',
     remetenteNome: '',
     remetenteEmail: '',
     limiteDiario: 300,
     notificacoes: {
       novosLeads: true,
-      errosEnvio: true
+      novasMensagens: true
+    },
+    autoresponder: {
+      enabled: false,
+      message: 'Olá! Recebemos sua mensagem. Um de nossos especialistas já vai te atender.'
     },
     landingPage: {
       titulo: '',
@@ -59,8 +64,18 @@ export default function ConfigPage() {
 
   useEffect(() => {
     const loadSettings = async () => {
-      const s = await api.getSettings();
-      setSettings(s);
+      const data = await api.getSettings();
+      setSettings({
+        ...data,
+        notificacoes: {
+          novosLeads: data.notificacoes?.novosLeads ?? true,
+          novasMensagens: data.notificacoes?.novasMensagens ?? true
+        },
+        autoresponder: {
+          enabled: data.autoresponder?.enabled ?? false,
+          message: data.autoresponder?.message || 'Olá! Recebemos sua mensagem. Um de nossos especialistas já vai te atender.'
+        }
+      });
       setLoading(false);
     };
     loadSettings();
@@ -118,7 +133,7 @@ export default function ConfigPage() {
     const compressed = await compressImage(file, 300, 300, 0.5);
     setSettings(prev => ({ 
       ...prev, 
-      landingPage: { ...prev.landingPage, logoUrl: compressed }
+      landingPage: { ...prev.landingPage!, logoUrl: compressed }
     }));
   };
 
@@ -130,7 +145,7 @@ export default function ConfigPage() {
     const compressed = await compressImage(file, 800, 450, 0.4);
     setSettings(prev => ({ 
       ...prev, 
-      landingPage: { ...prev.landingPage, ogLogoUrl: compressed }
+      landingPage: { ...prev.landingPage!, ogLogoUrl: compressed }
     }));
   };
 
@@ -142,7 +157,7 @@ export default function ConfigPage() {
     const compressed = await compressImage(file, 64, 64, 0.8);
     setSettings(prev => ({ 
       ...prev, 
-      landingPage: { ...prev.landingPage, faviconUrl: compressed }
+      landingPage: { ...prev.landingPage!, faviconUrl: compressed }
     }));
   };
 
@@ -151,7 +166,7 @@ export default function ConfigPage() {
       ...settings,
       notificacoes: {
         ...settings.notificacoes,
-        [key]: !settings.notificacoes[key]
+        [key]: !settings.notificacoes?.[key]
       }
     });
   };
@@ -159,21 +174,24 @@ export default function ConfigPage() {
   if (loading) return <div>Carregando...</div>;
 
   return (
-    <div style={{ maxWidth: '800px' }}>
+    <div style={{ width: '100%', maxWidth: '1600px' }}>
       <header style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>Configurações do Sistema</h2>
         <p style={{ opacity: 0.6 }}>Gerencie suas integrações e preferências de envio.</p>
       </header>
 
-      <div className="grid" style={{ gap: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
         {/* API BREVO */}
-        <section className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <Globe className="color-primary" size={20} />
-            <h3 style={{ fontSize: '1.25rem' }}>Integração API (Brevo)</h3>
+        <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <Globe className="color-primary" size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Integração API (Brevo)</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Configure a chave da API do Brevo para permitir disparos de campanhas de e-mail marketing e defina o limite diário de envios.</p>
           </div>
           
-          <div style={{ display: 'grid', gap: '1.25rem' }}>
+          <div className="card" style={{ flex: '2 1 500px', margin: 0, display: 'grid', gap: '1.25rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>API Key</label>
               <div style={{ position: 'relative' }}>
@@ -192,7 +210,7 @@ export default function ConfigPage() {
                   className="btn btn-outline" 
                   style={{ fontSize: '0.75rem', height: '32px', borderColor: 'var(--primary)', color: 'var(--primary)' }}
                   onClick={async () => {
-                    const result = await testBrevoConnectionAction(settings.brevoApiKey);
+                    const result = await testBrevoConnectionAction(settings.brevoApiKey || '');
                     alert(result.message);
                   }}
                 >
@@ -218,13 +236,16 @@ export default function ConfigPage() {
         </section>
 
         {/* INFORMAÇÕES DA EMPRESA (RODAPÉ) */}
-        <section className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <MapPin className="color-primary" size={20} />
-            <h3 style={{ fontSize: '1.25rem' }}>Informações da Empresa (E-mail e Rodapé)</h3>
+        <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <MapPin className="color-primary" size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Informações da Empresa</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Personalize logotipos, cores, textos de rodapé (LGPD) e informações de contato que aparecerão nas suas Landing Pages e e-mails.</p>
           </div>
           
-          <div style={{ display: 'grid', gap: '1.25rem' }}>
+          <div className="card" style={{ flex: '2 1 500px', margin: 0, display: 'grid', gap: '1.25rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
                 Logotipo da Empresa (Aparecerá no Topo dos E-mails)
@@ -445,13 +466,16 @@ export default function ConfigPage() {
         </section>
 
         {/* OMNICHANNEL & CANAIS */}
-        <section className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <Share2 className="color-primary" size={20} />
-            <h3 style={{ fontSize: '1.25rem' }}>Omnichannel (Instagram & Facebook)</h3>
+        <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <Share2 className="color-primary" size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Omnichannel (Meta)</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Conecte seus tokens de acesso da Meta (Instagram/Facebook) e configure seu servidor próprio da Evolution API.</p>
           </div>
           
-          <div style={{ display: 'grid', gap: '1.25rem' }}>
+          <div className="card" style={{ flex: '2 1 500px', margin: 0, display: 'grid', gap: '1.25rem' }}>
             <div style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.1)', marginBottom: '0.5rem' }}>
                <p style={{ fontSize: '0.85rem', color: '#4338ca', lineHeight: 1.5 }}>
                  <strong>Configuração Meta:</strong> Use esta seção para conectar suas páginas do Facebook e perfis do Instagram. O Token de Acesso permite que o sistema responda mensagens automaticamente.
@@ -500,17 +524,58 @@ export default function ConfigPage() {
                 })}
               />
             </div>
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1rem 0' }} />
+
+            <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+               <p style={{ fontSize: '0.85rem', color: '#047857', lineHeight: 1.5 }}>
+                 <strong>Evolution API (WhatsApp):</strong> Informe os dados do seu servidor para conectar múltiplos números via QR Code.
+               </p>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>URL Base do Servidor</label>
+              <input 
+                type="text" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem', fontFamily: 'monospace' }} 
+                placeholder="Ex: https://api.seudominio.com.br"
+                value={settings.omnichannel?.evolutionApiUrl || ''}
+                onChange={e => setSettings({
+                  ...settings, 
+                  omnichannel: { ...settings.omnichannel, evolutionApiUrl: e.target.value }
+                })}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Global API Key</label>
+              <input 
+                type="password" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem', fontFamily: 'monospace' }} 
+                placeholder="Sua Global API Key da Evolution"
+                value={settings.omnichannel?.evolutionApiKey || ''}
+                onChange={e => setSettings({
+                  ...settings, 
+                  omnichannel: { ...settings.omnichannel, evolutionApiKey: e.target.value }
+                })}
+              />
+            </div>
           </div>
         </section>
 
         {/* NOTIFICAÇÕES */}
-        <section className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <Bell className="color-primary" size={20} />
-            <h3 style={{ fontSize: '1.25rem' }}>Preferências de Notificação</h3>
+        <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid transparent' }}>
+          <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <Bell className="color-primary" size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Notificações</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Escolha quais alertas o sistema deve exibir para você durante o uso.</p>
           </div>
           
-          <div style={{ display: 'grid', gap: '1rem' }}>
+          <div className="card" style={{ flex: '2 1 500px', margin: 0, display: 'grid', gap: '1rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '1rem', borderRadius: 'var(--radius)', background: 'var(--background)', border: '1px solid var(--border)' }}>
               <div>
                 <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>Alerta de Novo Lead</p>
@@ -523,10 +588,71 @@ export default function ConfigPage() {
                 style={{ width: '40px', height: '20px', cursor: 'pointer' }}
               />
             </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '1rem', borderRadius: 'var(--radius)', background: 'var(--background)', border: '1px solid var(--border)' }}>
+              <div>
+                <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>Alerta de Novas Mensagens</p>
+                <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>Som e notificação push ao receber mensagens no chat.</p>
+              </div>
+              <input 
+                type="checkbox" 
+                checked={settings.notificacoes?.novasMensagens !== false}
+                onChange={() => setSettings(prev => ({
+                  ...prev, 
+                  notificacoes: { ...prev.notificacoes, novasMensagens: !(prev.notificacoes?.novasMensagens !== false) }
+                }))}
+                style={{ width: '40px', height: '20px', cursor: 'pointer' }}
+              />
+            </label>
           </div>
         </section>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '4rem', alignItems: 'center' }}>
+        {/* AUTORESPONDER E ROBÔS */}
+        <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid transparent' }}>
+          <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <MessageSquare className="color-primary" size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Bot e Automacão</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Configure a saudação automática para os novos contatos.</p>
+          </div>
+          
+          <div className="card" style={{ flex: '2 1 500px', margin: 0, display: 'grid', gap: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '1rem', borderRadius: 'var(--radius)', background: 'var(--background)', border: '1px solid var(--border)' }}>
+              <div>
+                <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>Ativar Mensagem de Boas-Vindas</p>
+                <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>Dispara o autoresponder para novos chats.</p>
+              </div>
+              <input 
+                type="checkbox" 
+                checked={settings.autoresponder?.enabled || false}
+                onChange={() => setSettings(prev => ({
+                  ...prev, 
+                  autoresponder: { ...prev.autoresponder, enabled: !prev.autoresponder?.enabled, message: prev.autoresponder?.message || '' }
+                }))}
+                style={{ width: '40px', height: '20px', cursor: 'pointer' }}
+              />
+            </label>
+
+            {settings.autoresponder?.enabled && (
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Texto da Mensagem</label>
+                <textarea 
+                  className="btn-outline" 
+                  style={{ width: '100%', height: '80px', padding: '0.75rem', fontSize: '0.875rem', resize: 'vertical' }} 
+                  placeholder="Ex: Olá! Em instantes nossa equipe irá te atender."
+                  value={settings.autoresponder?.message || ''}
+                  onChange={e => setSettings(prev => ({
+                    ...prev, 
+                    autoresponder: { ...prev.autoresponder, enabled: true, message: e.target.value }
+                  }))}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '4rem', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
           {saved && <span style={{ color: 'var(--success)', fontSize: '0.875rem' }}>Configurações aplicadas com sucesso!</span>}
           <button className="btn btn-primary" onClick={handleSave} style={{ height: '50px', padding: '0 2.5rem', fontSize: '1rem' }}>
             <Save size={20} /> Salvar Tudo

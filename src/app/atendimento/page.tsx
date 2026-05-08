@@ -37,20 +37,28 @@ const renderSocialIcon = (platform: string, size: number = 24, color?: string) =
 import { ChatSession, ChatMessage, Lead } from '@/types/crm';
 import { api } from '@/services/api';
 import { db, storage } from '@/lib/firebase';
-import { sendMetaMessageAction } from '@/app/actions/chat';
+import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+const META_TEMPLATES = [
+  "Olá! Aqui é da equipe de atendimento. Recebemos seu contato, como podemos ajudar hoje?",
+  "Oi! Percebi que você se interessou pelas nossas ofertas. Posso te enviar mais detalhes?",
+  "Olá! Faz um tempo que não nos falamos. Ainda tem interesse em nossos serviços?",
+  "Lembrete: Sua oferta especial expira em breve! Gostaria de aproveitar?"
+];
+
 export default function AtendimentoPage() {
   const [chats, setChats] = useState<ChatSession[]>([]);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [showLeadDetails, setShowLeadDetails] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showLeadDetails, setShowLeadDetails] = useState(true);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -161,15 +169,24 @@ export default function AtendimentoPage() {
     try {
       await api.sendMessage(msg);
 
-      if (chat.channel === 'instagram' || chat.channel === 'facebook') {
-        const result = await sendMetaMessageAction(
-          chat.leadId, 
-          chat.channel as 'instagram' | 'facebook',
-          messageToSend
+      if (['instagram', 'facebook', 'whatsapp'].includes(chat.channel)) {
+        // Meta e Instagram usam o leadId original do painel da Meta
+        // WhatsApp usa o celular do lead
+        const recipient = chat.channel === 'whatsapp' && selectedLead 
+          ? (selectedLead.celular || selectedLead.telefone || '').replace(/\D/g, '') 
+          : chat.leadId;
+
+        const result = await sendOmnichannelMessageAction(
+          recipient, 
+          chat.channel,
+          messageToSend,
+          chat.connectionId
         );
 
         if (!result.success) {
-          console.error('Erro ao enviar para Meta:', result.error);
+          console.error(`Erro ao enviar para ${chat.channel}:`, result.error);
+        } else if ((result as any).mock) {
+          console.log('Mensagem processada em modo simulação.');
         }
       }
     } catch (error) {
@@ -201,12 +218,16 @@ export default function AtendimentoPage() {
 
       await api.sendMessage(msg);
 
-      // Enviar link da imagem para o Meta
-      if (chat?.channel && chat?.leadId) {
-        await sendMetaMessageAction(
-          chat.leadId,
+      if (['instagram', 'facebook', 'whatsapp'].includes(chat.channel) && chat?.leadId) {
+        const recipient = chat.channel === 'whatsapp' && selectedLead 
+          ? (selectedLead.celular || selectedLead.telefone || '').replace(/\D/g, '') 
+          : chat.leadId;
+
+        await sendOmnichannelMessageAction(
+          recipient,
           chat.channel,
-          `Arquivo enviado: ${url}`
+          `Arquivo enviado: ${url}`,
+          chat.connectionId
         );
       }
     } catch (error) {
@@ -342,6 +363,11 @@ export default function AtendimentoPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#10b981' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
                     Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}
+                    {chats.find(c => c.id === selectedChatId)?.connectionName && (
+                      <span style={{ background: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.5rem', fontWeight: 600 }}>
+                        {chats.find(c => c.id === selectedChatId)?.connectionName}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -520,10 +546,67 @@ export default function AtendimentoPage() {
                     type="button" 
                     disabled={uploading}
                     onClick={() => fileInputRef.current?.click()}
-                    style={{ color: uploading ? 'var(--primary)' : '#64748b', padding: '0.5rem', cursor: 'pointer' }}
+                    style={{ color: uploading ? 'var(--primary)' : '#64748b', padding: '0.5rem', cursor: 'pointer', border: 'none', background: 'transparent' }}
                   >
                     <Paperclip size={22} />
                   </button>
+                  
+                  {activeChat?.channel === 'whatsapp' && (
+                    <div style={{ position: 'relative' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+                        style={{ color: showTemplatePicker ? 'var(--primary)' : '#64748b', padding: '0.5rem', cursor: 'pointer', border: 'none', background: 'transparent' }}
+                        title="Modelos Pré-Aprovados (Templates)"
+                      >
+                        <MessageSquare size={22} />
+                      </button>
+
+                      {showTemplatePicker && (
+                        <div style={{ 
+                          position: 'absolute', 
+                          bottom: '100%', 
+                          left: 0, 
+                          marginBottom: '1rem', 
+                          background: 'white', 
+                          borderRadius: '16px', 
+                          boxShadow: '0 10px 40px rgba(0,0,0,0.15)', 
+                          border: '1px solid #e2e8f0', 
+                          padding: '1rem', 
+                          width: '350px', 
+                          zIndex: 100,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem'
+                        }}>
+                          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Modelos Pré-Aprovados (Meta)</p>
+                          {META_TEMPLATES.map((template, idx) => (
+                            <button 
+                              key={idx} 
+                              type="button" 
+                              onClick={() => {
+                                setNewMessage(template);
+                                setShowTemplatePicker(false);
+                              }}
+                              style={{ 
+                                fontSize: '0.875rem', 
+                                padding: '0.75rem', 
+                                background: '#f8fafc', 
+                                border: '1px solid #e2e8f0', 
+                                cursor: 'pointer', 
+                                borderRadius: '8px',
+                                textAlign: 'left',
+                                lineHeight: '1.4'
+                              }}
+                              className="hover-bg"
+                            >
+                              {template}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <input 
                   type="text" 

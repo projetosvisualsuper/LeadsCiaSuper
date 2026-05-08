@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, doc, setDoc, getDoc } from 'firebase/firestore';
 import { ChatMessage, ChatSession, Lead } from '@/types/crm';
+import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 
 // O Meta envia um desafio GET para verificar o webhook na configuração inicial
 export async function GET(req: NextRequest) {
@@ -188,6 +189,142 @@ export async function POST(req: NextRequest) {
             isIncoming: true
           };
           await addDoc(collection(db, 'messages'), newMessage);
+
+          // 5. Autoresponder Meta
+          if (!chatSnap.exists()) {
+            try {
+              const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
+              const settings = settingsSnap.exists() ? settingsSnap.data() : null;
+              if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
+                sendOmnichannelMessageAction(
+                  leadId,
+                  channel,
+                  settings.autoresponder.message
+                ).catch(err => console.error('Erro no Autoresponder Meta:', err));
+              }
+            } catch (err) {
+              console.error('Falha ao verificar Autoresponder Meta:', err);
+            }
+          }
+        }
+      }
+    } else if (body.object === 'whatsapp_business_account') {
+      // Processar mensagens recebidas pela API Oficial do WhatsApp Meta
+      const entry = body.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const value = changes?.value;
+
+      if (value && value.messages && value.messages.length > 0) {
+        const message = value.messages[0];
+        const contact = value.contacts?.[0];
+        
+        const leadPhone = message.from; // Número do cliente
+        const leadName = contact?.profile?.name || 'Cliente (WhatsApp)';
+        const messageText = message.text?.body || '';
+        const phoneId = value.metadata?.phone_number_id; // ID do telefone que recebeu a msg
+
+        // 1. Encontrar a conexão WhatsApp que recebeu
+        const connectionsRef = collection(db, 'whatsapp_connections');
+        const qConn = query(connectionsRef, where('metaPhoneNumberId', '==', phoneId));
+        const connSnap = await getDocs(qConn);
+        
+        let connectionId = '';
+        let connectionName = 'WhatsApp Oficial';
+        if (!connSnap.empty) {
+          const connDoc = connSnap.docs[0];
+          connectionId = connDoc.id;
+          connectionName = connDoc.data().name;
+        }
+
+        // 2. Buscar ou Criar Lead
+        const leadsRef = collection(db, 'leads');
+        const qLead = query(leadsRef, where('telefone', '==', leadPhone));
+        const leadSnap = await getDocs(qLead);
+
+        let leadId = '';
+        if (!leadSnap.empty) {
+          const leadDoc = leadSnap.docs[0];
+          leadId = leadDoc.id;
+          await updateDoc(doc(db, 'leads', leadId), { dataUltimaAtividade: new Date().toISOString() });
+        } else {
+          const newLeadRef = doc(leadsRef);
+          leadId = newLeadRef.id;
+          await setDoc(newLeadRef, {
+            nome: leadName,
+            telefone: leadPhone,
+            celular: leadPhone,
+            origem: `WhatsApp (${connectionName})`,
+            status: 'novo',
+            dataCriacao: new Date().toISOString(),
+            dataUltimaAtividade: new Date().toISOString(),
+            tags: ['whatsapp', 'meta_official']
+          });
+        }
+
+        // 3. Buscar ou Criar ChatSession
+        const chatId = `whatsapp_${leadPhone}`;
+        const chatRef = doc(db, 'atendimentos_v3', chatId);
+        let chatSnap = await getDoc(chatRef);
+        const timestampIso = new Date().toISOString();
+
+        if (!chatSnap.exists()) {
+          const newChat: ChatSession = {
+            id: chatId,
+            leadId: leadId,
+            leadName: leadName,
+            channel: 'whatsapp',
+            connectionId: connectionId,
+            connectionName: connectionName,
+            lastMessage: messageText,
+            lastTimestamp: timestampIso,
+            unreadCount: 1,
+            status: 'active',
+            dataCriacao: timestampIso
+          };
+          await setDoc(chatRef, newChat);
+        } else {
+          const currentData = chatSnap.data() as ChatSession;
+          await updateDoc(chatRef, {
+            lastMessage: messageText,
+            lastTimestamp: timestampIso,
+            unreadCount: (currentData.unreadCount || 0) + 1,
+            status: 'active',
+            connectionId: connectionId,
+            connectionName: connectionName
+          });
+        }
+
+        // 4. Salvar Mensagem
+        const messageId = message.id;
+        const messageRef = doc(db, 'messages', `${chatId}_${messageId}`);
+        await setDoc(messageRef, {
+          id: messageId,
+          chatId: chatId,
+          senderId: leadId,
+          senderName: leadName,
+          content: messageText,
+          timestamp: timestampIso,
+          type: 'text',
+          status: 'delivered',
+          isIncoming: true
+        }, { merge: true });
+
+        // 5. Autoresponder WhatsApp Cloud API
+        if (!chatSnap.exists()) {
+          try {
+            const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
+            const settings = settingsSnap.exists() ? settingsSnap.data() : null;
+            if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
+              sendOmnichannelMessageAction(
+                leadPhone,
+                'whatsapp',
+                settings.autoresponder.message,
+                connectionId
+              ).catch(err => console.error('Erro no Autoresponder WhatsApp Cloud:', err));
+            }
+          } catch (err) {
+            console.error('Falha ao verificar Autoresponder WhatsApp Cloud:', err);
+          }
         }
       }
     }
