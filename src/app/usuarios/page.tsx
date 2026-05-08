@@ -15,7 +15,8 @@ import {
   Edit2,
   Save,
   X,
-  Mail
+  Mail,
+  Trash2
 } from 'lucide-react';
 
 export default function UsuariosPage() {
@@ -24,6 +25,7 @@ export default function UsuariosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [editForm, setEditForm] = useState({ name: '', role: 'editor' as any });
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -43,6 +45,20 @@ export default function UsuariosPage() {
         dataAprovacao: status === 'approved' ? new Date().toISOString() : undefined 
       });
       loadUsers();
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setLoading(true);
+    try {
+      await api.deleteUserProfile(userToDelete);
+      await loadUsers();
+      setUserToDelete(null);
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro ao excluir usuário: ' + err.message);
+      setLoading(false);
     }
   };
 
@@ -168,6 +184,15 @@ export default function UsuariosPage() {
                       >
                         <Edit2 size={14} />
                       </button>
+                      
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ width: '32px', height: '32px', padding: 0, color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                        title="Excluir Usuário"
+                        onClick={() => setUserToDelete(user.uid)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
 
                       {user.status === 'pending' ? (
                         <>
@@ -257,6 +282,29 @@ export default function UsuariosPage() {
                   Cancelar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userToDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+              <AlertCircle size={24} />
+            </div>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1e293b', marginBottom: '0.5rem' }}>Excluir Usuário</h3>
+            <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              Tem certeza que deseja excluir este usuário do sistema? Esta ação não pode ser desfeita.
+            </p>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setUserToDelete(null)}>
+                Cancelar
+              </button>
+              <button className="btn" style={{ flex: 1, background: 'var(--danger)', color: 'white' }} onClick={handleDeleteUser}>
+                Excluir
+              </button>
             </div>
           </div>
         </div>

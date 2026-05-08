@@ -137,6 +137,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
     try {
+      auth.languageCode = 'pt';
       await sendPasswordResetEmail(auth, formData.email);
       setResetSent(true);
       setError('');

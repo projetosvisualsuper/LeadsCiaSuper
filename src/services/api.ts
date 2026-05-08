@@ -396,6 +396,10 @@ export const api = {
     await setDoc(userRef, data, { merge: true });
   },
 
+  deleteUserProfile: async (uid: string) => {
+    await deleteDoc(doc(db, COLLECTIONS.USERS, uid));
+  },
+
   getAllUserProfiles: async (): Promise<UserProfile[]> => {
     const q = query(collection(db, COLLECTIONS.USERS), orderBy('dataSolicitacao', 'desc'));
     const snap = await getDocs(q);

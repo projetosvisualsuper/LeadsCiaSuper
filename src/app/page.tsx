@@ -15,13 +15,22 @@ import {
   PlusCircle,
   Upload,
   X,
-  Zap
+  Zap,
+  BarChart,
+  ArrowRight,
+  UserPlus,
+  FileText,
+  TrendingUp,
+  Megaphone,
+  CheckCircle2,
+  Calendar
 } from 'lucide-react';
 
 export default function Dashboard() {
   const router = useRouter();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importStatus, setImportStatus] = useState('');
+  const [greeting, setGreeting] = useState('Bem-vindo');
   
   interface DashboardStats {
     totalLeads: number;
@@ -30,6 +39,12 @@ export default function Dashboard() {
     enviadosHoje: number;
     pendentes: number;
     limiteRestante: number;
+    leadsByStatus: {
+      novo: number;
+      contatado: number;
+      convertido: number;
+      perdido: number;
+    };
   }
 
   const [stats, setStats] = useState<DashboardStats>({
@@ -38,10 +53,19 @@ export default function Dashboard() {
     totalCampaigns: 0,
     enviadosHoje: 0,
     pendentes: 0,
-    limiteRestante: 0
+    limiteRestante: 0,
+    leadsByStatus: { novo: 0, contatado: 0, convertido: 0, perdido: 0 }
   });
 
   const [recentLeads, setRecentLeads] = useState<Lead[]>([]);
+  const [recentCampaigns, setRecentCampaigns] = useState<Campaign[]>([]);
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Bom dia');
+    else if (hour < 18) setGreeting('Boa tarde');
+    else setGreeting('Boa noite');
+  }, []);
 
   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,12 +79,10 @@ export default function Dashboard() {
       if (lines.length < 2) return;
 
       const headerLine = lines[0];
-      // Detectar o separador mais provável: Ponto-e-vírgula, Tabulação ou Vírgula
       let separator = ',';
       if (headerLine.includes(';')) separator = ';';
       else if (headerLine.includes('\t')) separator = '\t';
       
-      // Mapear índices das colunas baseado no cabeçalho
       const headers = headerLine.split(separator).map(h => h.trim().toLowerCase());
       const idxEmail = headers.findIndex(h => h.includes('email') || h.includes('e-mail'));
       const idxNome = headers.findIndex(h => h.includes('nome') || h.includes('name'));
@@ -72,7 +94,6 @@ export default function Dashboard() {
       lines.forEach((line, i) => {
         if (i === 0 || !line.trim()) return;
         
-        // Split simples mas respeitando o separador detectado
         const cols = line.split(separator).map(c => c.trim().replace(/^"|"$/g, ''));
         
         const email = (idxEmail !== -1 && cols[idxEmail]) ? cols[idxEmail] : '';
@@ -118,7 +139,13 @@ export default function Dashboard() {
       const today = new Date().toISOString().split('T')[0];
       const leadsHoje = leads.filter(l => l.dataCriacao.startsWith(today)).length;
 
-      // Busca créditos reais do Brevo
+      const leadsByStatus = {
+        novo: leads.filter(l => l.status === 'novo').length,
+        contatado: leads.filter(l => l.status === 'contatado').length,
+        convertido: leads.filter(l => l.status === 'convertido').length,
+        perdido: leads.filter(l => l.status === 'perdido').length,
+      };
+
       const realCredits = await getBrevoCreditsAction(settings.brevoApiKey);
 
       setStats({
@@ -127,138 +154,250 @@ export default function Dashboard() {
         totalCampaigns: campaigns.length,
         enviadosHoje: sentToday,
         pendentes: queue.filter(q => q.status === 'pendente' || (q.status === 'erro' && q.tentativa < 3)).length,
-        limiteRestante: realCredits
+        limiteRestante: realCredits,
+        leadsByStatus
       });
 
       setRecentLeads(leads.slice(0, 5));
+      setRecentCampaigns(campaigns.slice(0, 4));
     };
 
     loadStats();
   }, []);
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'novo': return 'var(--primary)';
+      case 'contatado': return '#3b82f6';
+      case 'convertido': return 'var(--success)';
+      case 'perdido': return 'var(--danger)';
+      default: return '#cbd5e1';
+    }
+  };
+
+  const getStatusPercent = (count: number) => {
+    return stats.totalLeads > 0 ? Math.round((count / stats.totalLeads) * 100) : 0;
+  };
+
   return (
-    <div>
-      <header style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>Dashboard Overview</h2>
-        <p style={{ opacity: 0.6 }}>Bem-vindo ao seu centro de comando de marketing.</p>
+    <div className="dashboard-wrapper">
+      <header style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.025em' }}>{greeting}, Administrador 👋</h2>
+          <p style={{ opacity: 0.6, fontSize: '1.05rem', marginTop: '0.25rem' }}>Aqui está o resumo do seu centro de comando hoje.</p>
+        </div>
+        <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: '50px', border: '1px solid var(--border)', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Calendar size={16} />
+          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </div>
       </header>
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(5, 1fr)', 
-        gap: '1rem', 
-        marginBottom: '3rem' 
-      }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '0.75rem', borderRadius: '50%', color: 'var(--primary)' }}>
-            <Users size={24} />
+      {/* STATS CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1.25rem', marginBottom: '2.5rem' }}>
+        <StatCard 
+          icon={<Users size={24} />} 
+          title="Total de Leads" 
+          value={stats.totalLeads} 
+          color="var(--primary)" 
+          bgColor="rgba(99, 102, 241, 0.1)" 
+        />
+        <StatCard 
+          icon={<Zap size={24} />} 
+          title="Leads Hoje" 
+          value={`+${stats.leadsHoje}`} 
+          color="var(--success)" 
+          bgColor="rgba(16, 185, 129, 0.1)" 
+          highlight
+        />
+        <StatCard 
+          icon={<Mail size={24} />} 
+          title="Campanhas Ativas" 
+          value={stats.totalCampaigns} 
+          color="#8b5cf6" 
+          bgColor="rgba(139, 92, 246, 0.1)" 
+        />
+        <StatCard 
+          icon={<Clock size={24} />} 
+          title="Fila Pendente" 
+          value={stats.pendentes} 
+          color="var(--warning)" 
+          bgColor="rgba(245, 158, 11, 0.1)" 
+        />
+        <StatCard 
+          icon={<Send size={24} />} 
+          title="Créditos Brevo" 
+          value={stats.limiteRestante} 
+          color="#ec4899" 
+          bgColor="rgba(236, 72, 153, 0.1)" 
+        />
+      </div>
+
+      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* LEAD FUNNEL */}
+        <div className="card" style={{ padding: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <TrendingUp size={20} style={{ color: 'var(--primary)' }} />
+              Funil de Leads
+            </h4>
+            <span style={{ fontSize: '0.875rem', background: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '50px', fontWeight: 600, color: '#64748b' }}>Taxa de Conversão: {getStatusPercent(stats.leadsByStatus.convertido)}%</span>
           </div>
-          <div>
-            <p style={{ fontSize: '0.875rem', opacity: 0.6 }}>Total Leads</p>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.totalLeads}</h3>
+
+          <div style={{ display: 'grid', gap: '1.25rem' }}>
+            {[
+              { label: 'Novos', count: stats.leadsByStatus.novo, id: 'novo' },
+              { label: 'Em Contato', count: stats.leadsByStatus.contatado, id: 'contatado' },
+              { label: 'Convertidos', count: stats.leadsByStatus.convertido, id: 'convertido' },
+              { label: 'Perdidos', count: stats.leadsByStatus.perdido, id: 'perdido' }
+            ].map(status => (
+              <div key={status.id}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9375rem', fontWeight: 600 }}>
+                  <span style={{ color: '#475569' }}>{status.label}</span>
+                  <span style={{ color: '#1e293b' }}>{status.count} <span style={{ opacity: 0.5, fontSize: '0.75rem', fontWeight: 500 }}>({getStatusPercent(status.count)}%)</span></span>
+                </div>
+                <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div 
+                    style={{ 
+                      height: '100%', 
+                      background: getStatusColor(status.id), 
+                      width: `${getStatusPercent(status.count)}%`,
+                      borderRadius: '4px',
+                      transition: 'width 1s ease-out'
+                    }} 
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--success)', background: 'rgba(16, 185, 129, 0.05)' }}>
-          <div style={{ background: 'var(--success)', padding: '0.75rem', borderRadius: '50%', color: 'white' }}>
-            <Zap size={24} />
-          </div>
-          <div>
-            <p style={{ fontSize: '0.875rem', opacity: 0.6 }}>Leads Hoje</p>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>+{stats.leadsHoje}</h3>
-          </div>
-        </div>
+        {/* QUICK ACTIONS & CAMPAIGNS */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.75rem', flex: 1 }}>
+            <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Zap size={20} style={{ color: 'var(--warning)' }} />
+              Ações Rápidas
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <button 
+                onClick={() => router.push('/campanhas')}
+                style={{ padding: '1.25rem', background: 'linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%)', color: 'white', borderRadius: '16px', textAlign: 'left', cursor: 'pointer', border: 'none', transition: 'transform 0.2s', boxShadow: '0 10px 15px -3px rgba(99, 102, 241, 0.3)' }}
+                className="hover-lift"
+              >
+                <Megaphone size={24} style={{ marginBottom: '0.75rem' }} />
+                <h5 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Nova Campanha</h5>
+                <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>Crie um disparo de e-mail</p>
+              </button>
 
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(129, 140, 248, 0.1)', padding: '0.75rem', borderRadius: '50%', color: '#818cf8' }}>
-            <Mail size={24} />
-          </div>
-          <div>
-            <p style={{ fontSize: '0.875rem', opacity: 0.6 }}>Campanhas</p>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.totalCampaigns}</h3>
-          </div>
-        </div>
-
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '0.75rem', borderRadius: '50%', color: 'var(--warning)' }}>
-            <Clock size={24} />
-          </div>
-          <div>
-            <p style={{ fontSize: '0.875rem', opacity: 0.6 }}>Fila Pendente</p>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.pendentes}</h3>
-          </div>
-        </div>
-
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--primary)', background: 'rgba(99, 102, 241, 0.05)' }}>
-          <div style={{ background: 'var(--primary)', padding: '0.75rem', borderRadius: '50%', color: 'white' }}>
-            <Send size={24} />
-          </div>
-          <div>
-            <p style={{ fontSize: '0.875rem', opacity: 0.6 }}>Créditos Dia</p>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>{stats.limiteRestante}</h3>
+              <button 
+                onClick={() => setIsImportModalOpen(true)}
+                style={{ padding: '1.25rem', background: '#f8fafc', color: '#1e293b', borderRadius: '16px', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)', transition: 'all 0.2s' }}
+                className="hover-lift"
+              >
+                <div style={{ background: 'rgba(59, 130, 246, 0.1)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', marginBottom: '0.75rem' }}>
+                  <UserPlus size={20} />
+                </div>
+                <h5 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Importar Leads</h5>
+                <p style={{ fontSize: '0.75rem', opacity: 0.6 }}>Faça upload via arquivo CSV</p>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2">
-        <div className="card">
-          <h4 style={{ marginBottom: '1.5rem', fontWeight: 600 }}>Leads Recentes</h4>
-          <div className="table-container" style={{ border: 'none' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>E-mail</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLeads.map(lead => (
-                  <tr key={lead.id}>
-                    <td>{lead.nome}</td>
-                    <td>{lead.email}</td>
-                    <td>
-                      <span className={`badge badge-${lead.status}`}>
-                        {lead.status.toUpperCase()}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        {/* RECENT LEADS */}
+        <div className="card" style={{ padding: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b' }}>Leads Mais Recentes</h4>
+            <button onClick={() => router.push('/leads')} style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Ver todos <ArrowRight size={16} />
+            </button>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {recentLeads.length === 0 ? (
+              <p style={{ textAlign: 'center', opacity: 0.5, padding: '2rem 0' }}>Nenhum lead capturado ainda.</p>
+            ) : (
+              recentLeads.map(lead => (
+                <div key={lead.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                      {lead.nome ? lead.nome[0].toUpperCase() : lead.email[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#1e293b' }}>{lead.nome || 'Sem Nome'}</p>
+                      <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>{lead.email}</p>
+                    </div>
+                  </div>
+                  <span className={`badge badge-${lead.status}`}>
+                    {lead.status.toUpperCase()}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        <div className="card">
-          <h4 style={{ marginBottom: '1.5rem', fontWeight: 600 }}>Ações Rápidas</h4>
-          <div style={{ display: 'grid', gap: '0.75rem' }}>
-            <button className="btn btn-outline" style={{ justifyContent: 'flex-start' }} onClick={() => router.push('/campanhas')}>
-              <PlusCircle size={18} /> Criar Nova Campanha
+        {/* RECENT CAMPAIGNS */}
+        <div className="card" style={{ padding: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b' }}>Últimas Campanhas</h4>
+            <button onClick={() => router.push('/campanhas')} style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Ver todas <ArrowRight size={16} />
             </button>
-            <button className="btn btn-outline" style={{ justifyContent: 'flex-start' }} onClick={() => setIsImportModalOpen(true)}>
-              <Users size={18} /> Importar Leads CSV
-            </button>
-            <button className="btn btn-outline" style={{ justifyContent: 'flex-start' }} onClick={() => router.push('/relatorios')}>
-              <Mail size={18} /> Ver Relatório de Envios
-            </button>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {recentCampaigns.length === 0 ? (
+              <p style={{ textAlign: 'center', opacity: 0.5, padding: '2rem 0' }}>Nenhuma campanha criada ainda.</p>
+            ) : (
+              recentCampaigns.map(camp => (
+                <div key={camp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Megaphone size={18} />
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#1e293b' }}>{camp.nome}</p>
+                      <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>{new Date(camp.dataCriacao).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {camp.status === 'enviado' ? <CheckCircle2 size={16} color="var(--success)" /> : <Clock size={16} color="var(--warning)" />}
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: camp.status === 'enviado' ? 'var(--success)' : 'var(--warning)', textTransform: 'capitalize' }}>
+                      {camp.status}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
       {isImportModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="card" style={{ width: '400px', position: 'relative' }}>
-            <button style={{ position: 'absolute', right: '1rem', top: '1rem', opacity: 0.5 }} onClick={() => setIsImportModalOpen(false)}>
-              <X size={20} />
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '450px', position: 'relative', padding: '2.5rem' }}>
+            <button style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', opacity: 0.5, background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setIsImportModalOpen(false)}>
+              <X size={24} />
             </button>
-            <h3 style={{ marginBottom: '1.5rem' }}>Importar via CSV</h3>
-            <p style={{ fontSize: '0.875rem', opacity: 0.6, marginBottom: '1.5rem' }}>
-              O arquivo deve conter as colunas: <strong>nome, email, telefone</strong> na primeira linha.
+            <h3 style={{ marginBottom: '0.5rem', fontWeight: 800, fontSize: '1.5rem', color: '#1e293b' }}>Importar Leads</h3>
+            <p style={{ fontSize: '0.9375rem', color: '#64748b', marginBottom: '2rem' }}>
+              O arquivo CSV deve conter as colunas: <strong>nome, email e telefone</strong>.
             </p>
             
-            <div style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius)', padding: '2rem', textAlign: 'center', cursor: 'pointer' }} onClick={() => document.getElementById('csv-file')?.click()}>
-              <Upload size={32} style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
-              <p>{importStatus || 'Clique para selecionar arquivo .csv'}</p>
+            <div 
+              style={{ border: '2px dashed var(--primary)', borderRadius: '16px', padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer', background: 'rgba(99, 102, 241, 0.03)', transition: 'background 0.2s' }} 
+              onClick={() => document.getElementById('csv-file')?.click()}
+              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.08)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.03)'}
+            >
+              <Upload size={40} style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
+              <p style={{ fontWeight: 600, color: '#1e293b', marginBottom: '0.25rem' }}>{importStatus ? 'Status da Importação:' : 'Clique para selecionar o arquivo'}</p>
+              <p style={{ fontSize: '0.875rem', color: importStatus.includes('sucesso') ? 'var(--success)' : '#64748b' }}>
+                {importStatus || 'Apenas arquivos .csv são suportados'}
+              </p>
               <input 
                 id="csv-file" 
                 type="file" 
@@ -270,6 +409,28 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .hover-lift:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1);
+        }
+      `}</style>
     </div>
   );
 }
+
+function StatCard({ icon, title, value, color, bgColor, highlight = false }: any) {
+  return (
+    <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', border: highlight ? `1px solid ${color}` : '1px solid var(--border)', background: highlight ? bgColor : 'var(--card)' }}>
+      <div style={{ background: bgColor, width: '56px', height: '56px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+        {icon}
+      </div>
+      <div>
+        <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600, marginBottom: '0.25rem' }}>{title}</p>
+        <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>{value}</h3>
+      </div>
+    </div>
+  );
+}
+
