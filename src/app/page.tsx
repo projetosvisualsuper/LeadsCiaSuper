@@ -59,111 +59,92 @@ export default function Dashboard() {
 
   const [recentLeads, setRecentLeads] = useState<Lead[]>([]);
   const [recentCampaigns, setRecentCampaigns] = useState<Campaign[]>([]);
+  
+  const [period, setPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [rawData, setRawData] = useState<{ leads: Lead[], campaigns: Campaign[], queue: FilaEnvio[], sentToday: number, realCredits: number } | null>(null);
 
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting('Bom dia');
     else if (hour < 18) setGreeting('Boa tarde');
     else setGreeting('Boa noite');
-  }, []);
 
-  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportStatus('Processando arquivo...');
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split(/\r?\n/);
-      if (lines.length < 2) return;
-
-      const headerLine = lines[0];
-      let separator = ',';
-      if (headerLine.includes(';')) separator = ';';
-      else if (headerLine.includes('\t')) separator = '\t';
-      
-      const headers = headerLine.split(separator).map(h => h.trim().toLowerCase());
-      const idxEmail = headers.findIndex(h => h.includes('email') || h.includes('e-mail'));
-      const idxNome = headers.findIndex(h => h.includes('nome') || h.includes('name'));
-      const idxTelefone = headers.findIndex(h => h.includes('telefone') || h.includes('celular') || h.includes('phone') || h.includes('mobile'));
-      const idxEmpresa = headers.findIndex(h => h.includes('empresa') || h.includes('company') || h.includes('cargo'));
-
-      let count = 0;
-      
-      lines.forEach((line, i) => {
-        if (i === 0 || !line.trim()) return;
-        
-        const cols = line.split(separator).map(c => c.trim().replace(/^"|"$/g, ''));
-        
-        const email = (idxEmail !== -1 && cols[idxEmail]) ? cols[idxEmail] : '';
-        const nome = (idxNome !== -1 && idxNome !== idxEmail && cols[idxNome]) ? cols[idxNome] : (email ? 'Sem Nome' : '');
-        const telefone = (idxTelefone !== -1 && idxTelefone !== idxEmail && cols[idxTelefone]) ? cols[idxTelefone] : '';
-        const empresa = (idxEmpresa !== -1 && idxEmpresa !== idxEmail && cols[idxEmpresa]) ? cols[idxEmpresa] : '';
-
-        if (email && email.includes('@') && email.length < 100) {
-          api.saveLead({
-            id: Math.random().toString(36).substr(2, 9),
-            nome: nome || 'Sem Nome',
-            email: email,
-            telefone: telefone,
-            empresa: empresa,
-            origem: 'Planilha RD/Massa',
-            dataCriacao: new Date().toISOString(),
-            status: 'novo',
-            tags: ['importado-planilha'],
-            consentimentoLGPD: true
-          });
-          count++;
-        }
-      });
-      
-      setImportStatus(`${count} leads importados com sucesso!`);
-      setTimeout(() => {
-        setIsImportModalOpen(false);
-        setImportStatus('');
-        window.location.reload();
-      }, 2000);
-    };
-    reader.readAsText(file);
-  };
-
-  useEffect(() => {
-    const loadStats = async () => {
+    const fetchAll = async () => {
       const leads = await api.getLeads();
       const campaigns = await api.getCampaigns();
       const queue = await api.getQueue();
       const sentToday = await api.getSentTodayCount();
       const settings = await api.getSettings();
-
-      const today = new Date().toISOString().split('T')[0];
-      const leadsHoje = leads.filter(l => l.dataCriacao.startsWith(today)).length;
-
-      const leadsByStatus = {
-        novo: leads.filter(l => l.status === 'novo').length,
-        contatado: leads.filter(l => l.status === 'contatado').length,
-        convertido: leads.filter(l => l.status === 'convertido').length,
-        perdido: leads.filter(l => l.status === 'perdido').length,
-      };
-
       const realCredits = await getBrevoCreditsAction(settings.brevoApiKey);
-
-      setStats({
-        totalLeads: leads.length,
-        leadsHoje: leadsHoje,
-        totalCampaigns: campaigns.length,
-        enviadosHoje: sentToday,
-        pendentes: queue.filter(q => q.status === 'pendente' || (q.status === 'erro' && q.tentativa < 3)).length,
-        limiteRestante: realCredits,
-        leadsByStatus
-      });
-
-      setRecentLeads(leads.slice(0, 5));
-      setRecentCampaigns(campaigns.slice(0, 4));
+      setRawData({ leads, campaigns, queue, sentToday, realCredits });
     };
 
-    loadStats();
+    fetchAll();
   }, []);
+
+  useEffect(() => {
+    if (!rawData) return;
+
+    const { leads, campaigns, queue, sentToday, realCredits } = rawData;
+    const now = new Date();
+    let limitDate = new Date(0);
+    let endDate = new Date(now);
+    // Para períodos pré-definidos, o endDate é sempre o momento atual
+    
+    if (period === 'today') {
+      limitDate = new Date();
+      limitDate.setHours(0,0,0,0);
+    } else if (period === '7d') {
+      limitDate = new Date(now);
+      limitDate.setDate(now.getDate() - 7);
+    } else if (period === '30d') {
+      limitDate = new Date(now);
+      limitDate.setDate(now.getDate() - 30);
+    } else if (period === 'month') {
+      limitDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === 'custom') {
+      if (customStartDate) {
+        limitDate = new Date(customStartDate + 'T00:00:00');
+      }
+      if (customEndDate) {
+        endDate = new Date(customEndDate + 'T23:59:59');
+      }
+    }
+
+    const filteredLeads = leads.filter(l => {
+      const d = new Date(l.dataCriacao);
+      return d >= limitDate && d <= endDate;
+    });
+    const filteredCampaigns = campaigns.filter(c => {
+      const d = new Date(c.dataCriacao);
+      return d >= limitDate && d <= endDate;
+    });
+
+    const todayString = now.toISOString().split('T')[0];
+    const leadsHoje = leads.filter(l => l.dataCriacao.startsWith(todayString)).length;
+
+    const leadsByStatus = {
+      novo: filteredLeads.filter(l => l.status === 'novo').length,
+      contatado: filteredLeads.filter(l => l.status === 'contatado').length,
+      convertido: filteredLeads.filter(l => l.status === 'convertido').length,
+      perdido: filteredLeads.filter(l => l.status === 'perdido').length,
+    };
+
+    setStats({
+      totalLeads: filteredLeads.length,
+      leadsHoje: leadsHoje, // leadsHoje is absolute for today regardless of filter (or could be relative, but "hoje" is constant)
+      totalCampaigns: filteredCampaigns.length,
+      enviadosHoje: sentToday,
+      pendentes: queue.filter(q => q.status === 'pendente' || (q.status === 'erro' && q.tentativa < 3)).length,
+      limiteRestante: realCredits,
+      leadsByStatus
+    });
+
+    setRecentLeads(filteredLeads.slice(0, 5));
+    setRecentCampaigns(filteredCampaigns.slice(0, 4));
+  }, [rawData, period, customStartDate, customEndDate]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -186,9 +167,52 @@ export default function Dashboard() {
           <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.025em' }}>{greeting}, Administrador 👋</h2>
           <p style={{ opacity: 0.6, fontSize: '1.05rem', marginTop: '0.25rem' }}>Aqui está o resumo do seu centro de comando hoje.</p>
         </div>
-        <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: '50px', border: '1px solid var(--border)', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Calendar size={16} />
-          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <select 
+            value={period} 
+            onChange={e => setPeriod(e.target.value)}
+            style={{ 
+              padding: '0.5rem 1rem', 
+              borderRadius: '50px', 
+              border: '1px solid var(--border)', 
+              background: 'white', 
+              fontSize: '0.875rem', 
+              fontWeight: 600, 
+              color: '#1e293b', 
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="all">Todo o período</option>
+            <option value="today">Hoje</option>
+            <option value="7d">Últimos 7 dias</option>
+            <option value="30d">Últimos 30 dias</option>
+            <option value="month">Este Mês</option>
+            <option value="custom">Personalizado</option>
+          </select>
+          
+          {period === 'custom' && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'white', padding: '0.25rem 0.5rem', borderRadius: '50px', border: '1px solid var(--border)' }}>
+              <input 
+                type="date" 
+                value={customStartDate} 
+                onChange={e => setCustomStartDate(e.target.value)}
+                style={{ padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', outline: 'none', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600 }}>até</span>
+              <input 
+                type="date" 
+                value={customEndDate} 
+                onChange={e => setCustomEndDate(e.target.value)}
+                style={{ padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', outline: 'none', cursor: 'pointer' }}
+              />
+            </div>
+          )}
+
+          <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: '50px', border: '1px solid var(--border)', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Calendar size={16} />
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </div>
         </div>
       </header>
 
