@@ -17,6 +17,7 @@ import {
   MoreVertical,
   Pencil
 } from 'lucide-react';
+import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 
 export default function ConexoesPage() {
   const [connections, setConnections] = useState<WhatsappConnection[]>([]);
@@ -40,6 +41,10 @@ export default function ConexoesPage() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<{base64?: string, loading: boolean, error?: string, mock?: boolean}>({ loading: false });
 
+  // Test Message States
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testData, setTestData] = useState({ connectionId: '', phone: '', message: 'Olá! Este é um teste de conexão do Gerency Leads. 🚀', loading: false });
+
   const fetchQrCode = async (connectionId: string) => {
     setShowQrModal(true);
     setQrCodeData({ loading: true });
@@ -57,6 +62,29 @@ export default function ConexoesPage() {
     } catch (err: any) {
       setQrCodeData({ loading: false, error: err.message });
     }
+  };
+
+  const handleTestMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestData(prev => ({ ...prev, loading: true }));
+    try {
+      const result = await sendOmnichannelMessageAction(
+        testData.phone.replace(/\D/g, ''),
+        'whatsapp',
+        testData.message,
+        testData.connectionId
+      );
+
+      if (result.success) {
+        showToast('Mensagem de teste enviada com sucesso!', 'success');
+        setShowTestModal(false);
+      } else {
+        throw new Error(result.error || 'Falha ao enviar mensagem');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao enviar teste.', 'error');
+    }
+    setTestData(prev => ({ ...prev, loading: false }));
   };
 
   const loadConnections = async () => {
@@ -248,6 +276,18 @@ export default function ConexoesPage() {
                 {conn.type === 'evolution_api' && conn.status !== 'connected' && (
                   <button onClick={() => fetchQrCode(conn.id)} className="btn btn-outline" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', height: '36px', fontSize: '0.875rem' }}>
                     <QrCode size={16} /> Ver QR Code
+                  </button>
+                )}
+                {conn.status === 'connected' && (
+                  <button 
+                    onClick={() => {
+                      setTestData({ ...testData, connectionId: conn.id, phone: '' });
+                      setShowTestModal(true);
+                    }} 
+                    className="btn btn-outline" 
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', height: '36px', fontSize: '0.875rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                  >
+                    <Zap size={16} /> Testar Envio
                   </button>
                 )}
                 <button 
@@ -482,6 +522,85 @@ export default function ConexoesPage() {
                  Fechar
                </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TESTE DE ENVIO */}
+      {showTestModal && (
+        <div style={{ 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' 
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: '450px', padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--background)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={18} />
+                </div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>Teste Real de Conexão</h2>
+              </div>
+              <button onClick={() => setShowTestModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleTestMessage} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <p style={{ fontSize: '0.875rem', opacity: 0.6, margin: 0 }}>
+                Envie uma mensagem real para um número de WhatsApp para validar se a integração está ativa e configurada corretamente.
+              </p>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Número do WhatsApp (com DDD)</label>
+                <input 
+                  type="text" 
+                  required
+                  className="btn-outline" 
+                  style={{ width: '100%', height: '44px', padding: '0 1rem' }} 
+                  placeholder="Ex: 48999999999"
+                  value={testData.phone}
+                  onChange={e => setTestData({...testData, phone: e.target.value})}
+                />
+                <span style={{ fontSize: '0.7rem', opacity: 0.5, marginTop: '4px', display: 'block' }}>Não use espaços ou parênteses. Apenas números.</span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Mensagem de Teste</label>
+                <textarea 
+                  required
+                  className="btn-outline" 
+                  style={{ width: '100%', height: '100px', padding: '0.75rem 1rem', resize: 'none' }} 
+                  value={testData.message}
+                  onChange={e => setTestData({...testData, message: e.target.value})}
+                />
+              </div>
+
+              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowTestModal(false)}
+                  className="btn btn-outline"
+                  style={{ flex: 1, height: '44px' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={testData.loading}
+                  className="btn btn-primary"
+                  style={{ flex: 2, height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                >
+                  {testData.loading ? (
+                    <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <>
+                      <MessageSquare size={18} /> Enviar Teste Agora
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
