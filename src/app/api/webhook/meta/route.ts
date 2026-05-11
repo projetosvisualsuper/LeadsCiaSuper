@@ -218,10 +218,35 @@ export async function POST(req: NextRequest) {
         const message = value.messages[0];
         const contact = value.contacts?.[0];
         
-        const leadPhone = message.from; // Número do cliente
+        const rawPhone = message.from; // Número do cliente (ex: 554884040762)
         const leadName = contact?.profile?.name || 'Cliente (WhatsApp)';
         const messageText = message.text?.body || '';
         const phoneId = value.metadata?.phone_number_id; // ID do telefone que recebeu a msg
+
+        // Função para normalizar número do Brasil (Trata o 9º dígito)
+        const normalizeBRNumber = (phone: string) => {
+          let normalized = phone.replace(/\D/g, '');
+          if (normalized.startsWith('55') && normalized.length === 12) {
+            // Se tem 12 dígitos (55 + DDD + 8 dígitos), tenta adicionar o 9
+            const ddd = normalized.substring(2, 4);
+            const num = normalized.substring(4);
+            return {
+              with9: `55${ddd}9${num}`,
+              without9: normalized
+            };
+          } else if (normalized.startsWith('55') && normalized.length === 13) {
+            // Se tem 13 dígitos (55 + DDD + 9 + 8 dígitos), tenta remover o 9
+            const ddd = normalized.substring(2, 4);
+            const num = normalized.substring(5);
+            return {
+              with9: normalized,
+              without9: `55${ddd}${num}`
+            };
+          }
+          return { with9: normalized, without9: normalized };
+        };
+
+        const { with9, without9 } = normalizeBRNumber(rawPhone);
 
         // 1. Encontrar a conexão WhatsApp que recebeu
         const connectionsRef = collection(db, 'whatsapp_connections');
@@ -236,23 +261,36 @@ export async function POST(req: NextRequest) {
           connectionName = connDoc.data().name;
         }
 
-        // 2. Buscar ou Criar Lead
+        // 2. Buscar Lead (Tenta com e sem o 9)
         const leadsRef = collection(db, 'leads');
-        const qLead = query(leadsRef, where('telefone', '==', leadPhone));
-        const leadSnap = await getDocs(qLead);
+        const qLeadWith9 = query(leadsRef, where('telefone', '==', with9));
+        const qLeadWithout9 = query(leadsRef, where('telefone', '==', without9));
+        
+        const [snapWith9, snapWithout9] = await Promise.all([
+          getDocs(qLeadWith9),
+          getDocs(qLeadWithout9)
+        ]);
 
         let leadId = '';
-        if (!leadSnap.empty) {
-          const leadDoc = leadSnap.docs[0];
-          leadId = leadDoc.id;
-          await updateDoc(doc(db, 'leads', leadId), { dataUltimaAtividade: new Date().toISOString() });
+
+        if (!snapWith9.empty) {
+          leadId = snapWith9.docs[0].id;
+        } else if (!snapWithout9.empty) {
+          leadId = snapWithout9.docs[0].id;
+          // Se encontramos sem o 9, atualizamos o lead para ter o 9 (melhor para o envio da Meta)
+          await updateDoc(doc(db, 'leads', leadId), { 
+            telefone: with9,
+            celular: with9,
+            dataUltimaAtividade: new Date().toISOString() 
+          });
         } else {
+          // Criar Lead Novo (Sempre criamos com o 9 para evitar erros de envio depois)
           const newLeadRef = doc(leadsRef);
           leadId = newLeadRef.id;
           await setDoc(newLeadRef, {
             nome: leadName,
-            telefone: leadPhone,
-            celular: leadPhone,
+            telefone: with9,
+            celular: with9,
             origem: `WhatsApp (${connectionName})`,
             status: 'novo',
             dataCriacao: new Date().toISOString(),
@@ -262,7 +300,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Buscar ou Criar ChatSession
-        const chatId = `whatsapp_${leadPhone}`;
+        const chatId = `whatsapp_${with9}`; // Usamos o formato com 9 para o ID do chat ser consistente
         const chatRef = doc(db, 'atendimentos_v3', chatId);
         let chatSnap = await getDoc(chatRef);
         const timestampIso = new Date().toISOString();
