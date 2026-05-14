@@ -23,10 +23,13 @@ import {
   LogIn,
   ShieldCheck,
   ShieldAlert,
+  Zap,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
   Filter,
   SquareStack,
-  MessageSquare,
-  Zap
+  MessageSquare
 } from 'lucide-react';
 import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -64,6 +67,7 @@ export default function ClientLayout({
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -234,74 +238,104 @@ export default function ClientLayout({
 
   return (
     <div className="app-container">
-        <aside className="sidebar">
-          <div style={{ padding: '0 1rem', marginBottom: '1rem' }}>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Gerency<span style={{ color: 'var(--primary)' }}>Leads</span></h1>
+        <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`} style={{
+          width: isSidebarCollapsed ? '80px' : '260px',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          overflowX: 'hidden'
+        }}>
+          <div style={{ 
+            padding: '1.5rem 1rem', 
+            marginBottom: '1rem', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: isSidebarCollapsed ? 'center' : 'space-between' 
+          }}>
+            {!isSidebarCollapsed && (
+              <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                Gerency<span style={{ color: 'var(--primary)' }}>Leads</span>
+              </h1>
+            )}
+            <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              style={{ 
+                background: 'rgba(0,0,0,0.05)', 
+                border: 'none', 
+                borderRadius: '8px', 
+                padding: '0.4rem', 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)'
+              }}
+            >
+              {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </button>
           </div>
           
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
-              <span className="nav-text">Dashboard</span>
+              {!isSidebarCollapsed && <span className="nav-text">Dashboard</span>}
             </Link>
             <Link href="/leads" className={`nav-link ${pathname === '/leads' ? 'active' : ''}`}>
               <Users size={20} />
-              <span className="nav-text">Leads</span>
+              {!isSidebarCollapsed && <span className="nav-text">Leads</span>}
             </Link>
             <Link href="/campanhas" className={`nav-link ${pathname === '/campanhas' ? 'active' : ''}`}>
               <Mail size={20} />
-              <span className="nav-text">Campanhas</span>
+              {!isSidebarCollapsed && <span className="nav-text">Campanhas</span>}
             </Link>
             <Link href="/segmentacoes" className={`nav-link ${pathname === '/segmentacoes' ? 'active' : ''}`}>
               <Filter size={20} />
-              <span className="nav-text">Segmentações</span>
+              {!isSidebarCollapsed && <span className="nav-text">Segmentações</span>}
             </Link>
             <Link href="/relatorios" className={`nav-link ${pathname === '/relatorios' ? 'active' : ''}`}>
               <BarChart3 size={20} />
-              <span className="nav-text">Monitoramento</span>
+              {!isSidebarCollapsed && <span className="nav-text">Monitoramento</span>}
             </Link>
             <Link href="/integracoes" className={`nav-link ${pathname === '/integracoes' ? 'active' : ''}`}>
               <Code size={20} />
-              <span className="nav-text">Integrações</span>
+              {!isSidebarCollapsed && <span className="nav-text">Integrações</span>}
             </Link>
             <Link href="/captura-editor" className={`nav-link ${pathname === '/captura-editor' ? 'active' : ''}`}>
               <LayoutIcon size={20} />
-              <span className="nav-text">Página de Captura</span>
+              {!isSidebarCollapsed && <span className="nav-text">Página de Captura</span>}
             </Link>
             <Link href="/whatsapp" className={`nav-link ${pathname === '/whatsapp' ? 'active' : ''}`}>
               <MessageCircle size={20} />
-              <span className="nav-text">Botão WhatsApp</span>
+              {!isSidebarCollapsed && <span className="nav-text">Botão WhatsApp</span>}
             </Link>
             <Link href="/bio" className={`nav-link ${pathname === '/bio' ? 'active' : ''}`}>
               <Smartphone size={20} />
-              <span className="nav-text">Link na Bio</span>
+              {!isSidebarCollapsed && <span className="nav-text">Link na Bio</span>}
             </Link>
             <Link href="/popups" className={`nav-link ${pathname === '/popups' ? 'active' : ''}`}>
               <SquareStack size={20} />
-              <span className="nav-text">Pop-ups</span>
+              {!isSidebarCollapsed && <span className="nav-text">Pop-ups</span>}
             </Link>
             <Link href="/atendimento" className={`nav-link ${pathname === '/atendimento' ? 'active' : ''}`}>
               <Zap size={20} />
-              <span className="nav-text">Atendimento</span>
+              {!isSidebarCollapsed && <span className="nav-text">Atendimento</span>}
             </Link>
             <Link href="/conexoes" className={`nav-link ${pathname === '/conexoes' ? 'active' : ''}`}>
               <MessageSquare size={20} />
-              <span className="nav-text">Conexões WhatsApp</span>
+              {!isSidebarCollapsed && <span className="nav-text">Conexões WhatsApp</span>}
             </Link>
             <Link href="/configuracoes" className={`nav-link ${pathname === '/configuracoes' ? 'active' : ''}`}>
               <SettingsIcon size={20} />
-              <span className="nav-text">Configurações</span>
+              {!isSidebarCollapsed && <span className="nav-text">Configurações</span>}
             </Link>
             {userProfile?.role === 'admin' && (
               <Link href="/usuarios" className={`nav-link ${pathname === '/usuarios' ? 'active' : ''}`} style={{ position: 'relative' }}>
                 <ShieldCheck size={20} />
-                <span className="nav-text">Usuários</span>
+                {!isSidebarCollapsed && <span className="nav-text">Usuários</span>}
                 {pendingUsersCount > 0 && (
                   <span style={{ 
-                    position: 'absolute', 
-                    right: '0.75rem', 
-                    top: '50%', 
-                    transform: 'translateY(-50%)', 
+                    position: isSidebarCollapsed ? 'absolute' : 'relative',
+                    right: isSidebarCollapsed ? '-4px' : '0',
+                    top: isSidebarCollapsed ? '-4px' : 'auto',
+                    marginLeft: isSidebarCollapsed ? '0' : 'auto',
                     background: 'var(--danger)', 
                     color: 'white', 
                     fontSize: '0.65rem', 
@@ -329,13 +363,17 @@ export default function ClientLayout({
               style={{ width: '100%', cursor: 'pointer', border: 'none', background: 'transparent' }}
             >
               <LogIn size={20} />
-              <span className="nav-text">Sair</span>
+              {!isSidebarCollapsed && <span className="nav-text">Sair</span>}
             </button>
-            <p style={{ fontSize: '0.75rem', opacity: 0.5, textAlign: 'center' }}>v1.2.0</p>
+            {!isSidebarCollapsed && <p style={{ fontSize: '0.75rem', opacity: 0.5, textAlign: 'center' }}>v1.2.0</p>}
           </div>
         </aside>
         
-        <main className="main-content">
+        <main className="main-content" style={{
+          marginLeft: isSidebarCollapsed ? '80px' : '260px',
+          width: `calc(100% - ${isSidebarCollapsed ? '80px' : '260px'})`,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}>
           {children}
         </main>
 

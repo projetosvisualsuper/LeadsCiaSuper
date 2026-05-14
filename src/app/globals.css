@@ -148,8 +148,6 @@ tbody tr:hover {
   flex: 1;
   padding: 2rem;
   max-width: 1400px;
-  margin-left: 260px; /* Mesma largura da sidebar */
-  width: calc(100% - 260px);
 }
 
 .sidebar {
