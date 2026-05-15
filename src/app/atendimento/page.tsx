@@ -362,19 +362,38 @@ function AtendimentoContent() {
         <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Mensagens</h2>
-            <button 
-              onClick={async () => {
-                const res = await fetch('/api/webhook/youtube/sync');
-                const data = await res.json();
-                if (data.success) {
-                  alert(`${data.newMessages} novas mensagens do YouTube sincronizadas!`);
-                }
-              }}
-              title="Sincronizar YouTube"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '5px' }}
-            >
-              {renderSocialIcon('youtube', 18)}
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                onClick={async () => {
+                  const res = await fetch('/api/webhook/youtube/sync');
+                  const data = await res.json();
+                  if (data.success) {
+                    alert(`${data.newMessages} novas mensagens do YouTube sincronizadas!`);
+                  } else {
+                    alert('Erro ao sincronizar YouTube: ' + (data.message || 'Erro desconhecido'));
+                  }
+                }}
+                title="Sincronizar YouTube"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '5px' }}
+              >
+                {renderSocialIcon('youtube', 18)}
+              </button>
+              <button 
+                onClick={async () => {
+                  const res = await fetch('/api/webhook/tiktok/sync');
+                  const data = await res.json();
+                  if (data.success) {
+                    alert(`${data.newMessages} novas mensagens do TikTok sincronizadas!`);
+                  } else {
+                    alert('Erro ao sincronizar TikTok: ' + (data.message || 'Erro desconhecido'));
+                  }
+                }}
+                title="Sincronizar TikTok"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '5px' }}
+              >
+                {renderSocialIcon('tiktok', 18)}
+              </button>
+            </div>
           </div>
           <div style={{ position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />

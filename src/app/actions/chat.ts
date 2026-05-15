@@ -167,21 +167,50 @@ export async function sendOmnichannelMessageAction(
         return { success: false, error: 'Token do TikTok não configurado.' };
       }
 
-      const response = await fetch(`https://business-api.tiktok.com/open_api/v1.3/message/send/`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Token': token
-        },
-        body: JSON.stringify({
-          recipient_id: recipientIdOrPhone,
-          message_type: "TEXT",
-          text: text
-        })
-      });
+      // Buscar a sessão de chat para ver se temos um videoId e commentId (indicando que é um comentário)
+      // Como o recipientIdOrPhone agora é o commentId (na nova lógica de sync), 
+      // ou o leadId (na lógica antiga de DM), precisamos checar.
+      
+      const isCommentReply = recipientIdOrPhone.startsWith('7') || recipientIdOrPhone.length > 15; // IDs de comentário do TikTok são longos
 
-      const data = await response.json();
-      return response.ok ? { success: true, data } : { success: false, error: data.message || 'Erro na API do TikTok' };
+      if (isCommentReply) {
+        // Enviar como RESPOSTA DE COMENTÁRIO
+        const response = await fetch(`https://business-api.tiktok.com/open_api/v1.3/business/comment/reply/`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Token': token
+          },
+          body: JSON.stringify({
+            comment_id: recipientIdOrPhone,
+            text: text
+          })
+        });
+
+        const data = await response.json();
+        if (data.code !== 0) {
+          console.error('TikTok Comment Reply Error:', data);
+          return { success: false, error: data.message || 'Erro ao responder comentário no TikTok' };
+        }
+        return { success: true, data };
+      } else {
+        // Enviar como MENSAGEM DIRETA (DM)
+        const response = await fetch(`https://business-api.tiktok.com/open_api/v1.3/business/message/send/`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Token': token
+          },
+          body: JSON.stringify({
+            recipient_id: recipientIdOrPhone,
+            message_type: "TEXT",
+            text: text
+          })
+        });
+
+        const data = await response.json();
+        return response.ok ? { success: true, data } : { success: false, error: data.message || 'Erro na API do TikTok' };
+      }
     }
 
     // 4. Lógica para YOUTUBE (Comments)
