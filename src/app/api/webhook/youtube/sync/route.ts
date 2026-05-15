@@ -58,6 +58,10 @@ export async function GET(req: NextRequest) {
             dataCriacao: new Date().toISOString(),
             tags: ['youtube', 'omnichannel']
           });
+        } else {
+          await updateDoc(leadRef, {
+            dataUltimaAtividade: new Date().toISOString()
+          });
         }
 
         // Garantir ChatSession
