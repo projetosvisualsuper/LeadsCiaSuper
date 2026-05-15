@@ -21,9 +21,13 @@ export async function GET(req: NextRequest) {
     
     const clientId = settings.omnichannel?.youtubeClientId;
     const clientSecret = settings.omnichannel?.youtubeClientSecret;
-    const host = req.headers.get('host') || new URL(req.url).host;
-    const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const origin = `${protocol}://${host}`;
+    let origin = settings.appUrl || '';
+    if (!origin) {
+      const host = req.headers.get('host') || new URL(req.url).host;
+      const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+      origin = `${protocol}://${host}`;
+    }
+    origin = origin.replace(/\/$/, '');
 
     const redirectUri = `${origin}/api/auth/callback/youtube`;
 

@@ -181,6 +181,7 @@ export interface Settings {
     youtubeAccessToken?: string;
     youtubeTokenExpiry?: string;
   };
+  appUrl?: string;
   notificacoes?: {
     novosLeads?: boolean;
     novasMensagens?: boolean;

@@ -509,6 +509,36 @@ export default function ConfigPage() {
           </div>
         </section>
 
+        {/* CONFIGURAÇÕES GERAIS DO SISTEMA */}
+        <section style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '0.5rem', borderRadius: '8px' }}>
+              <Globe size={20} />
+            </div>
+            <div>
+              <h3 style={{ fontWeight: 800 }}>Configurações do Sistema</h3>
+              <p style={{ fontSize: '0.8rem', opacity: 0.5 }}>Defina o endereço base e configurações globais</p>
+            </div>
+          </header>
+          
+          <div style={{ padding: '2rem', display: 'grid', gap: '1.5rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>URL Base do Sistema (Domínio de Produção)</label>
+              <input 
+                type="text" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem' }} 
+                placeholder="Ex: https://crm.seudominio.com.br"
+                value={settings.appUrl || ''}
+                onChange={e => setSettings({ ...settings, appUrl: e.target.value })}
+              />
+              <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
+                Importante: Use este campo para definir o domínio real do seu CRM. Isso garante que integrações com Google e Meta funcionem corretamente.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* OMNICHANNEL & CANAIS */}
         <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>

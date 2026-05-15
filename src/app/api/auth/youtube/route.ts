@@ -12,10 +12,17 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Client ID not configured', { status: 400 });
     }
 
-    const host = req.headers.get('host') || new URL(req.url).host;
-    const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const origin = `${protocol}://${host}`;
+    let origin = settings.appUrl || '';
     
+    if (!origin) {
+      const host = req.headers.get('host') || new URL(req.url).host;
+      const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+      origin = `${protocol}://${host}`;
+    }
+    
+    // Garantir que não há barra no final
+    origin = origin.replace(/\/$/, '');
+
     const redirectUri = `${origin}/api/auth/callback/youtube`;
     const scope = 'https://www.googleapis.com/auth/youtube.force-ssl';
     
