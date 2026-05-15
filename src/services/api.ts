@@ -16,7 +16,8 @@ import {
   orderBy,
   limit as firestoreLimit,
   increment,
-  writeBatch
+  writeBatch,
+  getCountFromServer
 } from 'firebase/firestore';
 
 const COLLECTIONS = {
@@ -488,17 +489,12 @@ export const api = {
     const today = new Date().toISOString().split('T')[0];
     const q = query(
       collection(db, COLLECTIONS.QUEUE), 
-      where("status", "==", "enviado")
+      where("status", "==", "enviado"),
+      where("dataEnvio", ">=", today),
+      where("dataEnvio", "<=", today + "\uf8ff")
     );
-    const querySnapshot = await getDocs(q);
-    let count = 0;
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.dataEnvio?.startsWith(today)) {
-        count++;
-      }
-    });
-    return count;
+    const snap = await getCountFromServer(q);
+    return snap.data().count;
   },
 
   // Brevo Actions handled directly in components to avoid build conflicts
@@ -726,5 +722,39 @@ export const api = {
   deleteWhatsappConnection: async (id: string) => {
     const docRef = doc(db, COLLECTIONS.WHATSAPP_CONNECTIONS, id);
     await deleteDoc(docRef);
+  },
+
+  // Optimized Dashboard Stats
+  getDashboardStats: async () => {
+    const leadsRef = collection(db, COLLECTIONS.LEADS);
+    const campaignsRef = collection(db, COLLECTIONS.CAMPAIGNS);
+    const queueRef = collection(db, COLLECTIONS.QUEUE);
+
+    const [
+      totalLeadsSnap,
+      totalCampaignsSnap,
+      pendentesQueueSnap,
+    ] = await Promise.all([
+      getCountFromServer(leadsRef),
+      getCountFromServer(campaignsRef),
+      getCountFromServer(query(queueRef, where('status', '==', 'pendente')))
+    ]);
+
+    // Buscar últimos 5 leads e 4 campanhas para o dashboard
+    const [recentLeadsSnap, recentCampaignsSnap] = await Promise.all([
+      getDocs(query(leadsRef, orderBy('dataCriacao', 'desc'), firestoreLimit(5))),
+      getDocs(query(campaignsRef, orderBy('dataCriacao', 'desc'), firestoreLimit(4)))
+    ]);
+
+    const recentLeads = recentLeadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
+    const recentCampaigns = recentCampaignsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Campaign));
+
+    return {
+      totalLeads: totalLeadsSnap.data().count,
+      totalCampaigns: totalCampaignsSnap.data().count,
+      pendentes: pendentesQueueSnap.data().count,
+      recentLeads,
+      recentCampaigns
+    };
   }
 };

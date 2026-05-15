@@ -72,13 +72,23 @@ export default function Dashboard() {
     else setGreeting('Boa noite');
 
     const fetchAll = async () => {
-      const leads = await api.getLeads();
-      const campaigns = await api.getCampaigns();
-      const queue = await api.getQueue();
+      const statsData = await api.getDashboardStats();
       const sentToday = await api.getSentTodayCount();
       const settings = await api.getSettings();
       const realCredits = await getBrevoCreditsAction(settings.brevoApiKey);
-      setRawData({ leads, campaigns, queue, sentToday, realCredits });
+      
+      setStats(prev => ({
+        ...prev,
+        totalLeads: statsData.totalLeads,
+        totalCampaigns: statsData.totalCampaigns,
+        pendentes: statsData.pendentes,
+        enviadosHoje: sentToday,
+        limiteRestante: realCredits
+      }));
+
+      setRecentLeads(statsData.recentLeads);
+      setRecentCampaigns(statsData.recentCampaigns);
+      setRawData({ leads: statsData.recentLeads, campaigns: statsData.recentCampaigns, queue: [], sentToday, realCredits });
     };
 
     fetchAll();

@@ -80,9 +80,13 @@ function AtendimentoContent() {
 
   const EMOJIS = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '🙀', '😿', '😾'];
 
-  // Listener para as sessões de chat
+  // Listener para as sessões de chat (Limitado às 50 mais recentes para economizar leituras)
   useEffect(() => {
-    const q = query(collection(db, 'atendimentos_v3'), orderBy('lastTimestamp', 'desc'));
+    const q = query(
+      collection(db, 'atendimentos_v3'), 
+      orderBy('lastTimestamp', 'desc'),
+      limit(50) 
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const chatList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
       setChats(chatList);
@@ -111,13 +115,15 @@ function AtendimentoContent() {
 
     const q = query(
       collection(db, 'messages'),
-      where('chatId', '==', selectedChatId)
+      where('chatId', '==', selectedChatId),
+      orderBy('timestamp', 'desc'),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const msgList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
       
-      // Ordenar manualmente para evitar erro de índice no Firestore
+      // Ordenar para exibição (as 50 mais recentes em ordem cronológica)
       msgList.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       
       setMessages(msgList);
