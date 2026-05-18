@@ -699,7 +699,49 @@ export default function ConfigPage() {
                 <Share2 size={14} /> Conectar Conta do TikTok
               </button>
               {settings.omnichannel?.tiktokRefreshToken && (
-                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Conectado</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Conectado</span>
+                  <button
+                    type="button"
+                    style={{ 
+                      height: '28px', 
+                      fontSize: '0.7rem', 
+                      color: '#ef4444', 
+                      border: '1px solid #ef4444', 
+                      background: 'transparent', 
+                      padding: '0 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={async () => {
+                      if (confirm('Tem certeza que deseja desconectar esta conta do TikTok?')) {
+                        const updatedSettings = {
+                          ...settings,
+                          omnichannel: {
+                            ...settings.omnichannel,
+                            tiktokAccessToken: '',
+                            tiktokRefreshToken: '',
+                            tiktokTokenExpiry: ''
+                          }
+                        };
+                        try {
+                          await api.saveSettings(updatedSettings);
+                          setSettings(updatedSettings);
+                          alert('Conta do TikTok desconectada com sucesso!');
+                        } catch (err) {
+                          console.error(err);
+                          alert('Erro ao desconectar a conta.');
+                        }
+                      }
+                    }}
+                  >
+                    <Trash2 size={10} /> Desconectar
+                  </button>
+                </div>
               )}
             </div>
             <p style={{ fontSize: '0.7rem', color: '#64748b' }}>
