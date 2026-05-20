@@ -6,7 +6,6 @@ import { Lead, LandingPageInstance, BioLink, Settings } from '@/types/crm';
 import { CheckCircle2, ChevronRight, Check, Calendar, MessageCircle, X, User, Smartphone, Globe, ShoppingCart, Share2, Link as LinkIcon, Star, ChevronLeft, Copy, Mail } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { sendEmailBrevoAction } from '@/app/actions/brevo';
-import PopupRenderer from '@/app/components/PopupRenderer';
 
 // --- HELPERS ---
 const DEFAULT_BGS = {
@@ -773,7 +772,6 @@ export default function UnifiedClientPage({ slug, initialData }: { slug: string,
   return (
     <Suspense fallback={<div />}>
       {data.type === 'lp' ? <RenderLandingPage page={data.content} /> : <RenderBioLink bio={data.content} />}
-      <PopupRenderer slug={slug} />
     </Suspense>
   );
 }

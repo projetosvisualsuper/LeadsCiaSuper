@@ -27,6 +27,24 @@ export async function GET(
   const theme = popupData.theme || {};
   const template = popupData.templateId || 'simple';
 
+  // Verificar se o pop-up deve aparecer nesta página
+  if (popupData.pages && popupData.pages.length > 0) {
+    const currentUrl = window.location.href;
+    const currentPath = window.location.pathname;
+    const isPageAllowed = popupData.pages.some(pattern => {
+      const cleanPattern = pattern.trim();
+      if (!cleanPattern) return false;
+      if (cleanPattern.startsWith('http://') || cleanPattern.startsWith('https://')) {
+        return currentUrl.includes(cleanPattern);
+      }
+      return currentPath.includes(cleanPattern) || currentUrl.includes(cleanPattern);
+    });
+    
+    if (!isPageAllowed) {
+      return;
+    }
+  }
+
   // CSS dinâmico
   const style = document.createElement('style');
   style.innerHTML = \`

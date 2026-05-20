@@ -190,7 +190,9 @@ export default function PopupsPage() {
       triggerValue: Number(formData.triggerValue) || 0,
       isActive: formData.isActive ?? true,
       dataCriacao: editingPopup?.dataCriacao || new Date().toISOString(),
-      pages: formData.pages || [],
+      pages: (formData.pages || [])
+        .map(p => p.trim())
+        .filter(p => p !== ''),
       theme: formData.theme as any
     };
 
@@ -302,7 +304,7 @@ export default function PopupsPage() {
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span className="badge" style={{ fontSize: '0.75rem' }}>{getTriggerText(popup)}</span>
-              <span className="badge" style={{ fontSize: '0.75rem' }}><Globe size={14} /> {popup.pages?.length === 0 ? 'Todas as Páginas' : `${popup.pages?.length} Páginas`}</span>
+              <span className="badge" style={{ fontSize: '0.75rem' }}><Globe size={14} /> {(!popup.pages || popup.pages.length === 0 || (popup.pages.length === 1 && popup.pages[0] === '')) ? 'Todas as Páginas' : 'Páginas Customizadas'}</span>
             </div>
 
             <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
@@ -473,22 +475,40 @@ export default function PopupsPage() {
                 )}
 
                 <div>
-                   <label className="label">Onde exibir?</label>
-                   <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '0.5rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={formData.pages?.length === 0} onChange={() => setFormData({...formData, pages: []})} />
-                        <span style={{ fontSize: '0.875rem' }}>Todas as Páginas</span>
-                      </label>
-                      {landingPages.map(lp => (
-                        <label key={lp.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem', cursor: 'pointer' }}>
-                          <input type="checkbox" disabled={formData.pages?.length === 0} checked={formData.pages?.includes(lp.slug)} onChange={(e) => {
-                             const pages = formData.pages || [];
-                             setFormData({...formData, pages: e.target.checked ? [...pages, lp.slug] : pages.filter(p => p !== lp.slug)});
-                          }} />
-                          <span style={{ fontSize: '0.875rem' }}>{lp.config.titulo} (/{lp.slug})</span>
-                        </label>
-                      ))}
-                   </div>
+                  <label className="label">Onde exibir o pop-up?</label>
+                  <select 
+                    className="btn-outline" style={{ width: '100%', marginBottom: '1rem', background: 'white' }}
+                    value={!formData.pages || formData.pages.length === 0 || (formData.pages.length === 1 && formData.pages[0] === '') ? 'all' : 'custom'} 
+                    onChange={e => {
+                      if (e.target.value === 'all') {
+                        setFormData({ ...formData, pages: [] });
+                      } else {
+                        setFormData({ ...formData, pages: [''] });
+                      }
+                    }}
+                  >
+                    <option value="all">Todas as páginas (onde o script estiver instalado)</option>
+                    <option value="custom">Páginas específicas (URLs ou caminhos indicados)</option>
+                  </select>
+                  
+                  {formData.pages && formData.pages.length > 0 && (
+                    <div>
+                      <label className="label">URLs ou Caminhos Permitidos (um por linha)</label>
+                      <textarea 
+                        className="btn-outline" 
+                        style={{ width: '100%', height: '100px', padding: '0.75rem', fontFamily: 'monospace', fontSize: '0.875rem', background: 'white' }} 
+                        value={formData.pages.join('\n')}
+                        onChange={e => {
+                          const lines = e.target.value.split('\n');
+                          setFormData({ ...formData, pages: lines });
+                        }}
+                        placeholder="Ex:&#10;/contato&#10;https://meusite.com/produtos&#10;/servicos"
+                      />
+                      <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '0.25rem' }}>
+                        O pop-up só será exibido se a URL do site de destino contiver alguma das regras informadas. Ex: <code>/contato</code> ou <code>https://meusite.com/produtos</code>.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
