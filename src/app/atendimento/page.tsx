@@ -69,6 +69,11 @@ function AtendimentoContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Estados para Filtros de Mensagens / Conversas
+  const [filterChannel, setFilterChannel] = useState<string>('all');
+  const [filterUnread, setFilterUnread] = useState<boolean>(false);
+  const [filterStatus, setFilterStatus] = useState<string>('active'); // active | archived | all
 
   // Efeito para capturar busca vinda de outras páginas (como Leads)
   useEffect(() => {
@@ -361,11 +366,28 @@ function AtendimentoContent() {
     }
   };
 
-  const filteredChats = chats.filter(chat => 
-    (chat.leadName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (chat.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (chat.leadId || '').includes(searchQuery)
-  );
+  const filteredChats = chats.filter(chat => {
+    // 1. Filtro por Busca (Nome, Última Mensagem ou ID)
+    const matchesSearch = 
+      (chat.leadName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (chat.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (chat.leadId || '').includes(searchQuery);
+
+    // 2. Filtro por Canal
+    const matchesChannel = filterChannel === 'all' || chat.channel === filterChannel;
+
+    // 3. Filtro de Não Lidas
+    const matchesUnread = !filterUnread || (chat.unreadCount || 0) > 0;
+
+    // 4. Filtro por Status da Conversa (Ativa vs. Arquivada)
+    const chatStatus = chat.status || 'active';
+    const matchesStatus = 
+      filterStatus === 'all' || 
+      (filterStatus === 'active' && chatStatus === 'active') || 
+      (filterStatus === 'archived' && chatStatus === 'archived');
+
+    return matchesSearch && matchesChannel && matchesUnread && matchesStatus;
+  });
 
   const activeChat = chats.find(c => c.id === selectedChatId);
 
@@ -425,6 +447,112 @@ function AtendimentoContent() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
+            <select 
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              style={{ 
+                flex: 1, 
+                padding: '0.4rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                color: '#475569',
+                background: '#f8fafc',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="active">Ativas</option>
+              <option value="archived">Arquivadas</option>
+              <option value="all">Todas</option>
+            </select>
+
+            <button
+              onClick={() => setFilterUnread(!filterUnread)}
+              style={{
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: filterUnread ? 'var(--primary)' : '#e2e8f0',
+                background: filterUnread ? 'rgba(99, 102, 241, 0.1)' : '#f8fafc',
+                color: filterUnread ? 'var(--primary)' : '#475569',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Não lidas
+              {chats.filter(c => (c.unreadCount || 0) > 0).length > 0 && (
+                <span style={{ 
+                  background: 'var(--primary)', 
+                  color: 'white', 
+                  fontSize: '0.65rem', 
+                  borderRadius: '50%', 
+                  width: '16px', 
+                  height: '16px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontWeight: 800
+                }}>
+                  {chats.filter(c => (c.unreadCount || 0) > 0).length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="custom-scrollbar" style={{ 
+            display: 'flex', 
+            gap: '0.35rem', 
+            marginTop: '0.75rem', 
+            overflowX: 'auto', 
+            paddingBottom: '0.25rem',
+            whiteSpace: 'nowrap'
+          }}>
+            {[
+              { id: 'all', label: 'Tudo', icon: null },
+              { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' },
+              { id: 'instagram', label: 'Instagram', icon: 'instagram' },
+              { id: 'facebook', label: 'Facebook', icon: 'facebook' },
+              { id: 'youtube', label: 'YouTube', icon: 'youtube' },
+              { id: 'tiktok', label: 'TikTok', icon: 'tiktok' }
+            ].map(channelOpt => {
+              const isActive = filterChannel === channelOpt.id;
+              return (
+                <button
+                  key={channelOpt.id}
+                  onClick={() => setFilterChannel(channelOpt.id)}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '50px',
+                    border: '1px solid',
+                    borderColor: isActive ? 'var(--primary)' : '#e2e8f0',
+                    background: isActive ? 'var(--primary)' : 'white',
+                    color: isActive ? 'white' : '#64748b',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    transition: 'all 0.2s',
+                    flexShrink: 0
+                  }}
+                >
+                  {channelOpt.icon && renderSocialIcon(channelOpt.icon, 12, isActive ? 'white' : '#64748b')}
+                  {channelOpt.label}
+                </button>
+              );
+            })}
           </div>
         </header>
 
