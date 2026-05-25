@@ -271,9 +271,9 @@ function AtendimentoContent() {
           chat.connectionId
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no upload:', error);
-      alert('Erro ao enviar arquivo.');
+      alert('Erro ao enviar arquivo: ' + (error.message || error));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
