@@ -180,8 +180,15 @@ export default function Dashboard() {
       }
     }
 
-    const filteredLeads = leads.filter(l => {
-      const d = new Date(l.dataCriacao);
+    // Ordenar leads por atividade mais recente em memória para o painel
+    const sortedLeads = [...leads].sort((a, b) => {
+      const timeA = new Date(a.dataUltimaAtividade || a.dataCriacao).getTime();
+      const timeB = new Date(b.dataUltimaAtividade || b.dataCriacao).getTime();
+      return timeB - timeA;
+    });
+
+    const filteredLeads = sortedLeads.filter(l => {
+      const d = new Date(l.dataUltimaAtividade || l.dataCriacao);
       return d >= limitDate && d <= endDate;
     });
     const filteredCampaigns = campaigns.filter(c => {
@@ -190,7 +197,10 @@ export default function Dashboard() {
     });
 
     const todayString = now.toISOString().split('T')[0];
-    const leadsHoje = leads.filter(l => l.dataCriacao.startsWith(todayString)).length;
+    const leadsHoje = leads.filter(l => {
+      const convDate = l.dataUltimaConversao || l.dataUltimaAtividade || l.dataCriacao;
+      return convDate.startsWith(todayString);
+    }).length;
 
     const leadsByStatus = {
       novo: filteredLeads.filter(l => l.status === 'novo').length,
@@ -201,7 +211,7 @@ export default function Dashboard() {
 
     setStats({
       totalLeads: period === 'all' && serverTotalLeads ? Math.max(filteredLeads.length, serverTotalLeads) : filteredLeads.length,
-      leadsHoje: leadsHoje, // leadsHoje is absolute for today regardless of filter (or could be relative, but "hoje" is constant)
+      leadsHoje: leadsHoje, // leadsHoje is absolute for today regardless of filter
       totalCampaigns: filteredCampaigns.length,
       enviadosHoje: sentToday,
       pendentes: queue.filter(q => q.status === 'pendente' || (q.status === 'erro' && q.tentativa < 3)).length,
@@ -209,7 +219,7 @@ export default function Dashboard() {
       leadsByStatus
     });
 
-    setRecentLeads(filteredLeads.slice(0, 5));
+    setRecentLeads(sortedLeads.slice(0, 5));
     setRecentCampaigns(filteredCampaigns.slice(0, 4));
   }, [rawData, period, customStartDate, customEndDate]);
 

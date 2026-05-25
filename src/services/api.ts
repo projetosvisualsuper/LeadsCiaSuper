@@ -747,12 +747,12 @@ export const api = {
       getCountFromServer(leadsRef),
       getCountFromServer(campaignsRef),
       getCountFromServer(query(queueRef, where('status', '==', 'pendente'))),
-      getCountFromServer(query(leadsRef, where('dataCriacao', '>=', todayStr), where('dataCriacao', '<=', todayStr + '\uf8ff')))
+      getCountFromServer(query(leadsRef, where('dataUltimaAtividade', '>=', todayStr), where('dataUltimaAtividade', '<=', todayStr + '\uf8ff')))
     ]);
 
     // Buscar últimos 5 leads e 4 campanhas para o dashboard
     const [recentLeadsSnap, recentCampaignsSnap] = await Promise.all([
-      getDocs(query(leadsRef, orderBy('dataCriacao', 'desc'), firestoreLimit(5))),
+      getDocs(query(leadsRef, orderBy('dataUltimaAtividade', 'desc'), firestoreLimit(5))),
       getDocs(query(campaignsRef, orderBy('dataCriacao', 'desc'), firestoreLimit(4)))
     ]);
 
