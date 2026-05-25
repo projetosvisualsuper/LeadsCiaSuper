@@ -451,11 +451,11 @@ function AtendimentoContent() {
 
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
             <select 
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
+              value={filterChannel}
+              onChange={e => setFilterChannel(e.target.value)}
               style={{ 
                 flex: 1, 
-                padding: '0.4rem 0.75rem', 
+                padding: '0.45rem 0.75rem', 
                 borderRadius: '8px', 
                 border: '1px solid #e2e8f0', 
                 fontSize: '0.8rem', 
@@ -466,15 +466,42 @@ function AtendimentoContent() {
                 outline: 'none'
               }}
             >
-              <option value="active">Ativas</option>
+              <option value="all">Todos os Canais</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="youtube">YouTube</option>
+              <option value="tiktok">TikTok</option>
+            </select>
+
+            <select 
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              style={{ 
+                flex: 1, 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                color: '#475569',
+                background: '#f8fafc',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="active">Conversas Ativas</option>
               <option value="archived">Arquivadas</option>
               <option value="all">Todas</option>
             </select>
+          </div>
 
+          <div style={{ marginTop: '0.5rem' }}>
             <button
               onClick={() => setFilterUnread(!filterUnread)}
               style={{
-                padding: '0.4rem 0.75rem',
+                width: '100%',
+                padding: '0.45rem 0.75rem',
                 borderRadius: '8px',
                 border: '1px solid',
                 borderColor: filterUnread ? 'var(--primary)' : '#e2e8f0',
@@ -485,12 +512,13 @@ function AtendimentoContent() {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.25rem',
+                justifyContent: 'center',
+                gap: '0.5rem',
                 transition: 'all 0.2s',
                 whiteSpace: 'nowrap'
               }}
             >
-              Não lidas
+              Apenas Não Lidas
               {chats.filter(c => (c.unreadCount || 0) > 0).length > 0 && (
                 <span style={{ 
                   background: 'var(--primary)', 
@@ -508,51 +536,6 @@ function AtendimentoContent() {
                 </span>
               )}
             </button>
-          </div>
-
-          <div className="custom-scrollbar" style={{ 
-            display: 'flex', 
-            gap: '0.35rem', 
-            marginTop: '0.75rem', 
-            overflowX: 'auto', 
-            paddingBottom: '0.25rem',
-            whiteSpace: 'nowrap'
-          }}>
-            {[
-              { id: 'all', label: 'Tudo', icon: null },
-              { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' },
-              { id: 'instagram', label: 'Instagram', icon: 'instagram' },
-              { id: 'facebook', label: 'Facebook', icon: 'facebook' },
-              { id: 'youtube', label: 'YouTube', icon: 'youtube' },
-              { id: 'tiktok', label: 'TikTok', icon: 'tiktok' }
-            ].map(channelOpt => {
-              const isActive = filterChannel === channelOpt.id;
-              return (
-                <button
-                  key={channelOpt.id}
-                  onClick={() => setFilterChannel(channelOpt.id)}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '50px',
-                    border: '1px solid',
-                    borderColor: isActive ? 'var(--primary)' : '#e2e8f0',
-                    background: isActive ? 'var(--primary)' : 'white',
-                    color: isActive ? 'white' : '#64748b',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    transition: 'all 0.2s',
-                    flexShrink: 0
-                  }}
-                >
-                  {channelOpt.icon && renderSocialIcon(channelOpt.icon, 12, isActive ? 'white' : '#64748b')}
-                  {channelOpt.label}
-                </button>
-              );
-            })}
           </div>
         </header>
 
