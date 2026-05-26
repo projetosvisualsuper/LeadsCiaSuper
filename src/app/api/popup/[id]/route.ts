@@ -23,7 +23,8 @@ export async function GET(
     // Gerar o Script Vanilla JS
     const script = `
 (function() {
-  const popupData = ${JSON.stringify(popup)};
+  console.log('GerencyLeads Popup: Script carregado para o ID ${id}');
+  const popupData = \${JSON.stringify(popup)};
   const theme = popupData.theme || {};
   const template = popupData.templateId || 'simple';
 
@@ -41,12 +42,14 @@ export async function GET(
     });
     
     if (!isPageAllowed) {
+      console.log('GerencyLeads Popup: Ignorado porque esta URL não está listada nas páginas permitidas.');
       return;
     }
   }
 
   // Não exibir em páginas de captura / landing pages do próprio CRM
   if (document.querySelector('.lp-container') || document.querySelector('.lp-form-container') || document.getElementById('vsl-form')) {
+    console.log('GerencyLeads Popup: Ignorado porque a página atual é uma página de captura do CRM.');
     return;
   }
 
@@ -154,9 +157,13 @@ export async function GET(
   closeBtn.onclick = () => overlay.classList.remove('gl-popup-show');
   
   const show = () => {
-    if (sessionStorage.getItem('gl-popup-closed-' + popupData.id)) return;
+    if (sessionStorage.getItem('gl-popup-closed-' + popupData.id)) {
+      console.log('GerencyLeads Popup: Ignorado porque já foi fechado nesta sessão.');
+      return;
+    }
     overlay.classList.add('gl-popup-show');
     sessionStorage.setItem('gl-popup-closed-' + popupData.id, 'true');
+    console.log('GerencyLeads Popup: Exibido com sucesso!');
   };
 
   // Gatilhos
