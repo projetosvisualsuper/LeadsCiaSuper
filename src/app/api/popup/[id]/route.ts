@@ -24,7 +24,7 @@ export async function GET(
     const script = `
 (function() {
   console.log('GerencyLeads Popup: Script carregado para o ID ${id}');
-  const popupData = \${JSON.stringify(popup)};
+  const popupData = ${JSON.stringify(popup)};
   const theme = popupData.theme || {};
   const template = popupData.templateId || 'simple';
 
