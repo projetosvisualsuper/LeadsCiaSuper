@@ -1,0 +1,4 @@
+# Regras de reescrita e redirecionamento para o Cloudflare Pages
+# Mapeia as URLs amigáveis para as rotas estáticas reais
+/b/:slug  /r?slug=:slug  302
+/:slug    /view?slug=:slug  200
