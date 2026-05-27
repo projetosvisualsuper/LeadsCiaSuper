@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { Metadata } from 'next';
 import { api } from '@/services/api';
 import UnifiedClientPage from './UnifiedClientPage';

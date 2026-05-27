@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, updateDoc, doc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
