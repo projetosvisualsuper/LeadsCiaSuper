@@ -39,6 +39,11 @@ const getDbBinding = (): any => {
 
 // Função auxiliar que chama o Wrangler D1 local por baixo dos panos no ambiente dev local
 async function executeWranglerD1Local(sql: string, params: any[]): Promise<any> {
+  const isClient = typeof window !== 'undefined';
+  if (isClient) {
+    // Se por acaso cair aqui no client-side (embora no client usemos a d1-bridge), evitamos que tente usar imports do Node
+    return { results: [], success: true, changes: 0 };
+  }
   try {
     // Escapa aspas no SQL
     const escapedSql = sql.replace(/"/g, '\\"');
@@ -51,7 +56,7 @@ async function executeWranglerD1Local(sql: string, params: any[]): Promise<any> 
 
     const cmd = `npx wrangler d1 execute gerency-leads-db --command="${sqlWithParams}" --local --json`;
     
-    // Executa síncrono via child_process no Node.js local
+    // Executa síncrono via child_process no Node.js local (só do lado do servidor)
     const { execSync } = require('child_process');
     const stdout = execSync(cmd, { cwd: process.cwd(), encoding: 'utf-8' });
     
@@ -69,6 +74,7 @@ async function executeWranglerD1Local(sql: string, params: any[]): Promise<any> 
     throw error;
   }
 }
+
 
 
 // Helper helper function to execute SQL statements safely
