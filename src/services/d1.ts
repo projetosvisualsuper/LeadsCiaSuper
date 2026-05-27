@@ -8,8 +8,68 @@ const getDbBinding = (): any => {
   if (process.env.DB) {
     return process.env.DB;
   }
+  // No Next.js dev local sem o runtime do wranglerpages/next-on-pages rodando, o getDbBinding retornará nulo.
+  // Vamos simular retornando um objeto mockado que chama o Wrangler D1 CLI localmente para facilitar os testes locais!
+  if (process.env.NODE_ENV === 'development') {
+    return {
+      prepare: (sql: string) => {
+        return {
+          bind: (...params: any[]) => {
+            return {
+              all: async () => {
+                return executeWranglerD1Local(sql, params);
+              },
+              run: async () => {
+                return executeWranglerD1Local(sql, params);
+              }
+            };
+          },
+          all: async () => {
+            return executeWranglerD1Local(sql, []);
+          },
+          run: async () => {
+            return executeWranglerD1Local(sql, []);
+          }
+        };
+      }
+    };
+  }
   return null;
 };
+
+// Função auxiliar que chama o Wrangler D1 local por baixo dos panos no ambiente dev local
+async function executeWranglerD1Local(sql: string, params: any[]): Promise<any> {
+  try {
+    // Escapa aspas no SQL
+    const escapedSql = sql.replace(/"/g, '\\"');
+    // Para simplificar localmente, passamos os parâmetros injetando-os se necessário ou substituindo os placeholders "?" pelos valores convertidos.
+    let sqlWithParams = escapedSql;
+    params.forEach(param => {
+      const val = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : param === null ? 'NULL' : param;
+      sqlWithParams = sqlWithParams.replace('?', val);
+    });
+
+    const cmd = `npx wrangler d1 execute gerency-leads-db --command="${sqlWithParams}" --local --json`;
+    
+    // Executa síncrono via child_process no Node.js local
+    const { execSync } = require('child_process');
+    const stdout = execSync(cmd, { cwd: process.cwd(), encoding: 'utf-8' });
+    
+    const parsed = JSON.parse(stdout);
+    if (parsed && parsed[0]) {
+      return {
+        results: parsed[0].results || [],
+        success: parsed[0].success,
+        changes: parsed[0].meta?.changes || 0
+      };
+    }
+    return { results: [], success: true, changes: 0 };
+  } catch (error: any) {
+    console.error('Erro na simulação do Wrangler D1 local:', error.message);
+    throw error;
+  }
+}
+
 
 // Helper helper function to execute SQL statements safely
 const runQuery = async (sql: string, params: any[] = []): Promise<any> => {
