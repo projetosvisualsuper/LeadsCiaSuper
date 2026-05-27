@@ -31,8 +31,6 @@ import {
   SquareStack,
   MessageSquare
 } from 'lucide-react';
-import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { UserProfile, Lead } from '@/types/crm';
 
 export default function ClientLayout({
@@ -85,156 +83,31 @@ export default function ClientLayout({
     return () => unsubscribe();
   }, [pathname, isCapturePage]);
 
-  // --- NOVO: Listener Global para Novos e Re-convertidos Leads ---
+  // --- NOVO: Listener Global para Novos e Re-convertidos Leads (Desativado no modo D1) ---
   useEffect(() => {
-    let unsubscribeLeads: any = null;
-
-    const setupLeadsListener = async () => {
-      const settings = await api.getSettings();
-      if (settings.notificacoes?.novosLeads === false) return;
-
-      const leadsRef = collection(db, 'leads');
-      const nowIso = new Date().toISOString();
-      const q = query(leadsRef, where('dataUltimaAtividade', '>=', nowIso));
-      let isInitialLoad = true;
-
-      unsubscribeLeads = onSnapshot(q, (snapshot) => {
-        if (isInitialLoad) {
-          isInitialLoad = false;
-          return;
-        }
-
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added' || change.type === 'modified') {
-            const lead = { id: change.doc.id, ...change.doc.data() } as Lead;
-            const isReconversion = change.type === 'modified';
-
-            setNotification({
-              type: 'lead',
-              title: isReconversion ? '🔄 Lead Re-convertido!' : '🎉 Novo Lead Capturado!',
-              message: isReconversion 
-                ? `${lead.nome} converteu novamente via ${lead.origem}.`
-                : `${lead.nome} acabou de se cadastrar via ${lead.origem}.`,
-              data: lead
-            });
-
-            // Tocar Beep curto de aviso
-            try {
-              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-              const oscillator = audioCtx.createOscillator();
-              const gainNode = audioCtx.createGain();
-              oscillator.connect(gainNode);
-              gainNode.connect(audioCtx.destination);
-              oscillator.type = 'sine';
-              oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
-              gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-              oscillator.start();
-              setTimeout(() => oscillator.stop(), 200);
-            } catch (e) {}
-
-            // Ocultar automaticamente após 8 segundos
-            setTimeout(() => setNotification(null), 8000);
-          }
-        });
-      });
-    };
-
-    setupLeadsListener();
-
-    return () => {
-      if (unsubscribeLeads) unsubscribeLeads();
-    };
+    // Desativado para reduzir o tamanho do bundle e remover dependência do Firebase
   }, []);
 
-  // --- NOVO: Listener Global para Novas Mensagens (Chat/WhatsApp) ---
+  // --- NOVO: Listener Global para Novas Mensagens (Desativado no modo D1) ---
   useEffect(() => {
-    let unsubscribeChat: any = null;
-
-    const setupChatListener = async () => {
-      const settings = await api.getSettings();
-      if (settings.notificacoes?.novasMensagens === false) return; // Desativado pelo usuário
-
-      const chatsRef = collection(db, 'atendimentos_v3');
-      const qChats = query(
-        chatsRef, 
-        where('status', '==', 'active'),
-        where('unreadCount', '>', 0)
-      );
-
-      // Usamos uma flag para evitar notificar as mensagens antigas que já estão não lidas ao carregar a página
-      let isInitialLoad = true;
-
-      unsubscribeChat = onSnapshot(qChats, (snapshot) => {
-        if (isInitialLoad) {
-          isInitialLoad = false;
-          return;
-        }
-
-        // Para cada mudança que seja "added" ou "modified", nós tocamos um som/notificação
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added' || change.type === 'modified') {
-            const chatData = change.doc.data();
-            
-            // Só notifica se a última mensagem for realmente nova (podemos basear no timestamp se precisasse, mas unreadCount > 0 e modified já é um bom gatilho)
-            
-            // Tocar Beep via Web Audio API (Para não precisar de arquivo MP3)
-            try {
-              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-              const oscillator = audioCtx.createOscillator();
-              const gainNode = audioCtx.createGain();
-              oscillator.connect(gainNode);
-              gainNode.connect(audioCtx.destination);
-              oscillator.type = 'sine';
-              oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // Tom alto
-              gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volume baixo
-              oscillator.start();
-              setTimeout(() => oscillator.stop(), 150); // Duração curta
-            } catch (e) {
-              console.log('Audio não suportado ou bloqueado pelo navegador');
-            }
-
-            setNotification({
-              type: 'message',
-              title: `Nova mensagem de ${chatData.leadName}`,
-              message: chatData.lastMessage.substring(0, 50) + (chatData.lastMessage.length > 50 ? '...' : ''),
-              data: chatData
-            });
-          }
-        });
-      });
-    };
-
-    setupChatListener();
-
-    return () => {
-      if (unsubscribeChat) unsubscribeChat();
-    };
+    // Desativado para reduzir o tamanho do bundle e remover dependência do Firebase
   }, []);
   // --- FIM Listener Global ---
 
   useEffect(() => {
     if (userProfile?.role !== 'admin') return;
 
-    const q = query(collection(db, 'users'), where('status', '==', 'pending'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPendingUsersCount(snapshot.size);
-      
-      // Se houver novos pedidos, mostra uma notificação interna
-      if (!snapshot.empty) {
-        const lastUser = snapshot.docs[0].data() as UserProfile;
-        
-        // Verifica se é uma mudança real e não apenas o carregamento inicial
-        // (Simplificando: se o count mudou pra cima, avisamos)
-        setNotification({
-          type: 'auth',
-          title: 'Solicitação de Acesso',
-          message: `${lastUser.name || lastUser.email} está aguardando aprovação.`,
-          data: lastUser
-        });
-        setTimeout(() => setNotification(null), 10000);
+    const checkPendingUsers = async () => {
+      try {
+        const users = await api.getAllUserProfiles();
+        const pending = users.filter(u => u.status === 'pending');
+        setPendingUsersCount(pending.length);
+      } catch (e) {
+        console.error(e);
       }
-    });
-    return () => unsubscribe();
+    };
+
+    checkPendingUsers();
   }, [userProfile?.role]);
 
   if (isCapturePage) {
