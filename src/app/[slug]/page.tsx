@@ -1,114 +1,102 @@
-export const runtime = 'edge';
+export const dynamic = 'force-static';
 
 import { Metadata } from 'next';
 import { api } from '@/services/api';
 import UnifiedClientPage from './UnifiedClientPage';
-import { headers } from 'next/headers';
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
+export async function generateStaticParams() {
+  return []; // Habilita o fallback estático em tempo de build para qualquer slug
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
 
-  const settings = await api.getSettings();
-  
-  const headerList = await headers();
-  const host = headerList.get('host') || 'gerency-leads.vercel.app';
-  const protocol = headerList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  try {
+    const settings = await api.getSettings().catch(() => ({} as any));
+    const host = settings?.appUrl || 'leads-cia-super.pages.dev';
+    const protocol = host.startsWith('http') ? '' : 'https://';
+    const siteUrl = host.startsWith('http') ? host : `${protocol}${host}`;
+    const globalOgImageUrl = `${siteUrl}/api/img/og-logo`;
 
-  // URL da logo global de compartilhamento via API para melhor compatibilidade
-  const globalOgImageUrl = `${protocol}://${host}/api/img/og-logo`;
+    // Tentar carregar Landing Page primeiro
+    const lp = await api.getLandingPageBySlug(slug).catch(() => null);
+    if (lp) {
+      let ogImage = lp.config.logoUrl && lp.config.logoUrl !== 'none' ? lp.config.logoUrl : globalOgImageUrl;
+      
+      if (lp.config.logoUrl?.startsWith('data:image')) {
+        ogImage = globalOgImageUrl;
+      }
 
-  // Tentar carregar Landing Page primeiro
-  const lp = await api.getLandingPageBySlug(slug);
-  if (lp) {
-    let ogImage = lp.config.logoUrl && lp.config.logoUrl !== 'none' ? lp.config.logoUrl : globalOgImageUrl;
-    
-    // Se for base64 da logo da LP, preferir usar a logo global de compartilhamento (via API)
-    if (lp.config.logoUrl?.startsWith('data:image')) {
-      ogImage = globalOgImageUrl;
-    }
+      if (ogImage.startsWith('/')) {
+        ogImage = `${siteUrl}${ogImage}`;
+      }
 
-    if (ogImage.startsWith('/')) {
-      ogImage = `${protocol}://${host}${ogImage}`;
-    }
-
-    return {
-      title: lp.config.titulo || 'Leads Cia Super',
-      description: lp.config.descricao || 'Página de captura profissional.',
-      openGraph: {
+      return {
         title: lp.config.titulo || 'Leads Cia Super',
         description: lp.config.descricao || 'Página de captura profissional.',
-        images: [{ url: ogImage }],
-      },
-    };
-  }
-
-  // Se não for LP, tentar Bio Link
-  const bio = await api.getBioLinkBySlug(slug);
-  if (bio) {
-    const headerList = await headers();
-    const host = headerList.get('host') || 'gerency-leads.vercel.app';
-    const protocol = headerList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    
-    let imageUrl = '';
-    if (bio.avatarUrl?.startsWith('data:image')) {
-      imageUrl = `${protocol}://${host}/api/bio-image/${bio.id}`;
-    } else {
-      imageUrl = bio.avatarUrl || globalOgImageUrl || `${protocol}://${host}/images/minimalist-bg.png`;
+        openGraph: {
+          title: lp.config.titulo || 'Leads Cia Super',
+          description: lp.config.descricao || 'Página de captura profissional.',
+          images: [{ url: ogImage }],
+        },
+      };
     }
 
-    // Garantir que a URL seja absoluta para o WhatsApp
-    if (imageUrl.startsWith('/')) {
-      imageUrl = `${protocol}://${host}${imageUrl}`;
-    }
-
-    return {
-      title: `${bio.profileName} | Bio Link`,
-      description: bio.bio || 'Confira meus links e redes sociais.',
-      openGraph: {
-        title: bio.profileName,
-        description: bio.bio || 'Confira meus links e redes sociais.',
-        images: [
-          {
-            url: imageUrl,
-            width: 400,
-            height: 400,
-            alt: bio.profileName,
-          }
-        ],
-        type: 'website',
-      },
-      twitter: {
-        card: 'summary',
-        title: bio.profileName,
-        description: bio.bio,
-        images: [imageUrl],
+    // Se não for LP, tentar Bio Link
+    const bio = await api.getBioLinkBySlug(slug).catch(() => null);
+    if (bio) {
+      let imageUrl = '';
+      if (bio.avatarUrl?.startsWith('data:image')) {
+        imageUrl = `${siteUrl}/api/bio-image/${bio.id}`;
+      } else {
+        imageUrl = bio.avatarUrl || globalOgImageUrl || `${siteUrl}/images/minimalist-bg.png`;
       }
-    };
+
+      if (imageUrl.startsWith('/')) {
+        imageUrl = `${siteUrl}${imageUrl}`;
+      }
+
+      return {
+        title: `${bio.profileName} | Bio Link`,
+        description: bio.bio || 'Confira meus links e redes sociais.',
+        openGraph: {
+          title: bio.profileName,
+          description: bio.bio || 'Confira meus links e redes sociais.',
+          images: [
+            {
+              url: imageUrl,
+              width: 400,
+              height: 400,
+              alt: bio.profileName,
+            }
+          ],
+          type: 'website',
+        },
+        twitter: {
+          card: 'summary',
+          title: bio.profileName,
+          description: bio.bio,
+          images: [imageUrl],
+        }
+      };
+    }
+  } catch (e) {
+    console.error("Erro ao gerar metadados estáticos:", e);
   }
 
   return {
-    title: 'Página não encontrada | Leads Cia Super',
+    title: 'Página de Captura | Leads Cia Super',
   };
 }
 
 export default async function Page({ params }: Props) {
   const { slug } = await params;
   
-  // Otimização: Carregar dados iniciais no servidor para evitar loading no cliente
-  let initialData = null;
-  const lp = await api.getLandingPageBySlug(slug);
-  if (lp) {
-    initialData = { type: 'lp', content: lp };
-  } else {
-    const bio = await api.getBioLinkBySlug(slug);
-    if (bio) {
-      initialData = { type: 'bio', content: bio };
-    }
-  }
-
-  return <UnifiedClientPage slug={slug} initialData={initialData} />;
+  // Como agora compilamos a rota de forma estática para otimizar o bundle da Edge do Cloudflare,
+  // os dados reais serão carregados de forma dinâmica no client-side a partir do slug.
+  return <UnifiedClientPage slug={slug} initialData={null} />;
 }
