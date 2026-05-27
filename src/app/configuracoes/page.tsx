@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export default function ConfigPage() {
-  const [settings, setSettings] = useState<Partial<Settings>>({
+  const [settings, setSettings] = useState<Settings>({
     brevoApiKey: '',
     remetenteNome: '',
     remetenteEmail: '',
@@ -165,12 +165,12 @@ export default function ConfigPage() {
     }));
   };
 
-  const toggleNotification = (key: keyof Settings['notificacoes']) => {
+  const toggleNotification = (key: 'novosLeads' | 'errosEnvio' | 'novasMensagens') => {
     setSettings({
       ...settings,
       notificacoes: {
         ...settings.notificacoes,
-        [key]: !settings.notificacoes?.[key]
+        [key]: !((settings.notificacoes as any)?.[key])
       }
     });
   };
@@ -875,10 +875,7 @@ export default function ConfigPage() {
               <input 
                 type="checkbox" 
                 checked={settings.notificacoes?.novasMensagens !== false}
-                onChange={() => setSettings(prev => ({
-                  ...prev, 
-                  notificacoes: { ...prev.notificacoes, novasMensagens: !(prev.notificacoes?.novasMensagens !== false) }
-                }))}
+                onChange={() => toggleNotification('novasMensagens')}
                 style={{ width: '40px', height: '20px', cursor: 'pointer' }}
               />
             </label>

@@ -23,6 +23,8 @@ export interface Lead {
   estado?: string;
   totalConversoes?: number;
   dataUltimaConversao?: string;
+  avatar?: string;
+  isMetaLead?: boolean;
 }
 
 export interface Campaign {
@@ -64,6 +66,7 @@ export interface FilaEnvio {
   erroMensagem?: string | null;
   loteNumero?: number;
   prioridade: number;
+  whatsappConnectionId?: string;
   templateData?: {
     name: string;
     language: string;
@@ -127,26 +130,27 @@ export interface LandingPageInstance {
 }
 
 export interface Settings {
-  brevoApiKey: string;
-  remetenteNome: string;
-  remetenteEmail: string;
-  limiteDiario: number;
-  notificacoes: {
-    novosLeads: boolean;
-    errosEnvio: boolean;
+  brevoApiKey?: string;
+  remetenteNome?: string;
+  remetenteEmail?: string;
+  limiteDiario?: number;
+  notificacoes?: {
+    novosLeads?: boolean;
+    errosEnvio?: boolean;
+    novasMensagens?: boolean;
   };
-  landingPage: {
-    titulo: string;
-    subtitulo: string;
-    destaque: string;
-    descricao: string;
-    beneficios: string[];
-    formTitulo: string;
-    formSubtitulo: string;
-    botaoTexto: string;
-    backgroundUrl: string;
-    formColor: string;
-    botaoColor: string;
+  landingPage?: {
+    titulo?: string;
+    subtitulo?: string;
+    destaque?: string;
+    descricao?: string;
+    beneficios?: string[];
+    formTitulo?: string;
+    formSubtitulo?: string;
+    botaoTexto?: string;
+    backgroundUrl?: string;
+    formColor?: string;
+    botaoColor?: string;
     logoUrl?: string;
     headerColor?: string;
     ogLogoUrl?: string;
@@ -154,13 +158,13 @@ export interface Settings {
     footerText?: string;
     privacyPolicyUrl?: string;
   };
-  empresa: {
-    website: string;
-    endereco: string;
-    facebook: string;
-    instagram: string;
-    linkedin: string;
-    youtube: string;
+  empresa?: {
+    website?: string;
+    endereco?: string;
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    youtube?: string;
   };
   whatsappWidget?: WhatsappWidgetConfig;
   omnichannel?: {
@@ -173,6 +177,9 @@ export interface Settings {
     tiktokAccessToken?: string;
     tiktokAppId?: string;
     tiktokAppSecret?: string;
+    tiktokClientSecret?: string;
+    tiktokRefreshToken?: string;
+    tiktokTokenExpiry?: string;
     youtubeApiKey?: string;
     youtubeChannelId?: string;
     youtubeClientId?: string;
@@ -182,10 +189,7 @@ export interface Settings {
     youtubeTokenExpiry?: string;
   };
   appUrl?: string;
-  notificacoes?: {
-    novosLeads?: boolean;
-    novasMensagens?: boolean;
-  };
+
   autoresponder?: {
     enabled: boolean;
     message: string;

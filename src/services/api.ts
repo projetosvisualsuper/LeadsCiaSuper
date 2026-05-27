@@ -45,7 +45,7 @@ const initialSettings: Settings = {
     errosEnvio: true
   },
   landingPage: {
-    titulo: 'Gerency Leads',
+    titulo: 'Leads Cia Super',
     subtitulo: 'Acelere suas vendas com o melhor CRM',
     destaque: 'do mercado brasileiro',
     descricao: 'Capture, organize e converta leads de forma profissional com nossa plataforma intuitiva.',
@@ -81,7 +81,7 @@ const initialSettings: Settings = {
   gtmId: ''
 };
 
-export const api = {
+const firestoreApi = {
   // Leads
   getLeads: async (limitCount: number = 5000): Promise<Lead[]> => {
     const q = query(collection(db, COLLECTIONS.LEADS), orderBy('dataCriacao', 'desc'), firestoreLimit(limitCount));
@@ -866,3 +866,34 @@ export const api = {
     };
   }
 };
+
+const callD1Bridge = async (methodName: string, args: any[]) => {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const res = await fetch(`${origin}/api/d1-bridge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ method: methodName, args })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Erro de comunicação com o Cloudflare D1.');
+  }
+  return await res.json();
+};
+
+const d1ProxyHandler = {
+  get(target: any, prop: string) {
+    return async (...args: any[]) => {
+      if (typeof window === 'undefined') {
+        const { d1Api } = require('./d1');
+        return (d1Api as any)[prop](...args);
+      }
+      return callD1Bridge(prop, args);
+    };
+  }
+};
+
+export const api = process.env.NEXT_PUBLIC_DB_PROVIDER === 'd1'
+  ? new Proxy({}, d1ProxyHandler) as typeof firestoreApi
+  : firestoreApi;
+

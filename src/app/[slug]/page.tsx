@@ -34,10 +34,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     return {
-      title: lp.config.titulo || 'Gerency Leads',
+      title: lp.config.titulo || 'Leads Cia Super',
       description: lp.config.descricao || 'Página de captura profissional.',
       openGraph: {
-        title: lp.config.titulo || 'Gerency Leads',
+        title: lp.config.titulo || 'Leads Cia Super',
         description: lp.config.descricao || 'Página de captura profissional.',
         images: [{ url: ogImage }],
       },
@@ -89,7 +89,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: 'Página não encontrada | Gerency Leads',
+    title: 'Página não encontrada | Leads Cia Super',
   };
 }
 

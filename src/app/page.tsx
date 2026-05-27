@@ -229,7 +229,7 @@ export default function Dashboard() {
 
     try {
       const settings = await api.getSettings();
-      realCredits = await getBrevoCreditsAction(settings.brevoApiKey);
+      realCredits = await getBrevoCreditsAction(settings.brevoApiKey || '');
     } catch (err) {
       console.error("Erro ao buscar créditos brevo:", err);
     }
@@ -614,8 +614,8 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {camp.status === 'enviado' ? <CheckCircle2 size={16} color="var(--success)" /> : <Clock size={16} color="var(--warning)" />}
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: camp.status === 'enviado' ? 'var(--success)' : 'var(--warning)', textTransform: 'capitalize' }}>
+                    {camp.status === 'concluída' ? <CheckCircle2 size={16} color="var(--success)" /> : <Clock size={16} color="var(--warning)" />}
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: camp.status === 'concluída' ? 'var(--success)' : 'var(--warning)', textTransform: 'capitalize' }}>
                       {camp.status}
                     </span>
                   </div>

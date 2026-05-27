@@ -355,7 +355,8 @@ function AtendimentoContent() {
         lastTimestamp: new Date().toISOString(),
         unreadCount: 0,
         status: 'active',
-        connectionId: connections[0]?.id || '' // Usa a primeira conexão disponível
+        connectionId: connections[0]?.id || '', // Usa a primeira conexão disponível
+        dataCriacao: new Date().toISOString()
       };
 
       await api.saveChatSession(newChat);

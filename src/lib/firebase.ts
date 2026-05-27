@@ -22,16 +22,13 @@ import { getStorage } from 'firebase/storage';
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 // Inicializa o Firestore com cache persistente no lado do cliente
-let db;
-if (typeof window !== 'undefined') {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager() // Compartilha o cache de forma segura entre várias abas
+const db = (typeof window !== 'undefined'
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager() // Compartilha o cache de forma segura entre várias abas
+      })
     })
-  });
-} else {
-  db = getFirestore(app);
-}
+  : getFirestore(app)) as any;
 
 const auth = getAuth(app);
 const storage = getStorage(app);

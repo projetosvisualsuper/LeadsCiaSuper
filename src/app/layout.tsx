@@ -16,14 +16,14 @@ export async function generateMetadata(): Promise<Metadata> {
     const faviconUrl = `${protocol}://${host}/api/img/favicon`;
 
     return {
-      title: "Gerency Leads | CRM & E-mail Marketing",
+      title: "Leads Cia Super | CRM & E-mail Marketing",
       description: "Gerenciamento inteligente de leads e campanhas",
       icons: {
         icon: faviconUrl,
         apple: faviconUrl,
       },
       openGraph: {
-        title: "Gerency Leads | CRM & E-mail Marketing",
+        title: "Leads Cia Super | CRM & E-mail Marketing",
         description: "Gerenciamento inteligente de leads e campanhas",
         images: [{ url: ogImageUrl }],
         type: 'website',
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   } catch (e) {
     return {
-      title: "Gerency Leads | CRM & E-mail Marketing",
+      title: "Leads Cia Super | CRM & E-mail Marketing",
       description: "Gerenciamento inteligente de leads e campanhas",
     };
   }

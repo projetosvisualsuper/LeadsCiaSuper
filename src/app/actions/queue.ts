@@ -127,7 +127,7 @@ export async function processQueueServerAction() {
         } else {
           const result = await sendEmailBrevoAction({
             apiKey: settings.brevoApiKey,
-            sender: { name: settings.remetenteNome, email: settings.remetenteEmail },
+            sender: { name: settings.remetenteNome || '', email: settings.remetenteEmail || '' },
             to: [{ email: lead.email, name: lead.nome }],
             subject: campaign.assunto,
             htmlContent: campaign.conteudoHtml.replace(/\{\{nome\}\}/g, lead.nome)

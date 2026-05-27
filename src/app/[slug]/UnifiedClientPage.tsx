@@ -8,13 +8,14 @@ import { useSearchParams } from 'next/navigation';
 import { sendEmailBrevoAction } from '@/app/actions/brevo';
 
 // --- HELPERS ---
-const DEFAULT_BGS = {
+const DEFAULT_BGS: Record<string, string> = {
   'professional': '/images/sales-bg.png',
   'lead-magnet': '/images/catalog-bg.png',
   'minimalist': '/images/minimalist-bg.png',
   'vsl': '/images/vsl-bg.png',
   'event': 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80',
-  'coupon': '/images/coupon-bg.png'
+  'coupon': '/images/coupon-bg.png',
+  'offers': '/images/sales-bg.png'
 };
 
 const getEmbedUrl = (url: string) => {
@@ -573,7 +574,7 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
       
       sendEmailBrevoAction({
         apiKey: globalSettings.brevoApiKey,
-        sender: { name: globalSettings.remetenteNome, email: globalSettings.remetenteEmail },
+        sender: { name: globalSettings.remetenteNome || '', email: globalSettings.remetenteEmail || '' },
         to: [{ email: formData.email, name: formData.nome }],
         subject: `🎁 Seu Cupom de Desconto: ${config.couponCode}`,
         htmlContent: html
@@ -606,7 +607,7 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
             <button onClick={handleCopyCoupon} style={{ width: '100%', height: '54px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
                {copying ? <><Check size={20} /> Copiado!</> : <><Copy size={20} /> Copiar Código</>}
             </button>
-            <button onClick={handleFinalAction} style={{ width: '100%', height: '54px', borderRadius: '12px', background: config.botaoColor || '#fbbf24', color: getContrastColor(config.botaoColor || '#fbbf24'), fontWeight: 700 }}>OK, Continuar</button>
+            <button onClick={() => handleFinalAction()} style={{ width: '100%', height: '54px', borderRadius: '12px', background: config.botaoColor || '#fbbf24', color: getContrastColor(config.botaoColor || '#fbbf24'), fontWeight: 700 }}>OK, Continuar</button>
           </div>
 
           {config.sendCouponEmail && (

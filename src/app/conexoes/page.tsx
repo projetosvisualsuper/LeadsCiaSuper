@@ -51,11 +51,11 @@ export default function ConexoesPage() {
 
   // QR Code States
   const [showQrModal, setShowQrModal] = useState(false);
-  const [qrCodeData, setQrCodeData] = useState<{base64?: string, loading: boolean, error?: string, mock?: boolean}>({ loading: false });
+  const [qrCodeData, setQrCodeData] = useState<{base64?: string, pairingCode?: string, loading: boolean, error?: string, mock?: boolean}>({ loading: false });
 
   // Test Message States
   const [showTestModal, setShowTestModal] = useState(false);
-  const [testData, setTestData] = useState({ connectionId: '', phone: '', message: 'Olá! Este é um teste de conexão do Gerency Leads. 🚀', loading: false });
+  const [testData, setTestData] = useState({ connectionId: '', phone: '', message: 'Olá! Este é um teste de conexão do Leads Cia Super. 🚀', loading: false });
 
   const fetchQrCode = async (connectionId: string, instanceName?: string) => {
     setShowQrModal(true);

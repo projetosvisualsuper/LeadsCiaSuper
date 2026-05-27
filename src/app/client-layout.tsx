@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { UserProfile } from '@/types/crm';
+import { UserProfile, Lead } from '@/types/crm';
 
 export default function ClientLayout({
   children,
@@ -269,7 +269,7 @@ export default function ClientLayout({
           }}>
             {!isSidebarCollapsed && (
               <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                Gerency<span style={{ color: 'var(--primary)' }}>Leads</span>
+                Leads Cia<span style={{ color: 'var(--primary)' }}> Super</span>
               </h1>
             )}
             <button 

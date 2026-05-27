@@ -112,10 +112,10 @@ export default function CampanhasPage() {
 
   const generateProfessionalHTML = async (text: string, subject: string, bannerImg?: string, campaignId?: string, botaoTexto?: string, botaoLink?: string, preheader?: string) => {
     const settings = await api.getSettings();
-    const brandName = settings.landingPage?.titulo || 'Gerency Leads';
+    const brandName = settings.landingPage?.titulo || 'Leads Cia Super';
     const senderName = settings.remetenteNome || brandName;
     const brandColor = settings.landingPage?.formColor || '#4f46e5';
-    const websiteUrl = settings.empresa?.website.startsWith('http') ? settings.empresa.website : 'https://' + settings.empresa?.website;
+    const websiteUrl = (settings.empresa?.website || '').startsWith('http') ? (settings.empresa?.website || '') : 'https://' + (settings.empresa?.website || 'www.visualsuper.com.br');
     
     // O websiteUrl é o site público da empresa (ex: visualsuper.com.br). 
     // Mas a API de imagens roda NO CRM. Então precisamos da URL de onde o CRM está rodando.
@@ -328,6 +328,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
       botaoLink: '', 
       channel: 'email',
       whatsappConnectionId: '',
+      whatsappTemplateId: '',
       segmentId: '',
       tipoEnvio: 'imediato', 
       dataAgendada: '' 
@@ -346,6 +347,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
       botaoLink: campaign.botaoLink || '',
       channel: campaign.channel || 'email',
       whatsappConnectionId: campaign.whatsappConnectionId || '',
+      whatsappTemplateId: campaign.whatsappTemplateId || '',
       segmentId: campaign.segmentId || '',
       tipoEnvio: campaign.status === 'agendada' ? 'agendado' : 'imediato',
       dataAgendada: campaign.dataAgendada || ''
@@ -713,7 +715,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={handleCreate} style={{ padding: '0 2rem' }}>{editingId ? 'Salvar Alterações' : 'Salvar Campanha'}</button>
-              <button className="btn btn-outline" onClick={() => { setIsCreating(false); setEditingId(null); setNewCampaign({ nome: '', assunto: '', preheader: '', conteudoHtml: '', textoSimples: '', bannerImg: '', botaoTexto: '', botaoLink: '', channel: 'email', whatsappConnectionId: '', tipoEnvio: 'imediato', dataAgendada: '' }); }}>Cancelar</button>
+              <button className="btn btn-outline" onClick={() => { setIsCreating(false); setEditingId(null); setNewCampaign({ nome: '', assunto: '', preheader: '', conteudoHtml: '', textoSimples: '', bannerImg: '', botaoTexto: '', botaoLink: '', channel: 'email', whatsappConnectionId: '', whatsappTemplateId: '', segmentId: '', tipoEnvio: 'imediato', dataAgendada: '' }); }}>Cancelar</button>
             </div>
           </div>
         </div>

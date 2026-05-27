@@ -151,7 +151,8 @@ export async function POST(req: NextRequest) {
             lastTimestamp: new Date().toISOString(),
             unreadCount: isEcho ? 0 : 1,
             status: 'active',
-            leadAvatar: leadAvatar
+            leadAvatar: leadAvatar,
+            dataCriacao: new Date().toISOString()
           };
           await setDoc(chatRef, newChat);
         } else {
@@ -354,7 +355,7 @@ export async function POST(req: NextRequest) {
             const settings = settingsSnap.exists() ? settingsSnap.data() : null;
             if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
               sendOmnichannelMessageAction(
-                leadPhone,
+                with9,
                 'whatsapp',
                 settings.autoresponder.message,
                 connectionId
