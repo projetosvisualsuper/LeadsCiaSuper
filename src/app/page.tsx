@@ -5,8 +5,6 @@ import { api } from '@/services/api';
 import { Lead, Campaign, FilaEnvio, ChatSession, LandingPageInstance } from '@/types/crm';
 import { useRouter } from 'next/navigation';
 import { getBrevoCreditsAction } from '@/app/actions/brevo';
-import { collection, onSnapshot, query, orderBy, limit as firestoreLimit, where, getDocs, getCountFromServer } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { 
   Users, 
   Mail, 
@@ -100,77 +98,53 @@ export default function Dashboard() {
   useEffect(() => {
     if (!isChannelsModalOpen) return;
 
-    let unsubChats: any;
-    try {
-      const chatsQ = query(collection(db, 'atendimentos_v3'), firestoreLimit(100));
-      unsubChats = onSnapshot(chatsQ, (snap) => {
-        const latestChats = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
-        setChats(latestChats);
-      });
-    } catch (err) {
-      console.error("Erro listener chats:", err);
-    }
-
     const fetchLPData = async () => {
       try {
+        const latestChats = await api.getChats();
+        setChats(latestChats);
+
         const lps = await api.getLandingPages();
         setLandingPages(lps);
 
-        const leadsRef = collection(db, 'leads');
         const lpSlugs = lps.map(lp => lp.slug).filter(Boolean);
         
-        // 1. OTIMIZAÇÃO CRÍTICA: Buscar apenas documentos de LPs (geralmente poucos leads) para listar na tabela
         if (lpSlugs.length > 0) {
-          const lpQuery = query(leadsRef, where('origem', 'in', lpSlugs), firestoreLimit(100));
-          const snap = await getDocs(lpQuery);
-          const filteredLps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
-          setLpLeads(filteredLps);
+          const placeholders = lpSlugs.map(() => '?').join(',');
+          const { results: filteredLps } = await api.runQuery(
+            `SELECT * FROM leads WHERE origem IN (${placeholders}) LIMIT 100`,
+            lpSlugs
+          );
+          setLpLeads(filteredLps || []);
         }
 
-        // 2. OTIMIZAÇÃO CRÍTICA: Buscar contagens usando getCountFromServer (1000x mais barato)
-        // Isso evita fazer download de milhares de leads e estourar a quota diária
-        const [
-          fbSnap,
-          igSnap,
-          ytSnap,
-          tkSnap,
-          waSnap,
-          widgetSnap,
-          sysSnap
-        ] = await Promise.all([
-          getCountFromServer(query(leadsRef, where('origem', '==', 'Facebook Messenger'))),
-          getCountFromServer(query(leadsRef, where('origem', '==', 'Instagram Direct'))),
-          getCountFromServer(query(leadsRef, where('origem', '==', 'YouTube Comments'))),
-          getCountFromServer(query(leadsRef, where('origem', '==', 'TikTok Comments'))),
-          // WhatsApp Atendimento: Origens normais de WhatsApp
-          getCountFromServer(query(leadsRef, where('origem', '>=', 'WhatsApp'), where('origem', '<=', 'WhatsApp\uf8ff'))),
-          // WhatsApp Widget: Origens contendo Widget/Botão
-          getCountFromServer(query(leadsRef, where('origem', '>=', 'Widget Externo'), where('origem', '<=', 'Widget Externo\uf8ff'))),
+        const counts = await Promise.all([
+          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'Facebook Messenger'`),
+          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'Instagram Direct'`),
+          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'YouTube Comments'`),
+          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'TikTok Comments'`),
+          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem LIKE 'WhatsApp%'`),
+          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem LIKE 'Widget Externo%'`),
           lpSlugs.length > 0 
-            ? getCountFromServer(query(leadsRef, where('origem', 'in', lpSlugs)))
-            : { data: () => ({ count: 0 }) }
+            ? api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem IN (${lpSlugs.map(() => '?').join(',')})`, lpSlugs)
+            : { results: [{ count: 0 }] }
         ]);
 
         setPanelCounts({
-          facebook: fbSnap.data().count,
-          instagram: igSnap.data().count,
-          youtube: ytSnap.data().count,
-          tiktok: tkSnap.data().count,
-          whatsapp: waSnap.data().count,
-          whatsapp_widget: widgetSnap.data().count,
-          system: sysSnap.data().count
+          facebook: counts[0].results?.[0]?.count || 0,
+          instagram: counts[1].results?.[0]?.count || 0,
+          youtube: counts[2].results?.[0]?.count || 0,
+          tiktok: counts[3].results?.[0]?.count || 0,
+          whatsapp: counts[4].results?.[0]?.count || 0,
+          whatsapp_widget: counts[5].results?.[0]?.count || 0,
+          system: counts[6].results?.[0]?.count || 0
         });
       } catch (err: any) {
         console.error("Erro ao buscar dados de landing pages:", err);
-        setErrorMessage("Erro de Quota ou Firestore: " + (err.message || String(err)));
+        setErrorMessage("Erro de banco de dados D1: " + (err.message || String(err)));
       }
     };
 
     fetchLPData();
-
-    return () => {
-      if (unsubChats) unsubChats();
-    };
   }, [isChannelsModalOpen]);
 
   // Carregar estatísticas com suporte a Cache (TTL de 2 minutos)
@@ -274,32 +248,6 @@ export default function Dashboard() {
     else setGreeting('Boa noite');
 
     fetchAll();
-
-    // Listeners extremamente leves em tempo real apenas para o feed de feeds recentes (limite 5 e 4)
-    // para manter o feed responsivo sem gastar cota do banco de dados
-    let unsubLeads: any;
-    let unsubCampaigns: any;
-
-    try {
-      const leadsQ = query(collection(db, 'leads'), orderBy('dataCriacao', 'desc'), firestoreLimit(5));
-      unsubLeads = onSnapshot(leadsQ, (snap) => {
-        const latestLeads = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
-        setRecentLeads(latestLeads);
-      });
-    } catch (err) { console.error("Erro listener leads:", err); }
-
-    try {
-      const campQ = query(collection(db, 'campaigns'), orderBy('dataCriacao', 'desc'), firestoreLimit(4));
-      unsubCampaigns = onSnapshot(campQ, (snap) => {
-        const latestCamps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Campaign));
-        setRecentCampaigns(latestCamps);
-      });
-    } catch (err) { console.error("Erro listener campanhas:", err); }
-
-    return () => {
-      if (unsubLeads) unsubLeads();
-      if (unsubCampaigns) unsubCampaigns();
-    };
   }, [period, customStartDate, customEndDate]);
 
   // --- CÁLCULO DE ESTATÍSTICAS DOS CANAIS DE ENTRADA (MODAL) ---

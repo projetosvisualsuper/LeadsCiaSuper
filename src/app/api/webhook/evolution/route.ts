@@ -7,15 +7,6 @@ import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const fs = require('fs');
-    const path = require('path');
-    
-    // Grava o payload completo para análise profunda
-    fs.writeFileSync(
-      path.join(process.cwd(), 'scratch', 'last_webhook_payload.json'), 
-      JSON.stringify(body, null, 2)
-    );
-
     // LOG DE EMERGÊNCIA - PARA ANALISAR O LID
     console.error('#################################################');
     console.error('### NOVO WEBHOOK RECEBIDO DO EVOLUTION        ###');

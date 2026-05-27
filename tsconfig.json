@@ -19,7 +19,12 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "firebase/app": ["./src/lib/firebase-mock.ts"],
+      "firebase/firestore": ["./src/lib/firebase-mock.ts"],
+      "firebase/auth": ["./src/lib/firebase-mock.ts"],
+      "firebase/storage": ["./src/lib/firebase-mock.ts"],
+      "@/lib/firebase": ["./src/lib/firebase-mock.ts"]
     }
   },
   "include": [

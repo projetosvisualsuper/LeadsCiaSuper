@@ -3,18 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, LogIn, ShieldCheck, UserPlus, AlertCircle } from 'lucide-react';
-import { auth } from '@/lib/firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  sendPasswordResetEmail
-} from 'firebase/auth';
-import { api } from '@/services/api';
-import { UserProfile } from '@/types/crm';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,55 +16,28 @@ export default function LoginPage() {
     name: ''
   });
   const [isPending, setIsPending] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const profile = await api.getUserProfile(user.uid);
-        if (profile) {
-          if (profile.status === 'approved') {
-            router.push('/');
-          } else if (profile.status === 'pending') {
-            setIsPending(true);
-            setError('Seu acesso está pendente de aprovação pelo administrador.');
-          } else {
-            setError('Seu acesso foi recusado. Entre em contato com o suporte.');
-            await signOut(auth);
+    const checkLogged = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated) {
+            if (data.user.status === 'approved') {
+              router.push('/');
+            } else if (data.user.status === 'pending') {
+              setIsPending(true);
+              setError('Seu acesso está pendente de aprovação pelo administrador.');
+            }
           }
-        } else {
-          // Se o usuário logou (ex: via Google) mas não tem perfil, cria um pendente
-          const newProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email || '',
-            name: user.displayName || '',
-            status: 'pending',
-            role: 'editor',
-            dataSolicitacao: new Date().toISOString()
-          };
-          await api.createUserProfile(newProfile);
-          setIsPending(true);
-          setError('Solicitação de acesso enviada! Aguarde a aprovação do administrador.');
         }
+      } catch (e) {
+        console.error(e);
       }
-    });
-    return () => unsubscribe();
+    };
+    checkLogged();
   }, [router]);
-
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    setError('');
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      router.push('/');
-    } catch (err: any) {
-      console.error(err);
-      setError('Erro ao entrar com Google. Verifique se o pop-up foi bloqueado.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,69 +46,57 @@ export default function LoginPage() {
     
     try {
       if (isRegister) {
-        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-        const newProfile: UserProfile = {
-          uid: userCredential.user.uid,
-          email: formData.email,
-          name: formData.name,
-          status: 'pending',
-          role: 'editor',
-          dataSolicitacao: new Date().toISOString()
-        };
-        await api.createUserProfile(newProfile);
-        setIsPending(true);
-        setError('Solicitação de acesso enviada com sucesso! Aguarde a aprovação.');
-      } else {
-        const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-        const profile = await api.getUserProfile(userCredential.user.uid);
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            name: formData.name
+          })
+        });
         
-        if (!profile || profile.status !== 'approved') {
-          if (profile?.status === 'rejected') {
-            setError('Seu acesso foi recusado pelo administrador.');
-          } else {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Erro ao cadastrar.');
+
+        if (data.status === 'approved') {
+          setError('Sua conta de Administrador foi criada e aprovada automaticamente! Faça login.');
+          setIsRegister(false);
+          setFormData({ email: formData.email, password: '', name: '' });
+        } else {
+          setIsPending(true);
+          setError(data.message);
+        }
+      } else {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password
+          })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 403) {
             setIsPending(true);
-            setError('Seu acesso ainda não foi aprovado pelo administrador.');
           }
-          await signOut(auth);
-          setIsLoading(false);
-          return;
+          throw new Error(data.message || 'Erro ao entrar.');
         }
         
         router.push('/');
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/user-not-found') setError('Usuário não encontrado.');
-      else if (err.code === 'auth/wrong-password') setError('Senha incorreta.');
-      else if (err.code === 'auth/email-already-in-use') setError('Este e-mail já está em uso.');
-      else if (err.code === 'auth/operation-not-allowed') setError('O login por E-mail/Senha não está ativado no seu Console do Firebase.');
-      else if (err.code === 'auth/weak-password') setError('A senha deve ter no mínimo 6 caracteres.');
-      else setError('Erro: ' + (err.message || 'Verifique suas credenciais.'));
+      setError(err.message || 'Erro inesperado.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!formData.email) {
-      setError('Por favor, digite seu e-mail no campo acima primeiro.');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError('');
-    try {
-      auth.languageCode = 'pt';
-      await sendPasswordResetEmail(auth, formData.email);
-      setResetSent(true);
-      setError('');
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/user-not-found') setError('Usuário não encontrado.');
-      else setError('Erro ao enviar e-mail de recuperação: ' + err.message);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleForgotPassword = () => {
+    setError('A recuperação de senha foi desativada temporariamente. Entre em contato com o administrador do sistema.');
   };
 
   return (
@@ -199,12 +148,6 @@ export default function LoginPage() {
         {error && (
           <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.75rem', borderRadius: '12px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', textAlign: 'left' }}>
             <AlertCircle size={18} /> {error}
-          </div>
-        )}
-
-        {resetSent && (
-          <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success)', color: '#10b981', padding: '0.75rem', borderRadius: '12px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', textAlign: 'left' }}>
-            <ShieldCheck size={18} /> E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.
           </div>
         )}
 
@@ -342,41 +285,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {!isRegister && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0' }}>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>OU</span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-            </div>
-
-            <button 
-              onClick={handleGoogleLogin}
-              type="button"
-              style={{ 
-                width: '100%', 
-                height: '52px', 
-                background: 'white', 
-                color: '#1e293b', 
-                border: 'none', 
-                borderRadius: '12px', 
-                fontSize: '0.9375rem', 
-                fontWeight: 600, 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.75rem',
-                transition: 'all 0.2s'
-              }}
-              className="btn-google"
-            >
-              <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" width="20" height="20" alt="Google" />
-              Entrar com Google
-            </button>
-          </>
-        )}
-
         <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <p style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.875rem' }}>
             {isRegister ? 'Já possui acesso?' : 'Novo por aqui?'} 
@@ -414,12 +322,7 @@ export default function LoginPage() {
           filter: brightness(1.1);
           box-shadow: 0 15px 30px rgba(59, 130, 246, 0.3);
         }
-        .btn-google:hover {
-          background: #f8fafc !important;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .btn-login:active, .btn-google:active {
+        .btn-login:active {
           transform: translateY(0);
         }
       `}</style>

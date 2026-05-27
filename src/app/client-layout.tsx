@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
-import { auth } from '@/lib/firebase';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { 
   LayoutDashboard, 
   Users, 
@@ -67,20 +65,32 @@ export default function ClientLayout({
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const profile = await api.getUserProfile(user.uid);
-        setUserProfile(profile);
-        if (!profile || profile.status !== 'approved') {
+  const checkSession = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user.status === 'approved') {
+          setUserProfile(data.user);
+        } else {
+          setUserProfile(null);
           if (!isCapturePage) router.push('/login');
         }
       } else {
+        setUserProfile(null);
         if (!isCapturePage) router.push('/login');
       }
+    } catch (e) {
+      console.error(e);
+      setUserProfile(null);
+      if (!isCapturePage) router.push('/login');
+    } finally {
       setLoading(false);
-    });
-    return () => unsubscribe();
+    }
+  };
+
+  useEffect(() => {
+    checkSession();
   }, [pathname, isCapturePage]);
 
   // --- NOVO: Listener Global para Novos e Re-convertidos Leads (Desativado no modo D1) ---
@@ -246,8 +256,13 @@ export default function ClientLayout({
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <button 
               onClick={async () => {
-                await signOut(auth);
-                router.push('/login');
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  setUserProfile(null);
+                  router.push('/login');
+                } catch (e) {
+                  console.error(e);
+                }
               }}
               className="nav-link" 
               style={{ width: '100%', cursor: 'pointer', border: 'none', background: 'transparent' }}

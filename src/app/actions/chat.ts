@@ -1,7 +1,6 @@
 'use server';
 
-import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, limit, updateDoc } from 'firebase/firestore';
+import { d1Api } from '@/services/d1';
 
 export async function sendOmnichannelMessageAction(
   recipientIdOrPhone: string, 
@@ -13,8 +12,7 @@ export async function sendOmnichannelMessageAction(
   try {
     // 1. Lógica para INSTAGRAM e FACEBOOK
     if (channel === 'instagram' || channel === 'facebook') {
-      const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-      const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+      const settings = await d1Api.getSettings();
       
       const token = channel === 'instagram' 
         ? (settings.omnichannel?.instagramAccessToken || settings.instagramAccessToken)
@@ -43,14 +41,10 @@ export async function sendOmnichannelMessageAction(
 
       // Se não temos um ID de conexão, ou se queremos garantir que usamos a principal
       if (!targetConnectionId) {
-        const principalQuery = query(
-          collection(db, 'whatsapp_connections'), 
-          where('isPrincipal', '==', true),
-          limit(1)
-        );
-        const principalSnap = await getDocs(principalQuery);
-        if (!principalSnap.empty) {
-          targetConnectionId = principalSnap.docs[0].id;
+        const connections = await d1Api.getWhatsappConnections();
+        const principal = connections.find(c => c.isDefault);
+        if (principal) {
+          targetConnectionId = principal.id;
         }
       }
 
@@ -59,16 +53,13 @@ export async function sendOmnichannelMessageAction(
       }
 
       // Buscar os detalhes da conexão específica
-      const connSnap = await getDoc(doc(db, 'whatsapp_connections', targetConnectionId));
-      if (!connSnap.exists()) {
+      const conn = await d1Api.getWhatsappConnectionById(targetConnectionId);
+      if (!conn) {
         return { success: false, error: 'Conexão WhatsApp não encontrada no sistema.' };
       }
 
-      const conn = connSnap.data();
-
       // Buscar Configurações Globais (Para URL global da Evolution API)
-      const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-      const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+      const settings = await d1Api.getSettings();
 
       // 2.A: Envio via API OFICIAL DA META
       if (conn.type === 'meta_official') {
@@ -140,7 +131,7 @@ export async function sendOmnichannelMessageAction(
           },
           body: JSON.stringify({
             number: cleanNumber,
-            text: text, // No v2 o texto é direto aqui
+            text: text,
             options: {
               delay: 1200,
               presence: "composing",
@@ -153,14 +144,12 @@ export async function sendOmnichannelMessageAction(
         console.log('>>> Resposta do Docker:', JSON.stringify(data));
         
         return response.ok ? { success: true, data } : { success: false, error: data.error || 'Erro no Docker' };
-
       }
     }
 
     // 3. Lógica para TIKTOK
     if (channel === 'tiktok') {
-      const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-      const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+      const settings = await d1Api.getSettings();
       
       let accessToken = settings.omnichannel?.tiktokAccessToken;
       const refreshToken = settings.omnichannel?.tiktokRefreshToken;
@@ -190,11 +179,12 @@ export async function sendOmnichannelMessageAction(
         const refreshData = await refreshResponse.json();
         if (refreshResponse.ok) {
           accessToken = refreshData.access_token;
-          await updateDoc(doc(db, 'settings', 'global'), {
-            'omnichannel.tiktokAccessToken': accessToken,
-            'omnichannel.tiktokRefreshToken': refreshData.refresh_token,
-            'omnichannel.tiktokTokenExpiry': new Date(Date.now() + refreshData.expires_in * 1000).toISOString()
-          });
+          
+          if (!settings.omnichannel) settings.omnichannel = {};
+          settings.omnichannel.tiktokAccessToken = accessToken;
+          settings.omnichannel.tiktokRefreshToken = refreshData.refresh_token;
+          settings.omnichannel.tiktokTokenExpiry = new Date(Date.now() + refreshData.expires_in * 1000).toISOString();
+          await d1Api.saveSettings(settings);
         }
       }
 
@@ -242,8 +232,7 @@ export async function sendOmnichannelMessageAction(
 
     // 4. Lógica para YOUTUBE (Comments)
     if (channel === 'youtube') {
-      const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-      const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+      const settings = await d1Api.getSettings();
       
       let accessToken = settings.omnichannel?.youtubeAccessToken;
       const refreshToken = settings.omnichannel?.youtubeRefreshToken;
@@ -278,10 +267,11 @@ export async function sendOmnichannelMessageAction(
         const refreshData = await refreshResponse.json();
         if (refreshResponse.ok) {
           accessToken = refreshData.access_token;
-          await updateDoc(doc(db, 'settings', 'global'), {
-            'omnichannel.youtubeAccessToken': accessToken,
-            'omnichannel.youtubeTokenExpiry': new Date(Date.now() + refreshData.expires_in * 1000).toISOString()
-          });
+          
+          if (!settings.omnichannel) settings.omnichannel = {};
+          settings.omnichannel.youtubeAccessToken = accessToken;
+          settings.omnichannel.youtubeTokenExpiry = new Date(Date.now() + refreshData.expires_in * 1000).toISOString();
+          await d1Api.saveSettings(settings);
         } else {
           return { success: false, error: 'Falha ao renovar token do YouTube. Tente reconectar o canal.' };
         }

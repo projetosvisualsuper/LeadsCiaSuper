@@ -38,11 +38,7 @@ const renderSocialIcon = (platform: string, size: number = 24, color?: string) =
   );
 };
 import { ChatSession, ChatMessage, Lead } from '@/types/crm';
-import { api } from '@/services/api';
-import { db, storage } from '@/lib/firebase';
 import { sendOmnichannelMessageAction } from '@/app/actions/chat';
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs, deleteDoc, updateDoc, limit } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const META_TEMPLATES = [
   "Olá! Aqui é da equipe de atendimento. Recebemos seu contato, como podemos ajudar hoje?",
@@ -86,32 +82,44 @@ function AtendimentoContent() {
 
   const EMOJIS = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '🙀', '😿', '😾'];
 
-  // Listener para as sessões de chat (Limitado às 50 mais recentes para economizar leituras)
+  // Carregar sessões de chat e mantê-las atualizadas via polling
   useEffect(() => {
-    const q = query(
-      collection(db, 'atendimentos_v3'), 
-      orderBy('lastTimestamp', 'desc'),
-      limit(50) 
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatSession));
-      setChats(chatList);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    const fetchChats = async () => {
+      try {
+        const res = await fetch('/api/chats');
+        if (res.ok) {
+          const chatList = await res.json();
+          setChats(chatList);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar chats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchChats();
+    const interval = setInterval(fetchChats, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   // Carregar conexões disponíveis
   useEffect(() => {
     const fetchConnections = async () => {
-      const snap = await getDocs(collection(db, 'whatsapp_connections'));
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setConnections(list);
+      try {
+        const res = await fetch('/api/chats?type=connections');
+        if (res.ok) {
+          const list = await res.json();
+          setConnections(list);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar conexões:', err);
+      }
     };
     fetchConnections();
   }, []);
 
-  // Listener para as mensagens do chat selecionado
+  // Polling para mensagens do chat selecionado e dados do lead
   useEffect(() => {
     if (!selectedChatId) {
       setMessages([]);
@@ -119,49 +127,33 @@ function AtendimentoContent() {
       return;
     }
 
-    const q = query(
-      collection(db, 'messages'),
-      where('chatId', '==', selectedChatId)
-    );
+    const fetchMessagesAndLead = async () => {
+      try {
+        const res = await fetch(`/api/chats?chatId=${encodeURIComponent(selectedChatId)}`);
+        if (res.ok) {
+          const msgList = await res.json();
+          msgList.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          setMessages(msgList.slice(-50));
+        }
+      } catch (err) {
+        console.error("Erro ao carregar mensagens:", err);
+      }
+    };
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const msgList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
-      
-      // Ordenar por data mais antiga primeiro para a ordem da conversa
-      msgList.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      
-      // Limitar às 50 mensagens mais recentes
-      const limitedMsgs = msgList.slice(-50);
-      
-      setMessages(limitedMsgs);
-      
-      // Marcar como lido
-      api.markChatAsRead(selectedChatId);
-    }, (error) => {
-      console.error("Erro ao carregar mensagens:", error);
-    });
-
-    // Carregar dados do lead
     const chat = chats.find(c => c.id === selectedChatId);
     if (chat) {
-       // Buscar lead pelo campo 'id' (que contém o ID da plataforma) ou ID do documento
-       const leadRef = collection(db, 'leads');
-       const qLead = query(leadRef, where('id', '==', chat.leadId));
-       getDocs(qLead).then(snap => {
-         if (!snap.empty) {
-           const leadDoc = snap.docs[0];
-           setSelectedLead({ id: leadDoc.id, ...leadDoc.data() } as Lead);
-         } else {
-           // Tentar buscar pelo ID do documento caso tenha sido salvo assim
-           getDoc(doc(db, 'leads', chat.leadId)).then(docSnap => {
-             if (docSnap.exists()) setSelectedLead({ id: docSnap.id, ...docSnap.data() } as Lead);
-           });
-         }
-       });
+      fetch(`/api/chats?leadId=${encodeURIComponent(chat.leadId)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(leadData => {
+          if (leadData) setSelectedLead(leadData);
+        })
+        .catch(err => console.error("Erro ao buscar lead:", err));
     }
 
-    return () => unsubscribe();
-  }, [selectedChatId, chats.length]); // Adicionado chats.length para reagir a mudanças na lista de chats
+    fetchMessagesAndLead();
+    const interval = setInterval(fetchMessagesAndLead, 3000);
+    return () => clearInterval(interval);
+  }, [selectedChatId, chats.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -203,7 +195,11 @@ function AtendimentoContent() {
     setNewMessage('');
     
     try {
-      await api.sendMessage(msg);
+      await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(msg)
+      });
 
       if (['instagram', 'facebook', 'whatsapp', 'tiktok', 'youtube'].includes(chat.channel)) {
         // Priorizar o leadId da sessão de chat se for WhatsApp, pois ele contém o número real que enviou a mensagem
@@ -276,7 +272,11 @@ function AtendimentoContent() {
         isIncoming: false
       };
 
-      await api.sendMessage(msg);
+      await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(msg)
+      });
 
       if (['instagram', 'facebook', 'whatsapp'].includes(chat.channel) && chat?.leadId) {
         const recipient = chat.channel === 'whatsapp' && selectedLead 
@@ -301,25 +301,48 @@ function AtendimentoContent() {
 
   const handleArchiveChat = async () => {
     if (!selectedChatId) return;
-    await updateDoc(doc(db, 'atendimentos_v3', selectedChatId), { status: 'archived' });
-    setSelectedChatId(null);
-    setShowChatMenu(false);
+    try {
+      await fetch('/api/chats', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedChatId, status: 'archived' })
+      });
+      setSelectedChatId(null);
+      setShowChatMenu(false);
+    } catch (err) {
+      console.error('Erro ao arquivar conversa:', err);
+    }
   };
 
   const handleDeleteChat = async () => {
     if (!selectedChatId || !confirm('Tem certeza que deseja excluir esta conversa permanentemente?')) return;
-    await deleteDoc(doc(db, 'atendimentos_v3', selectedChatId));
-    setSelectedChatId(null);
-    setShowChatMenu(false);
+    try {
+      await fetch(`/api/chats?chatId=${encodeURIComponent(selectedChatId)}`, {
+        method: 'DELETE'
+      });
+      setSelectedChatId(null);
+      setShowChatMenu(false);
+    } catch (err) {
+      console.error('Erro ao excluir conversa:', err);
+    }
   };
 
   const handleChangeChatConnection = async (connId: string) => {
     if (!selectedChatId) return;
     const conn = connections.find((c: any) => c.id === connId);
-    await updateDoc(doc(db, 'atendimentos_v3', selectedChatId), { 
-      connectionId: connId,
-      connectionName: conn?.name || conn?.evolutionInstanceName || 'WhatsApp'
-    });
+    try {
+      await fetch('/api/chats', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: selectedChatId,
+          connectionId: connId,
+          connectionName: conn?.name || conn?.evolutionInstanceName || 'WhatsApp'
+        })
+      });
+    } catch (err) {
+      console.error('Erro ao alterar conexão do chat:', err);
+    }
   };
 
   const getChannelIcon = (channel: string, size = 16) => {
@@ -345,7 +368,6 @@ function AtendimentoContent() {
         return;
       }
 
-      // Cria sessão temporária/nova no Firestore
       const newChat: ChatSession = {
         id: chatId,
         leadId: chatId,
@@ -359,7 +381,11 @@ function AtendimentoContent() {
         dataCriacao: new Date().toISOString()
       };
 
-      await api.saveChatSession(newChat);
+      await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveSession', session: newChat })
+      });
       setSelectedChatId(chatId);
     } catch (error) {
       console.error('Erro ao iniciar chat:', error);

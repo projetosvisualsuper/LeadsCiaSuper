@@ -985,5 +985,13 @@ export const d1Api = {
       recentLeads,
       recentCampaigns
     };
+  },
+
+  // Database Execution Helpers
+  runQuery: async (sql: string, params: any[] = []): Promise<any> => {
+    return runQuery(sql, params);
+  },
+  executeRun: async (sql: string, params: any[] = []): Promise<any> => {
+    return executeRun(sql, params);
   }
 };

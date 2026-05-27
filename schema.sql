@@ -105,7 +105,9 @@ CREATE TABLE IF NOT EXISTS users (
   status TEXT NOT NULL,
   role TEXT NOT NULL,
   dataSolicitacao TEXT NOT NULL,
-  dataAprovacao TEXT
+  dataAprovacao TEXT,
+  passwordHash TEXT,
+  salt TEXT
 );
 
 CREATE TABLE IF NOT EXISTS segmentations (

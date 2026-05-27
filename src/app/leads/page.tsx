@@ -4,8 +4,6 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/services/api';
 import { Lead, LeadStatus, Segmentation, LandingPageInstance } from '@/types/crm';
-import { collection, onSnapshot, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { 
   Search, 
   Filter, 
