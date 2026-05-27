@@ -5,6 +5,8 @@ import { api } from "@/services/api";
 import { headers } from "next/headers";
 import Script from "next/script";
 
+export const runtime = 'edge';
+
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await api.getSettings();
