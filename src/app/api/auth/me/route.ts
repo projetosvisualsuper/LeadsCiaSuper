@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { d1Api } from '@/services/d1';
 
 export const runtime = 'edge';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('session_token')?.value;
+    const cookieHeader = request.headers.get('cookie') || '';
+    const token = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('session_token='))
+      ?.substring('session_token='.length);
 
     if (!token) {
       return NextResponse.json({ authenticated: false, message: 'Sem token de sessão.' }, { status: 401 });
