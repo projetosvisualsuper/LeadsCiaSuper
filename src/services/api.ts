@@ -1,11 +1,11 @@
-import { d1Api } from './d1';
+import type { d1Api as d1ApiType } from './d1';
 
 const isClient = typeof window !== 'undefined';
 
 // Proxy dinâmico para rotear chamadas do banco de dados D1.
 // No navegador (Client-side), faz a ponte com a rota /api/d1-bridge via HTTP POST.
 // No servidor (Edge Runtime), executa as consultas diretamente contra o binding do D1.
-export const api = new Proxy({} as typeof d1Api, {
+export const api = new Proxy({} as typeof d1ApiType, {
   get(target, propKey) {
     const method = propKey as string;
     
@@ -23,6 +23,7 @@ export const api = new Proxy({} as typeof d1Api, {
         }
         return await res.json();
       } else {
+        const { d1Api } = await import('./d1');
         if (typeof (d1Api as any)[method] !== 'function') {
           throw new Error(`Método '${method}' não encontrado no adaptador D1.`);
         }

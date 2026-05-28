@@ -1,10 +1,11 @@
 import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage, WhatsappConnection, WhatsappTemplate } from '@/types/crm';
 
+import { getRequestContext } from '@cloudflare/next-on-pages';
+
 // Get the D1 database binding from process.env (or global context in Cloudflare Pages)
 const getDbBinding = (): any => {
   try {
-    const nextOnPages = eval("require")('@cloudflare/next-on-pages');
-    const ctx = nextOnPages.getRequestContext();
+    const ctx = getRequestContext();
     if (ctx && ctx.env && ctx.env.DB) {
       return ctx.env.DB;
     }

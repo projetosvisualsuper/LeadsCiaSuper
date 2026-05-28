@@ -18,11 +18,12 @@ export async function getDownloadURL(ref: any) {
   return ref.path;
 }
 
+import { getRequestContext } from '@cloudflare/next-on-pages';
+
 // Helper to run query safely (copying from d1.ts to avoid circular imports)
 const getDbBinding = (): any => {
   try {
-    const nextOnPages = eval("require")('@cloudflare/next-on-pages');
-    const ctx = nextOnPages.getRequestContext();
+    const ctx = getRequestContext();
     if (ctx && ctx.env && ctx.env.DB) {
       return ctx.env.DB;
     }
