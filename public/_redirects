@@ -1,4 +1,28 @@
+# Servir rotas do sistema diretamente
+/login              /login              200
+/leads              /leads              200
+/campanhas          /campanhas          200
+/relatorios         /relatorios         200
+/integracoes         /integracoes         200
+/captura-editor     /captura-editor     200
+/configuracoes       /configuracoes       200
+/whatsapp           /whatsapp           200
+/bio                /bio                200
+/usuarios           /usuarios           200
+/segmentacoes       /segmentacoes       200
+/popups             /popups             200
+/atendimento        /atendimento        200
+/conexoes           /conexoes           200
+/privacy            /privacy            200
+/privacy-policy     /privacy-policy     200
+/terms              /terms              200
+/terms-of-service   /terms-of-service   200
+/view               /view               200
+/r                  /r                  200
+/api/*              /api/:splat         200
+
 # Regras de reescrita e redirecionamento para o Cloudflare Pages
 # Mapeia as URLs amigáveis para as rotas estáticas reais
 /b/:slug  /r?slug=:slug  302
 /:slug    /view?slug=:slug  200
+
