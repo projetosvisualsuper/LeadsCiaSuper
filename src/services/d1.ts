@@ -44,36 +44,68 @@ async function executeWranglerD1Local(sql: string, params: any[]): Promise<any> 
     // Se por acaso cair aqui no client-side (embora no client usemos a d1-bridge), evitamos que tente usar imports do Node
     return { results: [], success: true, changes: 0 };
   }
-  try {
-    // Escapa aspas no SQL
-    const escapedSql = sql.replace(/"/g, '\\"');
-    // Para simplificar localmente, passamos os parâmetros injetando-os se necessário ou substituindo os placeholders "?" pelos valores convertidos.
-    let sqlWithParams = escapedSql;
-    params.forEach(param => {
-      const val = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : param === null ? 'NULL' : param;
-      sqlWithParams = sqlWithParams.replace('?', val);
-    });
 
-    const cmd = `npx wrangler d1 execute gerency-leads-db --command="${sqlWithParams}" --local --json`;
-    
-    // Executa síncrono via child_process no Node.js local (só do lado do servidor)
-    const { execSync } = require('child_process');
-    const stdout = execSync(cmd, { cwd: process.cwd(), encoding: 'utf-8' });
-    
-    const parsed = JSON.parse(stdout);
-    if (parsed && parsed[0]) {
-      return {
-        results: parsed[0].results || [],
-        success: parsed[0].success,
-        changes: parsed[0].meta?.changes || 0
-      };
+  // Verifica se o require('child_process') está disponível (Node.js runtime completo)
+  let hasChildProcess = false;
+  try {
+    const cp = require('child_process');
+    if (cp && cp.execSync) {
+      hasChildProcess = true;
     }
-    return { results: [], success: true, changes: 0 };
-  } catch (error: any) {
-    console.error('Erro na simulação do Wrangler D1 local:', error.message);
-    throw error;
+  } catch (e) {
+    // Não disponível (Edge Runtime sandbox)
+  }
+
+  // Escapa aspas no SQL
+  const escapedSql = sql.replace(/"/g, '\\"');
+  // Para simplificar localmente, passamos os parâmetros injetando-os se necessário ou substituindo os placeholders "?" pelos valores convertidos.
+  let sqlWithParams = escapedSql;
+  params.forEach(param => {
+    const val = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : param === null ? 'NULL' : param;
+    sqlWithParams = sqlWithParams.replace('?', val);
+  });
+
+  if (hasChildProcess) {
+    try {
+      const cmd = `npx wrangler d1 execute gerency-leads-db --command="${sqlWithParams}" --local --json`;
+      
+      // Executa síncrono via child_process no Node.js local
+      const { execSync } = require('child_process');
+      const stdout = execSync(cmd, { cwd: process.cwd(), encoding: 'utf-8' });
+      
+      const parsed = JSON.parse(stdout);
+      if (parsed && parsed[0]) {
+        return {
+          results: parsed[0].results || [],
+          success: parsed[0].success,
+          changes: parsed[0].meta?.changes || 0
+        };
+      }
+      return { results: [], success: true, changes: 0 };
+    } catch (error: any) {
+      console.error('Erro na simulação do D1 local direto (Node.js):', error.message);
+      throw error;
+    }
+  } else {
+    // No Edge Runtime (Next.js Edge Sandbox local), faz a chamada HTTP para nossa ponte Node.js local
+    try {
+      const port = process.env.PORT || 3000;
+      const res = await fetch(`http://127.0.0.1:${port}/api/d1-local-bridge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: 'runQuery', args: [sql, params] })
+      });
+      if (!res.ok) {
+        throw new Error('Falha na comunicação com a D1 Local Bridge API.');
+      }
+      return await res.json();
+    } catch (error: any) {
+      console.error('Erro na simulação do Wrangler D1 local via Bridge:', error.message);
+      throw error;
+    }
   }
 }
+
 
 
 
