@@ -20,9 +20,12 @@ const getDbBinding = (): any => {
     return process.env.DB;
   }
   
-  // Só ativa a ponte local se estiver rodando localmente em ambiente Node.js (Edge local ou Next.js dev local)
-  const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
-  if (isNode) {
+  // 2. Determina se estamos rodando localmente (Next.js dev local ou Edge sandbox local)
+  // No Cloudflare Pages de produção, a API global de caches (caches.default) está presente.
+  // No Next.js dev local e no sandbox do Edge local, ela não está presente.
+  const isCloudflare = typeof globalThis !== 'undefined' && (globalThis as any).caches && (globalThis as any).caches.default;
+  
+  if (!isCloudflare) {
     return {
       prepare: (sql: string) => {
         return {
