@@ -8,9 +8,10 @@ const getDbBinding = (): any => {
   if (process.env.DB) {
     return process.env.DB;
   }
-  // No Next.js dev local sem o runtime do wranglerpages/next-on-pages rodando, o getDbBinding retornará nulo.
-  // Vamos simular retornando um objeto mockado que chama o Wrangler D1 CLI localmente para facilitar os testes locais!
-  if (process.env.NODE_ENV === 'development') {
+  
+  // Só ativa a ponte local se estiver rodando localmente em ambiente Node.js (Edge local ou Next.js dev local)
+  const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+  if (isNode) {
     return {
       prepare: (sql: string) => {
         return {
@@ -34,7 +35,13 @@ const getDbBinding = (): any => {
       }
     };
   }
-  return null;
+
+  // Se estiver no Cloudflare Pages/Worker e não encontrar o binding 'DB'
+  throw new Error(
+    "Banco de dados D1 não encontrado. Se você está na hospedagem da Cloudflare Pages, " +
+    "certifique-se de configurar o D1 Database Binding com o nome exato 'DB' nas " +
+    "configurações do projeto no painel da Cloudflare (Configurações -> Funções -> D1 database bindings)."
+  );
 };
 
 // Função auxiliar que chama o Wrangler D1 local por baixo dos panos no ambiente dev local

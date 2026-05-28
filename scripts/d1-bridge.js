@@ -20,28 +20,43 @@ const server = http.createServer((req, res) => {
       try {
         const { sql, params } = JSON.parse(body);
         
-        const escapedSql = sql.replace(/"/g, '\\"');
-        let sqlWithParams = escapedSql;
+        let sqlWithParams = sql;
         params.forEach(param => {
           const val = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : param === null ? 'NULL' : param;
           sqlWithParams = sqlWithParams.replace('?', val);
         });
 
-        const cmd = `npx wrangler d1 execute gerency-leads-db --command="${sqlWithParams}" --local --json`;
-        const stdout = execSync(cmd, { cwd: process.cwd(), encoding: 'utf-8' });
-        
-        const parsed = JSON.parse(stdout);
-        let result = { results: [], success: true, changes: 0 };
-        if (parsed && parsed[0]) {
-          result = {
-            results: parsed[0].results || [],
-            success: parsed[0].success,
-            changes: parsed[0].meta?.changes || 0
-          };
+        const fs = require('fs');
+        const path = require('path');
+        const tempFilePath = path.join(__dirname, 'temp-query.sql');
+        fs.writeFileSync(tempFilePath, sqlWithParams, 'utf-8');
+
+        try {
+          const cmd = `npx wrangler d1 execute gerency-leads-db --file="${tempFilePath}" --local --json`;
+          const stdout = execSync(cmd, { cwd: process.cwd(), encoding: 'utf-8' });
+          
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+
+          const parsed = JSON.parse(stdout);
+          let result = { results: [], success: true, changes: 0 };
+          if (parsed && parsed[0]) {
+            result = {
+              results: parsed[0].results || [],
+              success: parsed[0].success,
+              changes: parsed[0].meta?.changes || 0
+            };
+          }
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } catch (execErr) {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+          throw execErr;
         }
-        
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result));
       } catch (err) {
         console.error('Erro na ponte local D1:', err.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
