@@ -66,6 +66,53 @@ export default function ConfigPage() {
   const [showBrevoKey, setShowBrevoKey] = useState(false);
   const [showEvolutionKey, setShowEvolutionKey] = useState(false);
 
+  // States para Alteração de Senha
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordForm.newPassword) {
+      setPasswordMessage({ text: 'A nova senha é obrigatória.', type: 'error' });
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordMessage({ text: 'A nova senha deve ter pelo menos 6 caracteres.', type: 'error' });
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage({ text: 'A confirmação de senha não coincide.', type: 'error' });
+      return;
+    }
+    setPasswordLoading(true);
+    setPasswordMessage(null);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Erro ao alterar a senha.');
+      }
+      setPasswordMessage({ text: 'Senha alterada com sucesso!', type: 'success' });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      setPasswordMessage({ text: error.message, type: 'error' });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   useEffect(() => {
     const loadSettings = async () => {
       const data = await api.getSettings();
@@ -277,6 +324,84 @@ export default function ConfigPage() {
               </p>
             </div>
           </div>
+        </section>
+
+        {/* ALTERAR SENHA (SEGURANÇA) */}
+        <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <Lock className="color-primary" size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Segurança da Conta</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>
+              Mantenha sua conta protegida alterando sua senha de acesso periodicamente.
+            </p>
+          </div>
+          
+          <form onSubmit={handleUpdatePassword} className="card" style={{ flex: '2 1 500px', margin: 0, display: 'grid', gap: '1.25rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Senha Atual</label>
+              <input 
+                type="password" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem' }} 
+                placeholder="Insira sua senha atual..."
+                value={passwordForm.currentPassword}
+                onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+              />
+              <p style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.25rem' }}>
+                Se você foi migrado e ainda não tem senha, pode deixar este campo em branco.
+              </p>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Nova Senha</label>
+              <input 
+                type="password" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem' }} 
+                placeholder="Mínimo de 6 caracteres..."
+                value={passwordForm.newPassword}
+                onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Confirmar Nova Senha</label>
+              <input 
+                type="password" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem' }} 
+                placeholder="Repita a nova senha..."
+                value={passwordForm.confirmPassword}
+                onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+              />
+            </div>
+
+            {passwordMessage && (
+              <div style={{ 
+                padding: '0.75rem 1rem', 
+                borderRadius: '8px', 
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                background: passwordMessage.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                color: passwordMessage.type === 'success' ? '#047857' : '#b91c1c'
+              }}>
+                {passwordMessage.text}
+              </div>
+            )}
+
+            <div>
+              <button 
+                type="submit" 
+                className="btn btn-primary" 
+                style={{ height: '42px', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                disabled={passwordLoading}
+              >
+                {passwordLoading ? 'Alterando...' : 'Alterar Senha'}
+              </button>
+            </div>
+          </form>
         </section>
 
         {/* INFORMAÇÕES DA EMPRESA (RODAPÉ) */}
