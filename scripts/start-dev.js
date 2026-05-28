@@ -8,7 +8,7 @@ const bridgePath = path.join(__dirname, 'd1-bridge.js');
 console.log(`[Bridge] Iniciando ponte local em: ${bridgePath}`);
 const bridge = spawn('node', [bridgePath], {
   stdio: 'inherit',
-  shell: true
+  shell: false
 });
 
 // 2. Iniciar Next.js Dev Server
