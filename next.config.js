@@ -14,6 +14,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'], // Alivia a memória durante renderização
   },
+  turbopack: {},
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = [...(config.externals || []), 'async_hooks', 'node:async_hooks'];
