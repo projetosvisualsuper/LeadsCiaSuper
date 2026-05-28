@@ -19,15 +19,7 @@ export async function getDownloadURL(ref: any) {
 }
 
 // Helper to run query safely (copying from d1.ts to avoid circular imports)
-const getDbBinding = async (): Promise<any> => {
-  try {
-    const { getRequestContext } = await import(/* webpackIgnore: true */ '@cloudflare/next-on-pages');
-    const ctx = getRequestContext();
-    if (ctx && ctx.env && ctx.env.DB) {
-      return ctx.env.DB;
-    }
-  } catch (e) {}
-
+const getDbBinding = (): any => {
   if (typeof globalThis !== 'undefined' && (globalThis as any).DB) {
     return (globalThis as any).DB;
   }

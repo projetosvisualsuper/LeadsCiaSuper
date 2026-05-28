@@ -2,17 +2,7 @@ import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSe
 
 
 // Get the D1 database binding from process.env (or global context in Cloudflare Pages)
-const getDbBinding = async (): Promise<any> => {
-  try {
-    const { getRequestContext } = await import(/* webpackIgnore: true */ '@cloudflare/next-on-pages');
-    const ctx = getRequestContext();
-    if (ctx && ctx.env && ctx.env.DB) {
-      return ctx.env.DB;
-    }
-  } catch (e) {
-    // Silencia erros caso esteja compilando ou rodando em ambiente sem o context
-  }
-
+const getDbBinding = (): any => {
   if (typeof globalThis !== 'undefined' && (globalThis as any).DB) {
     return (globalThis as any).DB;
   }
@@ -89,7 +79,7 @@ async function executeWranglerD1Local(sql: string, params: any[]): Promise<any> 
 
 // Helper helper function to execute SQL statements safely
 const runQuery = async (sql: string, params: any[] = []): Promise<any> => {
-  const db = await getDbBinding();
+  const db = getDbBinding();
   if (!db) {
     throw new Error('Cloudflare D1 DB binding not found. Please verify wrangler.toml configuration.');
   }
@@ -106,7 +96,7 @@ const runQuery = async (sql: string, params: any[] = []): Promise<any> => {
 };
 
 const executeRun = async (sql: string, params: any[] = []): Promise<any> => {
-  const db = await getDbBinding();
+  const db = getDbBinding();
   if (!db) {
     throw new Error('Cloudflare D1 DB binding not found. Please verify wrangler.toml configuration.');
   }

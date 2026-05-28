@@ -23,7 +23,7 @@ export const api = new Proxy({} as typeof d1ApiType, {
         }
         return await res.json();
       } else {
-        const { d1Api } = await import(/* webpackIgnore: true */ './d1');
+        const { d1Api } = await import('./d1');
         if (typeof (d1Api as any)[method] !== 'function') {
           throw new Error(`Método '${method}' não encontrado no adaptador D1.`);
         }
