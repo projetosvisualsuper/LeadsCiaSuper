@@ -51,7 +51,7 @@ const getDbBinding = (): any => {
 // Função auxiliar que chama o Wrangler D1 local por baixo dos panos no ambiente dev local
 async function executeWranglerD1Local(sql: string, params: any[]): Promise<any> {
   const isClient = typeof window !== 'undefined';
-  if (isClient) {
+  if (isClient || process.env.CF_PAGES === '1') {
     return { results: [], success: true, changes: 0 };
   }
 
