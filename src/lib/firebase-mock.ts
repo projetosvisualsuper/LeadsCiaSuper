@@ -18,11 +18,10 @@ export async function getDownloadURL(ref: any) {
   return ref.path;
 }
 
-import { getRequestContext } from '@cloudflare/next-on-pages';
-
 // Helper to run query safely (copying from d1.ts to avoid circular imports)
-const getDbBinding = (): any => {
+const getDbBinding = async (): Promise<any> => {
   try {
+    const { getRequestContext } = await import(/* webpackIgnore: true */ '@cloudflare/next-on-pages');
     const ctx = getRequestContext();
     if (ctx && ctx.env && ctx.env.DB) {
       return ctx.env.DB;
@@ -39,7 +38,7 @@ const getDbBinding = (): any => {
 };
 
 const runSql = async (sql: string, params: any[] = []): Promise<any> => {
-  const db = getDbBinding();
+  const db = await getDbBinding();
   if (!db) return { results: [] };
   try {
     const stmt = db.prepare(sql);
@@ -52,7 +51,7 @@ const runSql = async (sql: string, params: any[] = []): Promise<any> => {
 };
 
 const executeSql = async (sql: string, params: any[] = []): Promise<any> => {
-  const db = getDbBinding();
+  const db = await getDbBinding();
   if (!db) return { changes: 0 };
   try {
     const stmt = db.prepare(sql);
