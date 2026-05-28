@@ -2,10 +2,9 @@ import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSe
 
 // Get the D1 database binding from process.env (or global context in Cloudflare Pages)
 const getDbBinding = (): any => {
-  // 1. Tenta obter o binding do D1 real (no Cloudflare Pages) usando o getRequestContext
   try {
-    const { getRequestContext } = require('@cloudflare/next-on-pages');
-    const ctx = getRequestContext();
+    const nextOnPages = eval("require")('@cloudflare/next-on-pages');
+    const ctx = nextOnPages.getRequestContext();
     if (ctx && ctx.env && ctx.env.DB) {
       return ctx.env.DB;
     }
