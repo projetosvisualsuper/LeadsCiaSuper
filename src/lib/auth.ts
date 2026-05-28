@@ -34,7 +34,7 @@ export async function hashPassword(password: string, salt: string): Promise<stri
     {
       name: "PBKDF2",
       salt: enc.encode(salt),
-      iterations: 100000,
+      iterations: 10000,
       hash: "SHA-256",
     },
     passwordKey,
