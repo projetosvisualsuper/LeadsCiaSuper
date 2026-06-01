@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api } from '@/services/api';
 import { 
   LayoutDashboard, 
@@ -93,16 +93,92 @@ export default function ClientLayout({
     checkSession();
   }, [pathname, isCapturePage]);
 
-  // --- NOVO: Listener Global para Novos e Re-convertidos Leads (Desativado no modo D1) ---
-  useEffect(() => {
-    // Desativado para reduzir o tamanho do bundle e remover dependência do Firebase
-  }, []);
+  // Função para tocar um sinal sonoro agradável (duplo tom) usando a Web Audio API
+  const playChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      
+      // Primeiro tom
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now); // Ré5
+      osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+      gain1.gain.setValueAtTime(0.15, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.6);
 
-  // --- NOVO: Listener Global para Novas Mensagens (Desativado no modo D1) ---
+      // Segundo tom
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.12); // A5
+      osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.25); // Ré6
+      gain2.gain.setValueAtTime(0.15, now + 0.12);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.8);
+    } catch (e) {
+      console.error('Falha ao tocar som de notificação:', e);
+    }
+  };
+
+  const lastLeadIdRef = useRef<string | null>(null);
+
+  // Polling para novos Leads
   useEffect(() => {
-    // Desativado para reduzir o tamanho do bundle e remover dependência do Firebase
-  }, []);
-  // --- FIM Listener Global ---
+    if (!userProfile) return;
+
+    let isFirstLoad = true;
+    let intervalId: any;
+
+    const checkNewLeads = async () => {
+      try {
+        // Verificar se notificações de novos leads estão ativas
+        const settings = await api.getSettings();
+        if (settings?.notificacoes?.novosLeads === false) {
+          return;
+        }
+
+        const leads = await api.getLeads(1);
+        if (leads && leads.length > 0) {
+          const latestLead = leads[0];
+          
+          if (isFirstLoad) {
+            lastLeadIdRef.current = latestLead.id;
+            isFirstLoad = false;
+          } else if (lastLeadIdRef.current && latestLead.id !== lastLeadIdRef.current) {
+            lastLeadIdRef.current = latestLead.id;
+            
+            // Exibir notificação visual
+            setNotification({
+              type: 'lead',
+              title: 'Novo Lead!',
+              message: `${latestLead.nome || 'Cliente'} entrou via ${latestLead.origem}`
+            });
+            
+            // Tocar som de notificação
+            playChime();
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao verificar novos leads no polling:', e);
+      }
+    };
+
+    checkNewLeads();
+    intervalId = setInterval(checkNewLeads, 15000); // Polling a cada 15 segundos
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [userProfile]);
 
   useEffect(() => {
     if (userProfile?.role !== 'admin') return;
