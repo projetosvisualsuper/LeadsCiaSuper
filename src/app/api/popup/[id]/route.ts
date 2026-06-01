@@ -95,12 +95,25 @@ export async function GET(
         transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1);
         display: flex; flex-direction: column;
       }
+      .gl-popup-content h2 {
+        color: \${theme.textColor || '#1e293b'} !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        font-weight: 800 !important;
+        line-height: 1.25 !important;
+        margin-top: 0 !important;
+      }
+      .gl-popup-content p {
+        color: \${theme.textColor || '#1e293b'} !important;
+        opacity: 0.8 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      }
       .gl-popup-show { opacity: 1; pointer-events: auto; }
       .gl-popup-show .gl-popup-content { transform: translateY(0) scale(1); }
       .gl-popup-btn {
         display: block; padding: 1rem 2rem; border-radius: 12px; font-weight: 700;
         text-decoration: none; text-align: center; transition: transform 0.2s ease;
         background: \${theme.buttonColor || '#3b82f6'}; color: \${theme.buttonTextColor || '#fff'};
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
       }
       .gl-popup-btn:hover { transform: scale(1.03); }
       .gl-popup-close {
