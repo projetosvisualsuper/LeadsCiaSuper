@@ -45,9 +45,13 @@ export async function POST(request: Request) {
 
     // Identificar se é uma Cotação
     const rawStatus = getField(body, ['status']).toLowerCase();
+    const paymentMethod = getField(body, ['payment_method', 'payment_method_title']).toLowerCase();
     const isCotacao = rawStatus.includes('cotacao') || 
                       rawStatus.includes('quote') || 
                       rawStatus.includes('orcamento') ||
+                      paymentMethod.includes('cotacao') ||
+                      paymentMethod.includes('quote') ||
+                      paymentMethod.includes('orcamento') ||
                       body.tipo === 'cotacao';
 
     // Extrair produtos do WooCommerce (line_items) ou campo produtos genérico
@@ -96,9 +100,9 @@ export async function POST(request: Request) {
       
       let observacao = '';
       if (isCotacao) {
-        observacao = `[COTAÇÃO RECEBIDA] Produtos: ${itensFormatados}.${valor ? ` Valor estimado: R$ ${valor}.` : ''}${pedidoId ? ` ID Cotação: ${pedidoId}.` : ''}`;
+        observacao = `[COTAÇÃO RECEBIDA] Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor estimado: R$ ${valor}.` : ''}${pedidoId ? ` ID Cotação: ${pedidoId}.` : ''}`;
       } else {
-        observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`;
+        observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${itensFormatados ? ` Produtos: ${itensFormatados}.` : ''}${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`;
       }
 
       await d1Api.saveLead({
@@ -147,9 +151,9 @@ async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: s
   
   let novaObs = '';
   if (isCotacao) {
-    novaObs = `\n[COTAÇÃO] Cotação realizada em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}${pedidoId ? ` (Cotação ID: ${pedidoId})` : ''}. Produtos: ${itensFormatados}.${valor ? ` Valor: R$ ${valor}` : ''}`;
+    novaObs = `\n[COTAÇÃO] Cotação realizada em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}${pedidoId ? ` (Cotação ID: ${pedidoId})` : ''}. Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor: R$ ${valor}` : ''}`;
   } else {
-    novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${valor ? ` no valor de R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+    novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${itensFormatados ? `. Produtos: ${itensFormatados}` : ''}${valor ? `. Valor: R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
   }
 
   const observations = (data.observacoes || '') + novaObs;
