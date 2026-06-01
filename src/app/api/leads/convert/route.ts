@@ -1,8 +1,7 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
+import { d1Api } from '@/services/d1';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,25 +47,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Identificador (email ou telefone) não encontrado no payload.' }, { status: 400 });
     }
 
-    const leadsRef = collection(db, 'leads');
-    let q;
+    const { results: checkResults } = await d1Api.runQuery(
+      email 
+        ? `SELECT * FROM leads WHERE email = ? LIMIT 1`
+        : `SELECT * FROM leads WHERE celular = ? LIMIT 1`,
+      [email || telefone]
+    );
 
-    if (email) {
-      q = query(leadsRef, where('email', '==', email));
-    } else {
-      q = query(leadsRef, where('celular', '==', telefone));
-    }
-
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
+    if (!checkResults || checkResults.length === 0) {
       // Se não encontrar por celular, tenta por telefone fixo se foi passado telefone
       if (!email && telefone) {
-        const q2 = query(leadsRef, where('telefone', '==', telefone));
-        const snap2 = await getDocs(q2);
-        if (!snap2.empty) {
-          const leadDoc = snap2.docs[0];
-          await updateLead(leadDoc.id, nome, telefone, valor, pedidoId);
+        const { results: checkResults2 } = await d1Api.runQuery(
+          `SELECT * FROM leads WHERE telefone = ? LIMIT 1`,
+          [telefone]
+        );
+        if (checkResults2 && checkResults2.length > 0) {
+          const lead = checkResults2[0];
+          await updateLead(lead.id, nome, telefone, valor, pedidoId);
           return NextResponse.json({ success: true, message: 'Lead atualizado via telefone fixo.' });
         }
       }
@@ -74,11 +71,11 @@ export async function POST(request: Request) {
       // Criar novo lead como convertido
       const leadId = Math.random().toString(36).substr(2, 9);
       const agora = new Date().toISOString();
-      const newLead = {
+      await d1Api.saveLead({
         id: leadId,
         nome: nome || 'Cliente do Site',
-        email: email,
-        celular: telefone,
+        email: email || null,
+        celular: telefone || null,
         status: 'convertido',
         tags: ['compra-realizada', 'conversao-direta'],
         origem: 'Conversão Direta (Site)',
@@ -88,18 +85,16 @@ export async function POST(request: Request) {
         totalConversoes: 1,
         consentimentoLGPD: true,
         observacoes: `[CONVERSÃO DIRETA] Cadastro automático via venda.${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`
-      };
-
-      await setDoc(doc(db, 'leads', leadId), newLead);
+      } as any);
 
       return NextResponse.json({ success: true, message: 'Novo lead criado e convertido.', leadId });
     }
 
     // Atualizar o primeiro lead encontrado
-    const leadDoc = querySnapshot.docs[0];
-    await updateLead(leadDoc.id, nome, telefone, valor, pedidoId);
+    const lead = checkResults[0];
+    await updateLead(lead.id, nome, telefone, valor, pedidoId);
 
-    return NextResponse.json({ success: true, message: 'Lead existente convertido.', leadId: leadDoc.id });
+    return NextResponse.json({ success: true, message: 'Lead existente convertido.', leadId: lead.id });
 
   } catch (error: any) {
     console.error('Erro na conversão:', error);
@@ -108,32 +103,32 @@ export async function POST(request: Request) {
 }
 
 async function updateLead(leadId: string, nome?: string, celular?: string, valor?: string, pedidoId?: string) {
-  const leadRef = doc(db, 'leads', leadId);
-  const snap = await getDoc(leadRef);
-  const data = snap.data();
+  const { results } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
+  if (!results || results.length === 0) return;
+  const data = results[0];
   
+  const existingTags = data.tags ? JSON.parse(data.tags) : [];
   const newTags = ['compra-realizada'];
   if (valor) newTags.push(`valor-${valor}`);
+  const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
   
   const novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${valor ? ` no valor de R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR')}`;
-  
-  const updateData: any = {
-    status: 'convertido',
-    dataUltimaAtividade: new Date().toISOString(),
-    dataUltimaConversao: new Date().toISOString(),
-    totalConversoes: (data?.totalConversoes || 1) + 1,
-    tags: arrayUnion(...newTags),
-    observacoes: (data?.observacoes || '') + novaObs
-  };
+  const observations = (data.observacoes || '') + novaObs;
+  const totalConversoes = (data.totalConversoes || 1) + 1;
+  const now = new Date().toISOString();
 
-  // Só atualiza se o dado recebido for válido e o atual for genérico
-  if (nome && (!data?.nome || data.nome === 'Cliente do Site' || data.nome === 'Sem Nome' || data.nome === 'Sem nome')) {
-    updateData.nome = nome;
+  let finalNome = data.nome;
+  if (nome && (!data.nome || data.nome === 'Cliente do Site' || data.nome === 'Sem Nome' || data.nome === 'Sem nome')) {
+    finalNome = nome;
   }
   
-  if (celular && (!data?.celular || data.celular === '-')) {
-    updateData.celular = celular;
+  let finalCelular = data.celular;
+  if (celular && (!data.celular || data.celular === '-')) {
+    finalCelular = celular;
   }
-  
-  await updateDoc(leadRef, updateData);
+
+  await d1Api.executeRun(
+    `UPDATE leads SET status = 'convertido', dataUltimaAtividade = ?, dataUltimaConversao = ?, totalConversoes = ?, tags = ?, observacoes = ?, nome = ?, celular = ? WHERE id = ?`,
+    [now, now, totalConversoes, JSON.stringify(mergedTags), observations, finalNome, finalCelular, leadId]
+  );
 }

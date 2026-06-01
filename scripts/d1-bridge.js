@@ -40,13 +40,23 @@ if (req.method === 'POST') {
 
             try {
               const cmd = `npx wrangler d1 execute gerency-leads-db --file="${tempFilePath}" --local --json`;
-              const stdout = execSync(cmd, { cwd: process.cwd(), encoding: 'utf-8' });
+              const stdout = execSync(cmd, { 
+                cwd: process.cwd(), 
+                encoding: 'utf-8', 
+                maxBuffer: 50 * 1024 * 1024 // 50MB buffer to handle large rows/base64 images
+              });
               
               if (fs.existsSync(tempFilePath)) {
                 fs.unlinkSync(tempFilePath);
               }
 
-              const parsed = JSON.parse(stdout);
+              // Filtrar avisos ou mensagens que o wrangler possa imprimir antes do JSON
+              const jsonStart = stdout.indexOf('[');
+              if (jsonStart === -1) {
+                throw new Error('Não foi possível encontrar o JSON na saída do wrangler: ' + stdout);
+              }
+              const jsonContent = stdout.substring(jsonStart);
+              const parsed = JSON.parse(jsonContent);
               let result = { results: [], success: true, changes: 0 };
               if (parsed && parsed[0]) {
                 result = {

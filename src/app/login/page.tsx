@@ -138,7 +138,7 @@ export default function LoginPage() {
             <ShieldCheck size={32} color="white" />
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', letterSpacing: '-0.025em' }}>
-            Gerency<span style={{ color: 'var(--primary)' }}>Leads</span>
+            Leads <span style={{ color: 'var(--primary)' }}>Cia Super</span>
           </h1>
           <p style={{ color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.5rem', fontSize: '0.875rem' }}>
             {isRegister ? 'Criar nova conta administrativa' : 'Acesse seu painel administrativo'}

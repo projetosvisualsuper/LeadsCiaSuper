@@ -1,8 +1,7 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc, addDoc } from 'firebase/firestore';
+import { d1Api } from '@/services/d1';
 import { ChatMessage, ChatSession, Lead, WhatsappConnection } from '@/types/crm';
 import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 
@@ -37,8 +36,7 @@ export async function POST(req: NextRequest) {
       // Se for @lid, tentamos resolver para o número real chamando a API da Evolution
       if (isLid && !isFromMe) {
         try {
-          const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-          const settings = settingsSnap.exists() ? settingsSnap.data() : null;
+          const settings = await d1Api.getSettings();
           
           // Usar configurações do banco ou fallback (o que funcionar no "Testar Envio")
           const apiUrl = settings?.omnichannel?.evolutionApiUrl || 'http://localhost:8080';
@@ -212,53 +210,48 @@ export async function POST(req: NextRequest) {
       }
 
       // 1. Buscar a conexão que recebeu essa mensagem
-      const connectionsRef = collection(db, 'whatsapp_connections');
-      const connSnap = await getDocs(connectionsRef);
-      
-      console.log('--- Conexões encontradas no banco ---');
-      connSnap.forEach(d => console.log(`- ${d.data().name}: Key=${d.data().evolutionApiKey}`));
-
-      const qConn = query(connectionsRef, where('evolutionInstanceName', '==', instanceName));
-      const connSnapSpecific = await getDocs(qConn);
+      const connections = await d1Api.getWhatsappConnections();
+      const connection = connections.find(c => c.evolutionInstanceName === instanceName);
       
       let connectionId = '';
       let connectionName = 'WhatsApp';
       
-      if (!connSnapSpecific.empty) {
-        const connDoc = connSnapSpecific.docs[0];
-        connectionId = connDoc.id;
-        connectionName = connDoc.data().name;
+      if (connection) {
+        connectionId = connection.id;
+        connectionName = connection.name;
       }
 
       // 3. Procurar se já existe um Lead com esse telefone
-      const leadsRef = collection(db, 'leads');
-      const qLead = query(leadsRef, where('telefone', '==', phoneNumber));
-      const leadSnap = await getDocs(qLead);
+      const { results: existingLeads } = await d1Api.runQuery(
+        `SELECT * FROM leads WHERE telefone = ? OR celular = ? LIMIT 1`,
+        [phoneNumber, phoneNumber]
+      );
 
       let leadId = '';
       let leadName = pushName;
+      const agora = new Date().toISOString();
 
-      if (!leadSnap.empty) {
-        // Atualiza a data de última atividade do lead existente
-        const leadDoc = leadSnap.docs[0];
-        leadId = leadDoc.id;
-        leadName = leadDoc.data().nome; // Prefere o nome salvo no CRM
+      if (existingLeads && existingLeads.length > 0) {
+        const lead = existingLeads[0];
+        leadId = lead.id;
+        leadName = lead.nome || pushName; // Prefere o nome salvo no CRM
         
-        await updateDoc(doc(db, 'leads', leadId), {
-          dataUltimaAtividade: new Date().toISOString()
-        });
+        await d1Api.executeRun(
+          `UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`,
+          [agora, leadId]
+        );
       } else {
         // Cria um lead novo
-        const newLeadRef = doc(collection(db, 'leads'));
-        leadId = newLeadRef.id;
-        await setDoc(newLeadRef, {
+        leadId = Math.random().toString(36).substr(2, 9);
+        await d1Api.saveLead({
+          id: leadId,
           nome: pushName,
-          telefone: phoneNumber, // Pode salvar no celular tbm se preferir
+          telefone: phoneNumber,
           celular: phoneNumber,
           origem: `WhatsApp (${connectionName})`,
           status: 'novo',
-          dataCriacao: new Date().toISOString(),
-          dataUltimaAtividade: new Date().toISOString(),
+          dataCriacao: agora,
+          dataUltimaAtividade: agora,
           consentimentoLGPD: true,
           tags: ['whatsapp', 'evolution']
         });
@@ -266,12 +259,11 @@ export async function POST(req: NextRequest) {
 
       // 4. Identificador Único do Chat
       const chatId = `whatsapp_${phoneNumber}`;
-      const chatRef = doc(db, 'atendimentos_v3', chatId);
-      let chatSnap = await getDoc(chatRef);
-
+      const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
       const timestampIso = new Date().toISOString();
+      const hasChat = chatResults && chatResults.length > 0;
 
-      if (!chatSnap.exists()) {
+      if (!hasChat) {
         // Criar nova sessão de chat
         const newChat: ChatSession = {
           id: chatId,
@@ -286,27 +278,20 @@ export async function POST(req: NextRequest) {
           status: 'active',
           dataCriacao: timestampIso
         };
-        await setDoc(chatRef, newChat);
+        await d1Api.saveChatSession(newChat);
       } else {
         // Atualizar sessão existente
-        const currentData = chatSnap.data() as ChatSession;
-        await updateDoc(chatRef, {
-          lastMessage: messageText,
-          lastTimestamp: timestampIso,
-          unreadCount: isFromMe ? 0 : (currentData.unreadCount || 0) + 1,
-          status: 'active', // reativa se estava arquivado
-          connectionId: connectionId,
-          connectionName: connectionName,
-          leadName: leadName // Atualiza o nome caso tenha mudado
-        });
+        const currentData = chatResults[0];
+        const unreadCount = isFromMe ? 0 : (currentData.unreadCount || 0) + 1;
+        await d1Api.executeRun(
+          `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ? WHERE id = ?`,
+          [messageText, timestampIso, unreadCount, connectionId, connectionName, leadName, chatId]
+        );
       }
 
-      // 5. Salvar a Mensagem na subcoleção/coleção raiz de mensagens
-      // A chave (id) do Firestore será o id da mensagem no WhatsApp para evitar duplicação
+      // 5. Salvar a Mensagem na tabela de mensagens
       const messageId = data.key.id;
-      const messageRef = doc(db, 'messages', `${chatId}_${messageId}`);
-      
-      const newMsg: ChatMessage = {
+      await d1Api.sendMessage({
         id: messageId,
         chatId: chatId,
         senderId: isFromMe ? 'vendedor' : leadId,
@@ -315,16 +300,16 @@ export async function POST(req: NextRequest) {
         timestamp: timestampIso,
         type: messageType,
         status: isFromMe ? 'sent' : 'delivered',
-        isIncoming: !isFromMe
-      };
-
-      await setDoc(messageRef, newMsg, { merge: true });
+        isIncoming: !isFromMe,
+        channel: 'whatsapp',
+        leadId,
+        leadName
+      });
 
       // 6. Autoresponder (Apenas se for uma nova sessão e a mensagem for recebida)
-      if (!chatSnap.exists() && !isFromMe) {
+      if (!hasChat && !isFromMe) {
         try {
-          const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-          const settings = settingsSnap.exists() ? settingsSnap.data() : null;
+          const settings = await d1Api.getSettings();
           
           if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
             // Dispara assincronamente para não prender o webhook
