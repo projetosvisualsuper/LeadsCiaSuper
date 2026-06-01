@@ -142,9 +142,9 @@ async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: s
   
   let novaObs = '';
   if (isCotacao) {
-    novaObs = `\n[COTAÇÃO] Cotação realizada em ${new Date().toLocaleString('pt-BR')}${pedidoId ? ` (Cotação ID: ${pedidoId})` : ''}. Produtos: ${itensFormatados}.${valor ? ` Valor: R$ ${valor}` : ''}`;
+    novaObs = `\n[COTAÇÃO] Cotação realizada em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}${pedidoId ? ` (Cotação ID: ${pedidoId})` : ''}. Produtos: ${itensFormatados}.${valor ? ` Valor: R$ ${valor}` : ''}`;
   } else {
-    novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${valor ? ` no valor de R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR')}`;
+    novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${valor ? ` no valor de R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
   }
 
   const observations = (data.observacoes || '') + novaObs;

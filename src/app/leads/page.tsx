@@ -30,6 +30,31 @@ const WhatsAppIcon = ({ size = 18, color = 'currentColor' }) => (
   </svg>
 );
 
+const parseObservationsToCards = (observationsText: string) => {
+  if (!observationsText) return [];
+  
+  // Encontrar todas as ocorrências de marcas como [RECONVERSÃO], [CONVERSÃO], [COTAÇÃO], etc.
+  const regex = /(\[(?:RECONVERSÃO|CONVERSÃO|CONVERSÃO DIRETA|COTAÇÃO|COTAÇÃO RECEBIDA)\])/g;
+  const parts = observationsText.split(regex);
+  
+  const cards = [];
+  // O split vai resultar em: [texto_antes, marca, texto_depois, marca, texto_depois, ...]
+  for (let i = 1; i < parts.length; i += 2) {
+    const title = parts[i];
+    const content = parts[i + 1] ? parts[i + 1].trim() : '';
+    if (content) {
+      cards.push({ title, content });
+    }
+  }
+  
+  // Se não foi possível separar em cards estruturados, retorna o texto completo como um card genérico
+  if (cards.length === 0) {
+    cards.push({ title: '[REGISTRO]', content: observationsText });
+  }
+  
+  return cards;
+};
+
 function LeadsContent() {
   const searchParams = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -728,11 +753,11 @@ function LeadsContent() {
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    {lead.tags.map(tag => (
-                      <span key={tag} style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'var(--accent)', border: '1px solid var(--border)' }}>
-                        {tag}
+                    {lead.tags && lead.tags.length > 0 && (
+                      <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'var(--accent)', border: '1px solid var(--border)' }}>
+                        {lead.tags[lead.tags.length - 1]}
                       </span>
-                    ))}
+                    )}
                   </div>
                 </td>
                 <td>
@@ -826,7 +851,7 @@ function LeadsContent() {
       {/* MODAL DE DETALHES COMPLETO */}
       {isDetailsOpen && viewingLead && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150, padding: '1rem' }}>
-          <div className="card" style={{ width: '600px', maxWidth: '100%', position: 'relative', padding: 0, overflow: 'hidden' }}>
+          <div className="card" style={{ width: '1000px', maxWidth: '95%', position: 'relative', padding: 0, overflow: 'hidden' }}>
             <div style={{ background: 'var(--primary)', padding: '1.5rem', color: 'white' }}>
               <button style={{ position: 'absolute', right: '1rem', top: '1rem', color: 'white', opacity: 0.8 }} onClick={() => setIsDetailsOpen(false)}>
                 <X size={24} />
@@ -913,9 +938,46 @@ function LeadsContent() {
                     {viewingLead.status.toUpperCase()}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.75rem', opacity: 0.5, marginBottom: '0.5rem' }}>Observações e Notas</p>
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontStyle: viewingLead.observacoes ? 'normal' : 'italic', color: viewingLead.observacoes ? 'inherit' : '#94a3b8' }}>
-                  {viewingLead.observacoes || 'Nenhuma observação registrada para este lead.'}
+                <p style={{ fontSize: '0.75rem', opacity: 0.5, marginBottom: '0.75rem' }}>Observações e Notas de Conversão</p>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  {parseObservationsToCards(viewingLead.observacoes || '').map((card, idx) => {
+                    const isQuote = card.title.includes('COTAÇÃO');
+                    const isConversion = card.title.includes('CONVERSÃO');
+                    const isReconversion = card.title.includes('RECONVERSÃO');
+                    
+                    let cardBg = '#f8fafc';
+                    let borderColor = 'var(--border)';
+                    let titleColor = 'var(--primary)';
+                    
+                    if (isQuote) {
+                      cardBg = 'rgba(245, 158, 11, 0.05)';
+                      borderColor = 'rgba(245, 158, 11, 0.2)';
+                      titleColor = '#d97706';
+                    } else if (isConversion) {
+                      cardBg = 'rgba(16, 185, 129, 0.05)';
+                      borderColor = 'rgba(16, 185, 129, 0.2)';
+                      titleColor = 'var(--success)';
+                    } else if (isReconversion) {
+                      cardBg = 'rgba(99, 102, 241, 0.05)';
+                      borderColor = 'rgba(99, 102, 241, 0.2)';
+                      titleColor = 'var(--primary)';
+                    }
+
+                    return (
+                      <div key={idx} style={{ background: cardBg, border: `1px solid ${borderColor}`, padding: '1rem', borderRadius: '10px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: titleColor, textTransform: 'uppercase', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: titleColor }}></span>
+                          {card.title.replace(/[\[\]]/g, '')}
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: '1.4' }}>
+                          {card.content}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(!viewingLead.observacoes) && (
+                    <p style={{ fontStyle: 'italic', color: '#94a3b8', textAlign: 'center', margin: '1rem 0' }}>Nenhuma observação registrada para este lead.</p>
+                  )}
                 </div>
               </section>
             </div>

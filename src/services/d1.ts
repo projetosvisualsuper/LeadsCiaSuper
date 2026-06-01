@@ -164,7 +164,7 @@ export const d1Api = {
       const existingTags = existingData.tags ? JSON.parse(existingData.tags) : [];
       const mergedTags = Array.from(new Set([...existingTags, ...(lead.tags || [])]));
       
-      const newObs = (existingData.observacoes || '') + (resultsId && resultsId.length > 0 ? '' : `\n[RECONVERSÃO] Nova interação em ${new Date().toLocaleString('pt-BR')} via ${lead.origem}`);
+      const newObs = (existingData.observacoes || '') + (resultsId && resultsId.length > 0 ? '' : `\n[RECONVERSÃO] Nova interação em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} via ${lead.origem}`);
 
       const sql = `
         UPDATE leads 
