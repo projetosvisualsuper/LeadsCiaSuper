@@ -90,7 +90,9 @@ export async function POST(request: Request) {
       const agora = new Date().toISOString();
       
       const leadStatus = isCotacao ? 'novo' : 'convertido';
-      const leadTags = isCotacao ? ['cotação', 'conversao-direta'] : ['compra-realizada', 'conversao-direta'];
+      const leadTags = ['conversao-direta'];
+      if (valor) leadTags.push(`valor-${valor}`);
+      leadTags.push(isCotacao ? 'cotação' : 'venda');
       
       let observacao = '';
       if (isCotacao) {
@@ -118,7 +120,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: `Novo lead criado como ${isCotacao ? 'Cotação' : 'Venda'}.`, leadId });
     }
 
-    // Atualizar o primeiro lead encontrado
+    // --- Atualizar o primeiro lead encontrado ---
     const lead = checkResults[0];
     await updateLead(lead.id, isCotacao, itensFormatados, nome, telefone, valor, pedidoId);
 
@@ -136,9 +138,12 @@ async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: s
   const data = results[0];
   
   const existingTags = data.tags ? JSON.parse(data.tags) : [];
-  const newTags = isCotacao ? ['cotação'] : ['compra-realizada'];
+  const newTags = [];
   if (valor) newTags.push(`valor-${valor}`);
-  const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
+  newTags.push(isCotacao ? 'cotação' : 'venda');
+  
+  const filteredExisting = existingTags.filter((t: string) => t !== 'venda' && t !== 'cotação' && t !== 'compra-realizada');
+  const mergedTags = [...filteredExisting, ...newTags];
   
   let novaObs = '';
   if (isCotacao) {
