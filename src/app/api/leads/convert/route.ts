@@ -31,6 +31,15 @@ export async function POST(request: Request) {
       return '';
     };
 
+    // Função para buscar valores dentro do array meta_data do WooCommerce
+    const getMetaValue = (keyName: string): string => {
+      if (body.meta_data && Array.isArray(body.meta_data)) {
+        const found = body.meta_data.find((m: any) => m.key === keyName);
+        return found ? String(found.value) : '';
+      }
+      return body[keyName] ? String(body[keyName]) : '';
+    };
+
     const email = getField(body, ['email', 'email_address', 'user_email', 'billing_email']);
     const rawTelefone = getField(body, ['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number']);
     const telefone = rawTelefone.replace(/\D/g, '');
@@ -43,16 +52,22 @@ export async function POST(request: Request) {
     const valor = getField(body, ['valor', 'total', 'amount', 'order_total']);
     const pedidoId = getField(body, ['pedidoId', 'order_id', 'id', 'number', 'order_number']);
 
-    // Identificar se é uma Cotação
+    // Identificar se é uma Cotação (Suporta YITH WooCommerce Request a Quote)
+    const isYithRaq = getMetaValue('ywraq_raq') === 'yes' || getMetaValue('ywraq_raq_status') !== '';
     const rawStatus = getField(body, ['status']).toLowerCase();
     const paymentMethod = getField(body, ['payment_method', 'payment_method_title']).toLowerCase();
-    const isCotacao = rawStatus.includes('cotacao') || 
+    
+    const isCotacao = isYithRaq ||
+                      rawStatus.includes('cotacao') || 
                       rawStatus.includes('quote') || 
                       rawStatus.includes('orcamento') ||
                       paymentMethod.includes('cotacao') ||
                       paymentMethod.includes('quote') ||
                       paymentMethod.includes('orcamento') ||
                       body.tipo === 'cotacao';
+
+    // Extrair mensagem/observação do cliente
+    const mensagemCliente = getMetaValue('ywraq_customer_message') || getField(body, ['customer_note', 'note', 'message', 'mensagem']);
 
     // Extrair produtos do WooCommerce (line_items) ou campo produtos genérico
     let itensFormatados = '';
@@ -84,7 +99,7 @@ export async function POST(request: Request) {
         );
         if (checkResults2 && checkResults2.length > 0) {
           const lead = checkResults2[0];
-          await updateLead(lead.id, isCotacao, itensFormatados, nome, telefone, valor, pedidoId);
+          await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId);
           return NextResponse.json({ success: true, message: 'Lead de cotação/venda atualizado via telefone fixo.' });
         }
       }
@@ -100,9 +115,9 @@ export async function POST(request: Request) {
       
       let observacao = '';
       if (isCotacao) {
-        observacao = `[COTAÇÃO RECEBIDA] Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor estimado: R$ ${valor}.` : ''}${pedidoId ? ` ID Cotação: ${pedidoId}.` : ''}`;
+        observacao = `[COTAÇÃO RECEBIDA] Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor estimado: R$ ${valor}.` : ''}${pedidoId ? ` ID Cotação: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
       } else {
-        observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${itensFormatados ? ` Produtos: ${itensFormatados}.` : ''}${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`;
+        observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${itensFormatados ? ` Produtos: ${itensFormatados}.` : ''}${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
       }
 
       await d1Api.saveLead({
@@ -126,7 +141,7 @@ export async function POST(request: Request) {
 
     // --- Atualizar o primeiro lead encontrado ---
     const lead = checkResults[0];
-    await updateLead(lead.id, isCotacao, itensFormatados, nome, telefone, valor, pedidoId);
+    await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId);
 
     return NextResponse.json({ success: true, message: `Lead existente atualizado (${isCotacao ? 'Cotação' : 'Venda'}).`, leadId: lead.id });
 
@@ -136,7 +151,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: string, nome?: string, celular?: string, valor?: string, pedidoId?: string) {
+async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: string, mensagemCliente: string, nome?: string, celular?: string, valor?: string, pedidoId?: string) {
   const { results } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
   if (!results || results.length === 0) return;
   const data = results[0];
@@ -151,9 +166,9 @@ async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: s
   
   let novaObs = '';
   if (isCotacao) {
-    novaObs = `\n[COTAÇÃO] Cotação realizada em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}${pedidoId ? ` (Cotação ID: ${pedidoId})` : ''}. Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor: R$ ${valor}` : ''}`;
+    novaObs = `\n[COTAÇÃO] Cotação realizada em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}${pedidoId ? ` (Cotação ID: ${pedidoId})` : ''}. Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor: R$ ${valor}` : ''}.${mensagemCliente ? ` Obs do Cliente: "${mensagemCliente}"` : ''}`;
   } else {
-    novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${itensFormatados ? `. Produtos: ${itensFormatados}` : ''}${valor ? `. Valor: R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+    novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${itensFormatados ? `. Produtos: ${itensFormatados}` : ''}${valor ? `. Valor: R$ ${valor}` : ''}${mensagemCliente ? `. Obs do Cliente: "${mensagemCliente}"` : ''} em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
   }
 
   const observations = (data.observacoes || '') + novaObs;
