@@ -130,7 +130,7 @@ function LeadsContent() {
 
   const refreshLeads = async () => {
     try {
-      const data = await api.getLeads(1000);
+      const data = await api.getLeads(50000); // Aumentado para suportar todos os leads sem sobrecarregar
       setLeads(data);
     } catch (error) {
       console.error("Erro ao recarregar leads:", error);
