@@ -6,13 +6,13 @@ import { d1Api } from '@/services/d1';
 export const dynamic = 'force-dynamic';
 
 /**
- * Endpoint para converter um lead quando uma compra é realizada no site externo.
- * Aceita POST com JSON contendo email ou telefone.
+ * Endpoint para converter um lead ou registrar uma cotação quando uma compra/cotação é realizada no site externo.
+ * Aceita POST com JSON contendo dados do WooCommerce ou payload direto.
  */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log('Dados recebidos no webhook:', JSON.stringify(body));
+    console.log('Dados recebidos no webhook de conversão/cotação:', JSON.stringify(body));
     
     // Função auxiliar para buscar campo em objetos aninhados (comum em WooCommerce/Zapier)
     const getField = (obj: any, keys: string[]): string => {
@@ -43,6 +43,23 @@ export async function POST(request: Request) {
     const valor = getField(body, ['valor', 'total', 'amount', 'order_total']);
     const pedidoId = getField(body, ['pedidoId', 'order_id', 'id', 'number', 'order_number']);
 
+    // Identificar se é uma Cotação
+    const rawStatus = getField(body, ['status']).toLowerCase();
+    const isCotacao = rawStatus.includes('cotacao') || 
+                      rawStatus.includes('quote') || 
+                      rawStatus.includes('orcamento') ||
+                      body.tipo === 'cotacao';
+
+    // Extrair produtos do WooCommerce (line_items) ou campo produtos genérico
+    let itensFormatados = '';
+    if (body.line_items && Array.isArray(body.line_items)) {
+      itensFormatados = body.line_items
+        .map((item: any) => `${item.name} (Qtd: ${item.quantity || 1})`)
+        .join(', ');
+    } else if (body.produtos) {
+      itensFormatados = typeof body.produtos === 'string' ? body.produtos : JSON.stringify(body.produtos);
+    }
+
     if (!email && !telefone) {
       return NextResponse.json({ error: 'Identificador (email ou telefone) não encontrado no payload.' }, { status: 400 });
     }
@@ -63,38 +80,49 @@ export async function POST(request: Request) {
         );
         if (checkResults2 && checkResults2.length > 0) {
           const lead = checkResults2[0];
-          await updateLead(lead.id, nome, telefone, valor, pedidoId);
-          return NextResponse.json({ success: true, message: 'Lead atualizado via telefone fixo.' });
+          await updateLead(lead.id, isCotacao, itensFormatados, nome, telefone, valor, pedidoId);
+          return NextResponse.json({ success: true, message: 'Lead de cotação/venda atualizado via telefone fixo.' });
         }
       }
 
-      // Criar novo lead como convertido
+      // Criar novo lead
       const leadId = Math.random().toString(36).substr(2, 9);
       const agora = new Date().toISOString();
+      
+      const leadStatus = isCotacao ? 'novo' : 'convertido';
+      const leadTags = isCotacao ? ['cotação', 'conversao-direta'] : ['compra-realizada', 'conversao-direta'];
+      
+      let observacao = '';
+      if (isCotacao) {
+        observacao = `[COTAÇÃO RECEBIDA] Produtos: ${itensFormatados}.${valor ? ` Valor estimado: R$ ${valor}.` : ''}${pedidoId ? ` ID Cotação: ${pedidoId}.` : ''}`;
+      } else {
+        observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`;
+      }
+
       await d1Api.saveLead({
         id: leadId,
         nome: nome || 'Cliente do Site',
         email: email || null,
         celular: telefone || null,
-        status: 'convertido',
-        tags: ['compra-realizada', 'conversao-direta'],
-        origem: 'Conversão Direta (Site)',
+        status: leadStatus,
+        tags: leadTags,
+        origem: isCotacao ? 'Cotação (WooCommerce)' : 'Conversão Direta (Site)',
         dataCriacao: agora,
         dataUltimaAtividade: agora,
-        dataUltimaConversao: agora,
-        totalConversoes: 1,
+        dataUltimaConversao: isCotacao ? null : agora,
+        totalConversoes: isCotacao ? 0 : 1,
         consentimentoLGPD: true,
-        observacoes: `[CONVERSÃO DIRETA] Cadastro automático via venda.${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}`
+        observacoes: observacao
       } as any);
 
-      return NextResponse.json({ success: true, message: 'Novo lead criado e convertido.', leadId });
+      return NextResponse.json({ success: true, message: `Novo lead criado como ${isCotacao ? 'Cotação' : 'Venda'}.`, leadId });
     }
 
     // Atualizar o primeiro lead encontrado
     const lead = checkResults[0];
-    await updateLead(lead.id, nome, telefone, valor, pedidoId);
+    await updateLead(lead.id, isCotacao, itensFormatados, nome, telefone, valor, pedidoId);
 
-    return NextResponse.json({ success: true, message: 'Lead existente convertido.', leadId: lead.id });
+    return NextResponse.json({ success: true, message: `Lead existente atualizado (${isCotacao ? 'Cotação' : 'Venda'}).`, leadId: lead.id });
 
   } catch (error: any) {
     console.error('Erro na conversão:', error);
@@ -102,19 +130,25 @@ export async function POST(request: Request) {
   }
 }
 
-async function updateLead(leadId: string, nome?: string, celular?: string, valor?: string, pedidoId?: string) {
+async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: string, nome?: string, celular?: string, valor?: string, pedidoId?: string) {
   const { results } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
   if (!results || results.length === 0) return;
   const data = results[0];
   
   const existingTags = data.tags ? JSON.parse(data.tags) : [];
-  const newTags = ['compra-realizada'];
+  const newTags = isCotacao ? ['cotação'] : ['compra-realizada'];
   if (valor) newTags.push(`valor-${valor}`);
   const mergedTags = Array.from(new Set([...existingTags, ...newTags]));
   
-  const novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${valor ? ` no valor de R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR')}`;
+  let novaObs = '';
+  if (isCotacao) {
+    novaObs = `\n[COTAÇÃO] Cotação realizada em ${new Date().toLocaleString('pt-BR')}${pedidoId ? ` (Cotação ID: ${pedidoId})` : ''}. Produtos: ${itensFormatados}.${valor ? ` Valor: R$ ${valor}` : ''}`;
+  } else {
+    novaObs = `\n[CONVERSÃO] Compra realizada${pedidoId ? ` (Pedido: ${pedidoId})` : ''}${valor ? ` no valor de R$ ${valor}` : ''} em ${new Date().toLocaleString('pt-BR')}`;
+  }
+
   const observations = (data.observacoes || '') + novaObs;
-  const totalConversoes = (data.totalConversoes || 1) + 1;
+  const totalConversoes = isCotacao ? (data.totalConversoes || 0) : (data.totalConversoes || 1) + 1;
   const now = new Date().toISOString();
 
   let finalNome = data.nome;
@@ -127,8 +161,11 @@ async function updateLead(leadId: string, nome?: string, celular?: string, valor
     finalCelular = celular;
   }
 
+  // Se for cotação, mudamos o status do lead de volta para 'novo' para que os consultores vejam a notificação no painel
+  const finalStatus = isCotacao ? 'novo' : 'convertido';
+
   await d1Api.executeRun(
-    `UPDATE leads SET status = 'convertido', dataUltimaAtividade = ?, dataUltimaConversao = ?, totalConversoes = ?, tags = ?, observacoes = ?, nome = ?, celular = ? WHERE id = ?`,
-    [now, now, totalConversoes, JSON.stringify(mergedTags), observations, finalNome, finalCelular, leadId]
+    `UPDATE leads SET status = ?, dataUltimaAtividade = ?, dataUltimaConversao = ?, totalConversoes = ?, tags = ?, observacoes = ?, nome = ?, celular = ? WHERE id = ?`,
+    [finalStatus, now, isCotacao ? data.dataUltimaConversao : now, totalConversoes, JSON.stringify(mergedTags), observations, finalNome, finalCelular, leadId]
   );
 }
