@@ -137,7 +137,7 @@ export async function GET(
         <div style="display: flex; min-height: 350px; flex-direction: \${window.innerWidth < 640 ? 'column' : (isImgLeft ? 'row' : (template === 'image-form-right' ? 'row-reverse' : 'column'))}">
           \${isSide ? \`<div style="flex: 1; min-height:200px;"><img src="\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\` : ''}
           <div style="flex: 1.2; padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: center;">
-            \${!isSide && renderImage}
+            \${!isSide ? renderImage : ''}
             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
             <p style="opacity: 0.7; margin-bottom: 1.5rem;">\${popupData.subtitle || ''}</p>
             <form onsubmit="event.preventDefault(); window.location.href='\${popupData.buttonLink}'" style="display: grid; gap: 0.75rem;">
@@ -155,7 +155,7 @@ export async function GET(
         <div style="display: flex; min-height: 350px; flex-direction: \${window.innerWidth < 640 ? 'column' : (template === 'image-right' ? 'row-reverse' : (isSide ? 'row' : 'column'))}">
           \${isSide || template === 'image-top' ? \`<div style="flex: 1; min-height:200px;"><img src="\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\` : ''}
           <div style="flex: 1; padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: \${isSide ? 'left' : 'center'};">
-            \${template === 'simple' && renderImage}
+            \${template === 'simple' ? renderImage : ''}
             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 1rem;">\${popupData.title}</h2>
             <p style="opacity: 0.8; margin-bottom: 2rem;">\${popupData.subtitle || ''}</p>
             <a href="\${popupData.buttonLink}" class="gl-popup-btn">\${popupData.buttonText}</a>
