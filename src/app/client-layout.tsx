@@ -31,6 +31,12 @@ import {
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
+const rolePermissions: Record<string, string[]> = {
+  basico: ['/', '/leads', '/atendimento'],
+  intermediario: ['/', '/leads', '/atendimento', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups'],
+  master: ['/', '/leads', '/atendimento', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios']
+};
+
 export default function ClientLayout({
   children,
 }: {
@@ -65,6 +71,8 @@ export default function ClientLayout({
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  const userRole = userProfile?.role === 'admin' ? 'master' : (userProfile?.role === 'editor' ? 'intermediario' : (userProfile?.role || 'basico'));
+
   const checkSession = async () => {
     try {
       const res = await fetch('/api/auth/me');
@@ -72,6 +80,11 @@ export default function ClientLayout({
         const data = await res.json();
         if (data.authenticated && data.user.status === 'approved') {
           setUserProfile(data.user);
+          const mappedRole = data.user.role === 'admin' ? 'master' : (data.user.role === 'editor' ? 'intermediario' : (data.user.role || 'basico'));
+          const allowedPaths = rolePermissions[mappedRole] || [];
+          if (!isCapturePage && pathname !== '/' && !allowedPaths.includes(pathname)) {
+            router.push('/');
+          }
         } else {
           setUserProfile(null);
           if (!isCapturePage) router.push('/login');
@@ -214,6 +227,40 @@ export default function ClientLayout({
 
   const sidebarIconSize = isSidebarCollapsed ? 25 : 20;
 
+  const renderNavLink = (href: string, label: string, icon: React.ReactNode, count?: number) => {
+    const hasAccess = rolePermissions[userRole]?.includes(href);
+    if (!hasAccess) return null;
+    return (
+      <Link 
+        href={href} 
+        className={`nav-link ${pathname === href ? 'active' : ''}`} 
+        style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem', position: count ? 'relative' : 'static' } : { position: count ? 'relative' : 'static' }}
+      >
+        {icon}
+        {!isSidebarCollapsed && <span className="nav-text">{label}</span>}
+        {count && count > 0 && (
+          <span style={{ 
+            position: isSidebarCollapsed ? 'absolute' : 'relative',
+            right: isSidebarCollapsed ? '-4px' : '0',
+            top: isSidebarCollapsed ? '-4px' : 'auto',
+            marginLeft: isSidebarCollapsed ? '0' : 'auto',
+            background: 'var(--danger)', 
+            color: 'white', 
+            fontSize: '0.65rem', 
+            fontWeight: 800, 
+            padding: '2px 6px', 
+            borderRadius: '10px',
+            minWidth: '18px',
+            textAlign: 'center',
+            boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)'
+          }}>
+            {count}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <div className="app-container">
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`} style={{
@@ -252,83 +299,20 @@ export default function ClientLayout({
           </div>
           
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <LayoutDashboard size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Dashboard</span>}
-            </Link>
-            <Link href="/leads" className={`nav-link ${pathname === '/leads' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <Users size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Leads</span>}
-            </Link>
-            <Link href="/campanhas" className={`nav-link ${pathname === '/campanhas' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <Mail size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Campanhas</span>}
-            </Link>
-            <Link href="/segmentacoes" className={`nav-link ${pathname === '/segmentacoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <Filter size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Segmentações</span>}
-            </Link>
-            <Link href="/relatorios" className={`nav-link ${pathname === '/relatorios' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <BarChart3 size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Relatórios</span>}
-            </Link>
-            <Link href="/integracoes" className={`nav-link ${pathname === '/integracoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <Code size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Integrações</span>}
-            </Link>
-            <Link href="/captura-editor" className={`nav-link ${pathname === '/captura-editor' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <LayoutIcon size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Página de Captura</span>}
-            </Link>
-            <Link href="/whatsapp" className={`nav-link ${pathname === '/whatsapp' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <MessageCircle size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Botão WhatsApp</span>}
-            </Link>
-            <Link href="/bio" className={`nav-link ${pathname === '/bio' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <Smartphone size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Link na Bio</span>}
-            </Link>
-            <Link href="/popups" className={`nav-link ${pathname === '/popups' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <SquareStack size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Pop-ups</span>}
-            </Link>
-            <Link href="/atendimento" className={`nav-link ${pathname === '/atendimento' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <Zap size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Atendimento</span>}
-            </Link>
-            <Link href="/conexoes" className={`nav-link ${pathname === '/conexoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <MessageSquare size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Conexões WhatsApp</span>}
-            </Link>
-            <Link href="/configuracoes" className={`nav-link ${pathname === '/configuracoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
-              <SettingsIcon size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Configurações</span>}
-            </Link>
-            {userProfile?.role === 'admin' && (
-              <Link href="/usuarios" className={`nav-link ${pathname === '/usuarios' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem', position: 'relative' } : { position: 'relative' }}>
-                <ShieldCheck size={sidebarIconSize} />
-                {!isSidebarCollapsed && <span className="nav-text">Usuários</span>}
-                {pendingUsersCount > 0 && (
-                  <span style={{ 
-                    position: isSidebarCollapsed ? 'absolute' : 'relative',
-                    right: isSidebarCollapsed ? '-4px' : '0',
-                    top: isSidebarCollapsed ? '-4px' : 'auto',
-                    marginLeft: isSidebarCollapsed ? '0' : 'auto',
-                    background: 'var(--danger)', 
-                    color: 'white', 
-                    fontSize: '0.65rem', 
-                    fontWeight: 800, 
-                    padding: '2px 6px', 
-                    borderRadius: '10px',
-                    minWidth: '18px',
-                    textAlign: 'center',
-                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)'
-                  }}>
-                    {pendingUsersCount}
-                  </span>
-                )}
-              </Link>
-            )}
+            {renderNavLink('/', 'Dashboard', <LayoutDashboard size={sidebarIconSize} />)}
+            {renderNavLink('/leads', 'Leads', <Users size={sidebarIconSize} />)}
+            {renderNavLink('/campanhas', 'Campanhas', <Mail size={sidebarIconSize} />)}
+            {renderNavLink('/segmentacoes', 'Segmentações', <Filter size={sidebarIconSize} />)}
+            {renderNavLink('/relatorios', 'Relatórios', <BarChart3 size={sidebarIconSize} />)}
+            {renderNavLink('/integracoes', 'Integrações', <Code size={sidebarIconSize} />)}
+            {renderNavLink('/captura-editor', 'Página de Captura', <LayoutIcon size={sidebarIconSize} />)}
+            {renderNavLink('/whatsapp', 'Botão WhatsApp', <MessageCircle size={sidebarIconSize} />)}
+            {renderNavLink('/bio', 'Link na Bio', <Smartphone size={sidebarIconSize} />)}
+            {renderNavLink('/popups', 'Pop-ups', <SquareStack size={sidebarIconSize} />)}
+            {renderNavLink('/atendimento', 'Atendimento', <Zap size={sidebarIconSize} />)}
+            {renderNavLink('/conexoes', 'Conexões WhatsApp', <MessageSquare size={sidebarIconSize} />)}
+            {renderNavLink('/configuracoes', 'Configurações', <SettingsIcon size={sidebarIconSize} />)}
+            {renderNavLink('/usuarios', 'Usuários', <ShieldCheck size={sidebarIconSize} />, pendingUsersCount)}
           </nav>
  
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

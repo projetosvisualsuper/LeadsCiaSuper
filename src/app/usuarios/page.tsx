@@ -156,8 +156,11 @@ export default function UsuariosPage() {
                   </td>
                   <td style={{ padding: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                      <Shield size={16} style={{ color: user.role === 'admin' ? 'var(--primary)' : '#64748b' }} />
-                      <span style={{ textTransform: 'capitalize' }}>{user.role}</span>
+                      <Shield size={16} style={{ color: (user.role === 'master' || user.role === 'admin') ? 'var(--primary)' : '#64748b' }} />
+                      <span>
+                        {user.role === 'master' || user.role === 'admin' ? 'Master' : 
+                         user.role === 'intermediario' || user.role === 'editor' ? 'Intermediário' : 'Básico'}
+                      </span>
                     </div>
                   </td>
                   <td style={{ padding: '1.25rem' }}>
@@ -269,8 +272,9 @@ export default function UsuariosPage() {
                   value={editForm.role}
                   onChange={e => setEditForm({ ...editForm, role: e.target.value as any })}
                 >
-                  <option value="editor">Editor (Acesso padrão)</option>
-                  <option value="admin">Administrador (Pode gerenciar usuários)</option>
+                  <option value="basico">Básico (Acesso a Leads e Chat)</option>
+                  <option value="intermediario">Intermediário (Acesso a Marketing e Relatórios)</option>
+                  <option value="master">Master (Acesso total + Gerenciar usuários)</option>
                 </select>
               </div>
 
