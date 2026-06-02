@@ -212,6 +212,8 @@ export default function ClientLayout({
     );
   }
 
+  const sidebarIconSize = isSidebarCollapsed ? 25 : 20;
+
   return (
     <div className="app-container">
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`} style={{
@@ -250,61 +252,61 @@ export default function ClientLayout({
           </div>
           
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
-              <LayoutDashboard size={20} />
+            <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <LayoutDashboard size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Dashboard</span>}
             </Link>
-            <Link href="/leads" className={`nav-link ${pathname === '/leads' ? 'active' : ''}`}>
-              <Users size={20} />
+            <Link href="/leads" className={`nav-link ${pathname === '/leads' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <Users size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Leads</span>}
             </Link>
-            <Link href="/campanhas" className={`nav-link ${pathname === '/campanhas' ? 'active' : ''}`}>
-              <Mail size={20} />
+            <Link href="/campanhas" className={`nav-link ${pathname === '/campanhas' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <Mail size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Campanhas</span>}
             </Link>
-            <Link href="/segmentacoes" className={`nav-link ${pathname === '/segmentacoes' ? 'active' : ''}`}>
-              <Filter size={20} />
+            <Link href="/segmentacoes" className={`nav-link ${pathname === '/segmentacoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <Filter size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Segmentações</span>}
             </Link>
-            <Link href="/relatorios" className={`nav-link ${pathname === '/relatorios' ? 'active' : ''}`}>
-              <BarChart3 size={20} />
+            <Link href="/relatorios" className={`nav-link ${pathname === '/relatorios' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <BarChart3 size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Relatórios</span>}
             </Link>
-            <Link href="/integracoes" className={`nav-link ${pathname === '/integracoes' ? 'active' : ''}`}>
-              <Code size={20} />
+            <Link href="/integracoes" className={`nav-link ${pathname === '/integracoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <Code size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Integrações</span>}
             </Link>
-            <Link href="/captura-editor" className={`nav-link ${pathname === '/captura-editor' ? 'active' : ''}`}>
-              <LayoutIcon size={20} />
+            <Link href="/captura-editor" className={`nav-link ${pathname === '/captura-editor' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <LayoutIcon size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Página de Captura</span>}
             </Link>
-            <Link href="/whatsapp" className={`nav-link ${pathname === '/whatsapp' ? 'active' : ''}`}>
-              <MessageCircle size={20} />
+            <Link href="/whatsapp" className={`nav-link ${pathname === '/whatsapp' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <MessageCircle size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Botão WhatsApp</span>}
             </Link>
-            <Link href="/bio" className={`nav-link ${pathname === '/bio' ? 'active' : ''}`}>
-              <Smartphone size={20} />
+            <Link href="/bio" className={`nav-link ${pathname === '/bio' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <Smartphone size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Link na Bio</span>}
             </Link>
-            <Link href="/popups" className={`nav-link ${pathname === '/popups' ? 'active' : ''}`}>
-              <SquareStack size={20} />
+            <Link href="/popups" className={`nav-link ${pathname === '/popups' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <SquareStack size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Pop-ups</span>}
             </Link>
-            <Link href="/atendimento" className={`nav-link ${pathname === '/atendimento' ? 'active' : ''}`}>
-              <Zap size={20} />
+            <Link href="/atendimento" className={`nav-link ${pathname === '/atendimento' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <Zap size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Atendimento</span>}
             </Link>
-            <Link href="/conexoes" className={`nav-link ${pathname === '/conexoes' ? 'active' : ''}`}>
-              <MessageSquare size={20} />
+            <Link href="/conexoes" className={`nav-link ${pathname === '/conexoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <MessageSquare size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Conexões WhatsApp</span>}
             </Link>
-            <Link href="/configuracoes" className={`nav-link ${pathname === '/configuracoes' ? 'active' : ''}`}>
-              <SettingsIcon size={20} />
+            <Link href="/configuracoes" className={`nav-link ${pathname === '/configuracoes' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem' } : undefined}>
+              <SettingsIcon size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Configurações</span>}
             </Link>
             {userProfile?.role === 'admin' && (
-              <Link href="/usuarios" className={`nav-link ${pathname === '/usuarios' ? 'active' : ''}`} style={{ position: 'relative' }}>
-                <ShieldCheck size={20} />
+              <Link href="/usuarios" className={`nav-link ${pathname === '/usuarios' ? 'active' : ''}`} style={isSidebarCollapsed ? { justifyContent: 'center', padding: '0.75rem', position: 'relative' } : { position: 'relative' }}>
+                <ShieldCheck size={sidebarIconSize} />
                 {!isSidebarCollapsed && <span className="nav-text">Usuários</span>}
                 {pendingUsersCount > 0 && (
                   <span style={{ 
@@ -341,9 +343,9 @@ export default function ClientLayout({
                 }
               }}
               className="nav-link" 
-              style={{ width: '100%', cursor: 'pointer', border: 'none', background: 'transparent' }}
+              style={isSidebarCollapsed ? { width: '100%', cursor: 'pointer', border: 'none', background: 'transparent', justifyContent: 'center', padding: '0.75rem' } : { width: '100%', cursor: 'pointer', border: 'none', background: 'transparent' }}
             >
-              <LogIn size={20} />
+              <LogIn size={sidebarIconSize} />
               {!isSidebarCollapsed && <span className="nav-text">Sair</span>}
             </button>
             {!isSidebarCollapsed && <p style={{ fontSize: '0.75rem', opacity: 0.5, textAlign: 'center' }}>v1.2.0</p>}
