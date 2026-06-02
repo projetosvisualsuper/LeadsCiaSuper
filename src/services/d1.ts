@@ -1056,17 +1056,63 @@ export const d1Api = {
     };
   },
 
-  getCRMReports: async (): Promise<any> => {
-    const { results: statusRes } = await runQuery(`SELECT status, COUNT(id) as count FROM leads GROUP BY status`);
-    const { results: sourceRes } = await runQuery(`SELECT origem, COUNT(id) as count FROM leads GROUP BY origem ORDER BY count DESC LIMIT 10`);
-    const { results: dateRes } = await runQuery(`SELECT SUBSTR(dataCriacao, 1, 10) as date, COUNT(id) as count FROM leads WHERE dataCriacao IS NOT NULL GROUP BY date ORDER BY date ASC LIMIT 50`);
-    const { results: convDateRes } = await runQuery(`SELECT SUBSTR(dataUltimaConversao, 1, 10) as date, COUNT(id) as count FROM leads WHERE dataUltimaConversao IS NOT NULL GROUP BY date ORDER BY date ASC LIMIT 50`);
-    const { results: utmRes } = await runQuery(`SELECT utm_source, COUNT(id) as count FROM leads WHERE utm_source IS NOT NULL AND utm_source != '' GROUP BY utm_source ORDER BY count DESC LIMIT 10`);
-    const { results: stateRes } = await runQuery(`SELECT estado, COUNT(id) as count FROM leads WHERE estado IS NOT NULL AND estado != '' GROUP BY estado ORDER BY count DESC LIMIT 10`);
-    const { results: cityRes } = await runQuery(`SELECT cidade, COUNT(id) as count FROM leads WHERE cidade IS NOT NULL AND cidade != '' GROUP BY cidade ORDER BY count DESC LIMIT 10`);
+  getCRMReports: async (period?: string, customStart?: string, customEnd?: string): Promise<any> => {
+    const now = new Date();
+    let limitDateStr = '';
+    let endDateStr = '';
+
+    if (period === 'today') {
+      const d = new Date();
+      d.setHours(0,0,0,0);
+      limitDateStr = d.toISOString();
+    } else if (period === '7d') {
+      const d = new Date();
+      d.setDate(now.getDate() - 7);
+      limitDateStr = d.toISOString();
+    } else if (period === '30d') {
+      const d = new Date();
+      d.setDate(now.getDate() - 30);
+      limitDateStr = d.toISOString();
+    } else if (period === 'month') {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      limitDateStr = d.toISOString();
+    } else if (period === 'custom') {
+      if (customStart) limitDateStr = new Date(customStart + 'T00:00:00').toISOString();
+      if (customEnd) endDateStr = new Date(customEnd + 'T23:59:59').toISOString();
+    }
+
+    let whereClause = ' WHERE 1=1';
+    let params: any[] = [];
+    if (limitDateStr) {
+      whereClause += ' AND dataCriacao >= ?';
+      params.push(limitDateStr);
+    }
+    if (endDateStr) {
+      whereClause += ' AND dataCriacao <= ?';
+      params.push(endDateStr);
+    }
+
+    let convWhereClause = ' WHERE dataUltimaConversao IS NOT NULL';
+    let convParams: any[] = [];
+    if (limitDateStr) {
+      convWhereClause += ' AND dataUltimaConversao >= ?';
+      convParams.push(limitDateStr);
+    }
+    if (endDateStr) {
+      convWhereClause += ' AND dataUltimaConversao <= ?';
+      convParams.push(endDateStr);
+    }
+
+    const { results: statusRes } = await runQuery(`SELECT status, COUNT(id) as count FROM leads${whereClause} GROUP BY status`, params);
+    const { results: sourceRes } = await runQuery(`SELECT origem, COUNT(id) as count FROM leads${whereClause} GROUP BY origem ORDER BY count DESC LIMIT 10`, params);
+    const { results: dateRes } = await runQuery(`SELECT SUBSTR(dataCriacao, 1, 10) as date, COUNT(id) as count FROM leads${whereClause} AND dataCriacao IS NOT NULL GROUP BY date ORDER BY date ASC LIMIT 50`, params);
+    const { results: convDateRes } = await runQuery(`SELECT SUBSTR(dataUltimaConversao, 1, 10) as date, COUNT(id) as count FROM leads${convWhereClause} GROUP BY date ORDER BY date ASC LIMIT 50`, convParams);
+    const { results: utmRes } = await runQuery(`SELECT utm_source, COUNT(id) as count FROM leads${whereClause} AND utm_source IS NOT NULL AND utm_source != '' GROUP BY utm_source ORDER BY count DESC LIMIT 10`, params);
+    const { results: stateRes } = await runQuery(`SELECT estado, COUNT(id) as count FROM leads${whereClause} AND estado IS NOT NULL AND estado != '' GROUP BY estado ORDER BY count DESC LIMIT 10`, params);
+    const { results: cityRes } = await runQuery(`SELECT cidade, COUNT(id) as count FROM leads${whereClause} AND cidade IS NOT NULL AND cidade != '' GROUP BY cidade ORDER BY count DESC LIMIT 10`, params);
     
     // Calcular faturamento aproximado com base nos tags 'valor-X'
-    const { results: leadsTags } = await runQuery(`SELECT tags FROM leads WHERE tags IS NOT NULL`);
+    const { results: leadsTags } = await runQuery(`SELECT tags FROM leads${whereClause} AND tags IS NOT NULL`, params);
     let estimatedRevenue = 0;
     if (leadsTags) {
       leadsTags.forEach((row: any) => {

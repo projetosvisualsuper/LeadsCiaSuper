@@ -39,11 +39,17 @@ export default function RelatoriosPage() {
     estimatedRevenue: 0
   });
   const [isLoadingReports, setIsLoadingReports] = useState(true);
+  const [period, setPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
     refreshData();
-    loadReports();
   }, []);
+
+  useEffect(() => {
+    loadReports();
+  }, [period, customStartDate, customEndDate]);
 
   const refreshData = async () => {
     try {
@@ -59,7 +65,7 @@ export default function RelatoriosPage() {
   const loadReports = async () => {
     setIsLoadingReports(true);
     try {
-      const data = await api.getCRMReports();
+      const data = await api.getCRMReports(period, customStartDate, customEndDate);
       if (data) {
         setReportsData(data);
       }
@@ -130,40 +136,87 @@ export default function RelatoriosPage() {
           <p style={{ opacity: 0.6, fontSize: '1rem', marginTop: '0.25rem' }}>Estatísticas completas e controle de envios em tempo real.</p>
         </div>
         
-        {/* Tab Buttons */}
-        <div style={{ display: 'flex', background: '#f1f5f9', padding: '0.35rem', borderRadius: '50px', border: '1px solid var(--border)' }}>
-          <button 
-            onClick={() => setActiveTab('crm')}
-            style={{ 
-              padding: '0.5rem 1.5rem', 
-              borderRadius: '50px', 
-              fontSize: '0.9rem', 
-              fontWeight: 600, 
-              transition: 'all 0.2s',
-              background: activeTab === 'crm' ? 'white' : 'transparent',
-              color: activeTab === 'crm' ? 'var(--primary)' : '#64748b',
-              boxShadow: activeTab === 'crm' ? '0 4px 6px -1px rgba(0,0,0,0.05)' : 'none'
-            }}
-          >
-            <BarChart3 size={16} style={{ marginRight: '0.5rem', display: 'inline', verticalAlign: 'text-bottom' }} />
-            Relatórios CRM
-          </button>
-          <button 
-            onClick={() => setActiveTab('envios')}
-            style={{ 
-              padding: '0.5rem 1.5rem', 
-              borderRadius: '50px', 
-              fontSize: '0.9rem', 
-              fontWeight: 600, 
-              transition: 'all 0.2s',
-              background: activeTab === 'envios' ? 'white' : 'transparent',
-              color: activeTab === 'envios' ? 'var(--primary)' : '#64748b',
-              boxShadow: activeTab === 'envios' ? '0 4px 6px -1px rgba(0,0,0,0.05)' : 'none'
-            }}
-          >
-            <Clock size={16} style={{ marginRight: '0.5rem', display: 'inline', verticalAlign: 'text-bottom' }} />
-            Fila de Envios
-          </button>
+        {/* Tab Buttons and Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          {activeTab === 'crm' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <select 
+                value={period} 
+                onChange={e => setPeriod(e.target.value)}
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  borderRadius: '50px', 
+                  border: '1px solid var(--border)', 
+                  background: 'white', 
+                  fontSize: '0.875rem', 
+                  fontWeight: 600, 
+                  color: '#1e293b', 
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="all">Todo o período</option>
+                <option value="today">Hoje</option>
+                <option value="7d">Últimos 7 dias</option>
+                <option value="30d">Últimos 30 dias</option>
+                <option value="month">Este Mês</option>
+                <option value="custom">Personalizado</option>
+              </select>
+              
+              {period === 'custom' && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'white', padding: '0.25rem 0.75rem', borderRadius: '50px', border: '1px solid var(--border)' }}>
+                  <input 
+                    type="date" 
+                    value={customStartDate} 
+                    onChange={e => setCustomStartDate(e.target.value)}
+                    style={{ padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', outline: 'none', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600 }}>até</span>
+                  <input 
+                    type="date" 
+                    value={customEndDate} 
+                    onChange={e => setCustomEndDate(e.target.value)}
+                    style={{ padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', outline: 'none', cursor: 'pointer' }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', background: '#f1f5f9', padding: '0.35rem', borderRadius: '50px', border: '1px solid var(--border)' }}>
+            <button 
+              onClick={() => setActiveTab('crm')}
+              style={{ 
+                padding: '0.5rem 1.5rem', 
+                borderRadius: '50px', 
+                fontSize: '0.9rem', 
+                fontWeight: 600, 
+                transition: 'all 0.2s',
+                background: activeTab === 'crm' ? 'white' : 'transparent',
+                color: activeTab === 'crm' ? 'var(--primary)' : '#64748b',
+                boxShadow: activeTab === 'crm' ? '0 4px 6px -1px rgba(0,0,0,0.05)' : 'none'
+              }}
+            >
+              <BarChart3 size={16} style={{ marginRight: '0.5rem', display: 'inline', verticalAlign: 'text-bottom' }} />
+              Relatórios CRM
+            </button>
+            <button 
+              onClick={() => setActiveTab('envios')}
+              style={{ 
+                padding: '0.5rem 1.5rem', 
+                borderRadius: '50px', 
+                fontSize: '0.9rem', 
+                fontWeight: 600, 
+                transition: 'all 0.2s',
+                background: activeTab === 'envios' ? 'white' : 'transparent',
+                color: activeTab === 'envios' ? 'var(--primary)' : '#64748b',
+                boxShadow: activeTab === 'envios' ? '0 4px 6px -1px rgba(0,0,0,0.05)' : 'none'
+              }}
+            >
+              <Clock size={16} style={{ marginRight: '0.5rem', display: 'inline', verticalAlign: 'text-bottom' }} />
+              Fila de Envios
+            </button>
+          </div>
         </div>
       </header>
 
