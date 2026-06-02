@@ -268,7 +268,7 @@ export default function ClientLayout({
             </Link>
             <Link href="/relatorios" className={`nav-link ${pathname === '/relatorios' ? 'active' : ''}`}>
               <BarChart3 size={20} />
-              {!isSidebarCollapsed && <span className="nav-text">Monitoramento</span>}
+              {!isSidebarCollapsed && <span className="nav-text">Relatórios</span>}
             </Link>
             <Link href="/integracoes" className={`nav-link ${pathname === '/integracoes' ? 'active' : ''}`}>
               <Code size={20} />

@@ -1022,10 +1022,13 @@ export const d1Api = {
       });
     }
 
-    // Contagens rápidas adicionais
+     // Contagens rápidas adicionais
     const { results: queueResults } = await runQuery(`SELECT COUNT(id) as count FROM queue WHERE status = 'pendente'`);
     const todayStr = now.toISOString().split('T')[0];
-    const { results: leadsTodayResults } = await runQuery(`SELECT COUNT(id) as count FROM leads WHERE dataCriacao >= ? AND dataCriacao <= ?`, [todayStr, todayStr + "\uf8ff"]);
+    const { results: leadsTodayResults } = await runQuery(
+      `SELECT COUNT(id) as count FROM leads WHERE (dataCriacao >= ? AND dataCriacao <= ?) OR (dataUltimaConversao >= ? AND dataUltimaConversao <= ?)`,
+      [todayStr, todayStr + "\uf8ff", todayStr, todayStr + "\uf8ff"]
+    );
     const { results: chatsPendingResults } = await runQuery(`SELECT COUNT(id) as count FROM chats WHERE unreadCount > 0`);
 
     // Obter leads e campanhas recentes
@@ -1050,6 +1053,48 @@ export const d1Api = {
       leadsByStatus,
       recentLeads,
       recentCampaigns
+    };
+  },
+
+  getCRMReports: async (): Promise<any> => {
+    const { results: statusRes } = await runQuery(`SELECT status, COUNT(id) as count FROM leads GROUP BY status`);
+    const { results: sourceRes } = await runQuery(`SELECT origem, COUNT(id) as count FROM leads GROUP BY origem ORDER BY count DESC LIMIT 10`);
+    const { results: dateRes } = await runQuery(`SELECT SUBSTR(dataCriacao, 1, 10) as date, COUNT(id) as count FROM leads WHERE dataCriacao IS NOT NULL GROUP BY date ORDER BY date ASC LIMIT 50`);
+    const { results: convDateRes } = await runQuery(`SELECT SUBSTR(dataUltimaConversao, 1, 10) as date, COUNT(id) as count FROM leads WHERE dataUltimaConversao IS NOT NULL GROUP BY date ORDER BY date ASC LIMIT 50`);
+    const { results: utmRes } = await runQuery(`SELECT utm_source, COUNT(id) as count FROM leads WHERE utm_source IS NOT NULL AND utm_source != '' GROUP BY utm_source ORDER BY count DESC LIMIT 10`);
+    const { results: stateRes } = await runQuery(`SELECT estado, COUNT(id) as count FROM leads WHERE estado IS NOT NULL AND estado != '' GROUP BY estado ORDER BY count DESC LIMIT 10`);
+    const { results: cityRes } = await runQuery(`SELECT cidade, COUNT(id) as count FROM leads WHERE cidade IS NOT NULL AND cidade != '' GROUP BY cidade ORDER BY count DESC LIMIT 10`);
+    
+    // Calcular faturamento aproximado com base nos tags 'valor-X'
+    const { results: leadsTags } = await runQuery(`SELECT tags FROM leads WHERE tags IS NOT NULL`);
+    let estimatedRevenue = 0;
+    if (leadsTags) {
+      leadsTags.forEach((row: any) => {
+        try {
+          const tags = JSON.parse(row.tags);
+          if (Array.isArray(tags)) {
+            tags.forEach((tag: string) => {
+              if (tag.startsWith('valor-')) {
+                const val = parseFloat(tag.replace('valor-', '').replace(',', '.'));
+                if (!isNaN(val)) {
+                  estimatedRevenue += val;
+                }
+              }
+            });
+          }
+        } catch (e) {}
+      });
+    }
+
+    return {
+      statusData: statusRes || [],
+      sourceData: sourceRes || [],
+      creationTimeline: dateRes || [],
+      conversionTimeline: convDateRes || [],
+      utmSourceData: utmRes || [],
+      stateData: stateRes || [],
+      cityData: cityRes || [],
+      estimatedRevenue
     };
   },
 

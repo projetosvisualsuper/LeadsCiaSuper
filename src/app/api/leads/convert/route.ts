@@ -130,8 +130,8 @@ export async function POST(request: Request) {
         origem: isCotacao ? 'Cotação (WooCommerce)' : 'Conversão Direta (Site)',
         dataCriacao: agora,
         dataUltimaAtividade: agora,
-        dataUltimaConversao: isCotacao ? null : agora,
-        totalConversoes: isCotacao ? 0 : 1,
+        dataUltimaConversao: agora,
+        totalConversoes: 1,
         consentimentoLGPD: true,
         observacoes: observacao
       } as any);
@@ -172,7 +172,7 @@ async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: s
   }
 
   const observations = (data.observacoes || '') + novaObs;
-  const totalConversoes = isCotacao ? (data.totalConversoes || 0) : (data.totalConversoes || 1) + 1;
+  const totalConversoes = (data.totalConversoes || 0) + 1;
   const now = new Date().toISOString();
 
   let finalNome = data.nome;
@@ -190,6 +190,6 @@ async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: s
 
   await d1Api.executeRun(
     `UPDATE leads SET status = ?, dataUltimaAtividade = ?, dataUltimaConversao = ?, totalConversoes = ?, tags = ?, observacoes = ?, nome = ?, celular = ? WHERE id = ?`,
-    [finalStatus, now, isCotacao ? data.dataUltimaConversao : now, totalConversoes, JSON.stringify(mergedTags), observations, finalNome, finalCelular, leadId]
+    [finalStatus, now, now, totalConversoes, JSON.stringify(mergedTags), observations, finalNome, finalCelular, leadId]
   );
 }
