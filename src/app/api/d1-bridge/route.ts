@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     
     // Executa a consulta SQL com os argumentos e retorna o resultado
     const result = await (d1Api as any)[method](...args);
-    return NextResponse.json(result);
+    return NextResponse.json(result === undefined ? { success: true } : result);
   } catch (error: any) {
     console.error(`Erro na ponte D1 (Bridge) para o método [${req.method}]:`, error);
     return NextResponse.json({ 
