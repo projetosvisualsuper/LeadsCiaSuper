@@ -1,8 +1,7 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { d1Api } from '@/services/d1';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -13,13 +12,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return new NextResponse('Bad request', { status: 400 });
     }
 
-    const snap = await getDoc(doc(db, 'campaigns', id));
+    const { results } = await d1Api.runQuery(`SELECT bannerImg FROM campaigns WHERE id = ? LIMIT 1`, [id]);
     
-    if (!snap.exists()) {
+    if (!results || results.length === 0) {
       return new NextResponse('Not found', { status: 404 });
     }
 
-    const campaign = snap.data();
+    const campaign = results[0];
     const base64 = campaign?.bannerImg;
 
     if (!base64 || !base64.startsWith('data:image')) {
@@ -36,11 +35,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': matches[1],
-        'Cache-Control': 'public, max-age=86400' // Cache for 24 hours
+        'Cache-Control': 'public, max-age=86400'
       }
     });
   } catch (error) {
-    console.error('Error fetching banner image:', error);
+    console.error('Error fetching banner image from D1:', error);
     return new NextResponse('Internal Error', { status: 500 });
   }
 }

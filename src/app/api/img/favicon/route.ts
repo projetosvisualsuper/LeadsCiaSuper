@@ -1,20 +1,19 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { d1Api } from '@/services/d1';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const snap = await getDoc(doc(db, 'settings', 'visual'));
+    const { results } = await d1Api.runQuery(`SELECT valueJson FROM settings WHERE key = 'visual' LIMIT 1`);
     
-    if (!snap.exists()) {
+    if (!results || results.length === 0) {
       return new NextResponse('Not found', { status: 404 });
     }
 
-    const settings = snap.data();
+    const settings = JSON.parse(results[0].valueJson);
     const base64 = settings?.faviconUrl;
 
     if (!base64 || !base64.startsWith('data:image')) {
@@ -35,7 +34,7 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error('Error fetching favicon image:', error);
+    console.error('Error fetching favicon image from D1:', error);
     return new NextResponse('Internal Error', { status: 500 });
   }
 }
