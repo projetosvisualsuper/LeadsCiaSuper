@@ -94,6 +94,15 @@ export default function Dashboard() {
     system: 0
   });
 
+  // Estado para métricas de tempo de resposta
+  const [responseTimeStats, setResponseTimeStats] = useState({
+    avgResponseMs: 0,         // Média em milissegundos
+    chatsWithResponse: 0,     // Nº de chats com pelo menos 1 resposta
+    chatsWithoutResponse: 0,  // Nº de chats sem nenhuma resposta
+    oldestWaitingMs: 0,       // Tempo do lead mais antigo sem resposta
+    oldestWaitingName: ''     // Nome do lead mais antigo sem resposta
+  });
+
   // Carregar e monitorar Chats, LPs e Leads de LPs quando o Painel estiver aberto
   useEffect(() => {
     if (!isChannelsModalOpen) return;
@@ -137,6 +146,55 @@ export default function Dashboard() {
           whatsapp: counts[4].results?.[0]?.count || 0,
           whatsapp_widget: counts[5].results?.[0]?.count || 0,
           system: counts[6].results?.[0]?.count || 0
+        });
+
+        // --- Calcular Tempo de Resposta ---
+        // Busca a primeira mensagem de saída (isIncoming=0) por chat
+        const { results: responseData } = await api.runQuery(
+          `SELECT m.chatId, MIN(m.timestamp) as firstResponseAt, c.dataCriacao as chatCreatedAt, c.leadName
+           FROM messages m
+           JOIN chats c ON c.id = m.chatId
+           WHERE m.isIncoming = 0
+           GROUP BY m.chatId`
+        );
+
+        // Chats sem nenhuma mensagem de saída (aguardando atendimento)
+        const { results: noResponseData } = await api.runQuery(
+          `SELECT c.id, c.leadName, c.dataCriacao
+           FROM chats c
+           WHERE c.status = 'active'
+           AND c.id NOT IN (
+             SELECT DISTINCT chatId FROM messages WHERE isIncoming = 0
+           )
+           ORDER BY c.dataCriacao ASC`
+        );
+
+        const now = Date.now();
+        let totalResponseMs = 0;
+        let validResponses = 0;
+
+        (responseData || []).forEach((row: any) => {
+          const createdAt = new Date(row.chatCreatedAt).getTime();
+          const respondedAt = new Date(row.firstResponseAt).getTime();
+          if (!isNaN(createdAt) && !isNaN(respondedAt) && respondedAt >= createdAt) {
+            totalResponseMs += respondedAt - createdAt;
+            validResponses++;
+          }
+        });
+
+        const avgMs = validResponses > 0 ? Math.round(totalResponseMs / validResponses) : 0;
+        
+        const oldestWaiting = noResponseData?.[0];
+        const oldestWaitingMs = oldestWaiting
+          ? now - new Date(oldestWaiting.dataCriacao).getTime()
+          : 0;
+
+        setResponseTimeStats({
+          avgResponseMs: avgMs,
+          chatsWithResponse: validResponses,
+          chatsWithoutResponse: noResponseData?.length || 0,
+          oldestWaitingMs: Math.max(0, oldestWaitingMs),
+          oldestWaitingName: oldestWaiting?.leadName || ''
         });
       } catch (err: any) {
         console.error("Erro ao buscar dados de landing pages:", err);
@@ -308,6 +366,35 @@ export default function Dashboard() {
       case 'perdido': return 'var(--danger)';
       default: return '#cbd5e1';
     }
+  };
+
+  // Formata duração em milissegundos para string legível
+  const formatDuration = (ms: number): string => {
+    if (ms <= 0) return '–';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) {
+      const remH = hours % 24;
+      return remH > 0 ? `${days}d ${remH}h` : `${days}d`;
+    }
+    if (hours > 0) {
+      const remM = minutes % 60;
+      return remM > 0 ? `${hours}h ${remM}min` : `${hours}h`;
+    }
+    if (minutes > 0) return `${minutes}min`;
+    return `${totalSeconds}s`;
+  };
+
+  // Cor de urgência baseada no tempo de espera
+  const getUrgencyColor = (ms: number): string => {
+    const hours = ms / (1000 * 60 * 60);
+    if (hours < 1) return '#10b981';   // verde: menos de 1h
+    if (hours < 4) return '#f59e0b';   // amarelo: 1–4h
+    if (hours < 24) return '#ef4444';  // vermelho: 4–24h
+    return '#dc2626';                   // vermelho escuro: mais de 24h
   };
 
   const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -889,6 +976,67 @@ export default function Dashboard() {
                       <p style={{ fontSize: '2.25rem', fontWeight: 800, color: '#ef4444', lineHeight: '1' }}>{unreadCount}</p>
                     </div>
 
+                    {/* Tempo Médio de Resposta */}
+                    <div style={{
+                      background: responseTimeStats.avgResponseMs === 0 ? '#111827' : 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(16,185,129,0.04) 100%)',
+                      borderRadius: '16px',
+                      border: `1px solid ${responseTimeStats.avgResponseMs === 0 ? '#1f2937' : 'rgba(16,185,129,0.3)'}`,
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                        <span style={{ fontSize: '0.9rem' }}>⚡</span>
+                        <h5 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', letterSpacing: '0.05em' }}>Tempo Médio de Resposta</h5>
+                      </div>
+                      <p style={{ fontSize: '1.75rem', fontWeight: 800, color: responseTimeStats.avgResponseMs === 0 ? '#6b7280' : '#10b981', lineHeight: '1.1' }}>
+                        {formatDuration(responseTimeStats.avgResponseMs)}
+                      </p>
+                      <p style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: '0.4rem' }}>
+                        {responseTimeStats.chatsWithResponse > 0
+                          ? `Baseado em ${responseTimeStats.chatsWithResponse} conversa${responseTimeStats.chatsWithResponse !== 1 ? 's' : ''}`
+                          : 'Sem dados ainda'}
+                      </p>
+                    </div>
+
+                    {/* Aguardando Atendimento */}
+                    <div style={{
+                      background: responseTimeStats.chatsWithoutResponse === 0 ? '#111827' : 'linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(239,68,68,0.04) 100%)',
+                      borderRadius: '16px',
+                      border: `1px solid ${responseTimeStats.chatsWithoutResponse === 0 ? '#1f2937' : 'rgba(239,68,68,0.35)'}`,
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      cursor: responseTimeStats.chatsWithoutResponse > 0 ? 'pointer' : 'default'
+                    }}
+                    onClick={() => responseTimeStats.chatsWithoutResponse > 0 && router.push('/atendimento')}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                        <span style={{ fontSize: '0.9rem' }}>🕐</span>
+                        <h5 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: responseTimeStats.chatsWithoutResponse > 0 ? '#ef4444' : '#9ca3af', letterSpacing: '0.05em' }}>Aguardando 1º Contato</h5>
+                      </div>
+                      <p style={{ fontSize: '1.75rem', fontWeight: 800, color: responseTimeStats.chatsWithoutResponse === 0 ? '#10b981' : '#ef4444', lineHeight: '1.1' }}>
+                        {responseTimeStats.chatsWithoutResponse === 0 ? '✓ Ok' : responseTimeStats.chatsWithoutResponse}
+                      </p>
+                      {responseTimeStats.chatsWithoutResponse > 0 && responseTimeStats.oldestWaitingName && (
+                        <div style={{ marginTop: '0.4rem' }}>
+                          <p style={{ fontSize: '0.6875rem', color: '#9ca3af' }}>
+                            Mais antigo: <span style={{ color: getUrgencyColor(responseTimeStats.oldestWaitingMs), fontWeight: 700 }}>{responseTimeStats.oldestWaitingName}</span>
+                          </p>
+                          <p style={{ fontSize: '0.6875rem', color: getUrgencyColor(responseTimeStats.oldestWaitingMs), fontWeight: 600 }}>
+                            Aguardando há {formatDuration(responseTimeStats.oldestWaitingMs)}
+                          </p>
+                        </div>
+                      )}
+                      {responseTimeStats.chatsWithoutResponse === 0 && (
+                        <p style={{ fontSize: '0.6875rem', color: '#10b981', marginTop: '0.4rem' }}>Todos atendidos!</p>
+                      )}
+                    </div>
+
                     <div style={{ background: '#111827', borderRadius: '16px', border: '1px solid #1f2937', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <h5 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', marginBottom: '0.25rem' }}>Leads Filtrados de LPs</h5>
                       <p style={{ fontSize: '2.25rem', fontWeight: 800, color: '#10b981', lineHeight: '1' }}>{filteredLpLeads.length}</p>
@@ -993,10 +1141,15 @@ export default function Dashboard() {
                             <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Página de Origem</th>
                             <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Status</th>
                             <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Data Cadastro</th>
+                            <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Aguardando há</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredLpLeads.map((lead) => (
+                          {filteredLpLeads.map((lead) => {
+                            const waitMs = Date.now() - new Date(lead.dataCriacao).getTime();
+                            const urgencyColor = lead.status === 'novo' ? getUrgencyColor(waitMs) : '#6b7280';
+                            const waitLabel = lead.status === 'novo' ? formatDuration(waitMs) : '–';
+                            return (
                             <tr key={lead.id} style={{ borderBottom: '1px solid #1f2937', fontSize: '0.875rem' }} onMouseOver={e => e.currentTarget.style.background = '#1f2937'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
                               <td style={{ padding: '1rem', fontWeight: 600, color: '#f3f4f6' }}>{lead.nome}</td>
                               <td style={{ padding: '1rem', color: '#9ca3af' }}>{lead.email}</td>
@@ -1014,8 +1167,27 @@ export default function Dashboard() {
                               <td style={{ padding: '1rem', color: '#9ca3af' }}>
                                 {new Date(lead.dataCriacao).toLocaleDateString('pt-BR')} {new Date(lead.dataCriacao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                               </td>
+                              <td style={{ padding: '1rem' }}>
+                                {lead.status === 'novo' ? (
+                                  <span style={{
+                                    background: `${urgencyColor}20`,
+                                    color: urgencyColor,
+                                    padding: '0.2rem 0.6rem',
+                                    borderRadius: '20px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    whiteSpace: 'nowrap',
+                                    border: `1px solid ${urgencyColor}40`
+                                  }}>
+                                    ⏱ {waitLabel}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#4b5563', fontSize: '0.8rem' }}>–</span>
+                                )}
+                              </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     )}

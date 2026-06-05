@@ -46,3 +46,9 @@ next-env.d.ts
 /redis_data
 /scratch
 /.gemini
+
+# wrangler local state (contains local D1 SQLite with credentials)
+.wrangler/
+
+# temp query files
+scripts/temp-query-*.sql
