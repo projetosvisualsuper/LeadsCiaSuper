@@ -29,7 +29,7 @@ export default function TermsOfService() {
             Termos de Serviço
           </h1>
           <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.9375rem' }}>
-            Aplicativo: <strong style={{ color: '#3b82f6' }}>Leads Cia Super</strong> (acessível em <a href="https://mkt.ciasuper.com.br" style={{ color: '#3b82f6', textDecoration: 'none' }}>mkt.ciasuper.com.br</a>)
+            Aplicativo: <strong style={{ color: '#3b82f6' }}>Leads Cia Super</strong> (acessível em <a href="https://leads.ciasuper.com.br" style={{ color: '#3b82f6', textDecoration: 'none' }}>leads.ciasuper.com.br</a>)
           </p>
           <p style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
             Última atualização: {new Date().toLocaleDateString('pt-BR')}
@@ -39,7 +39,7 @@ export default function TermsOfService() {
         <section style={{ marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: '#ffffff' }}>1. Aceitação dos Termos</h2>
           <p style={{ marginBottom: '1rem' }}>
-            Ao acessar, cadastrar-se ou utilizar o aplicativo <strong>Leads Cia Super</strong> (disponibilizado através da URL <strong>mkt.ciasuper.com.br</strong>, doravante denominado simplesmente "Leads Cia Super"), você declara estar ciente, compreender e concordar integralmente em cumprir estes Termos de Serviço. Se você não concordar com algum dos termos descritos neste documento, você não deve prosseguir com a utilização ou a integração de serviços externos.
+            Ao acessar, cadastrar-se ou utilizar o aplicativo <strong>Leads Cia Super</strong> (disponibilizado através da URL <strong>leads.ciasuper.com.br</strong>, doravante denominado simplesmente "Leads Cia Super"), você declara estar ciente, compreender e concordar integralmente em cumprir estes Termos de Serviço. Se você não concordar com algum dos termos descritos neste documento, você não deve prosseguir com a utilização ou a integração de serviços externos.
           </p>
         </section>
 
@@ -65,7 +65,7 @@ export default function TermsOfService() {
         <section style={{ marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: '#ffffff' }}>4. Regras de Conduta e Uso Responsável</h2>
           <p style={{ marginBottom: '1rem' }}>
-            Como usuário cadastrado no <strong>Leads Cia Super</strong> através do domínio <strong>mkt.ciasuper.com.br</strong>, você assume o compromisso de:
+            Como usuário cadastrado no <strong>Leads Cia Super</strong> através do domínio <strong>leads.ciasuper.com.br</strong>, você assume o compromisso de:
           </p>
           <ul style={{ listStyleType: 'disc', paddingLeft: '1.75rem', marginBottom: '1rem', display: 'grid', gap: '0.5rem' }}>
             <li>Não utilizar a automação do sistema para enviar Spam, mensagens não solicitadas ou abusivas.</li>
@@ -84,13 +84,13 @@ export default function TermsOfService() {
         <section style={{ marginBottom: '2.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: '#ffffff' }}>6. Lei Aplicável e Foro</h2>
           <p style={{ marginBottom: '1rem' }}>
-            Estes Termos de Serviço são regidos pela legislação da República Federativa do Brasil. Fica eleito o foro da comarca da sede da empresa administradora do site <strong>mkt.ciasuper.com.br</strong> para dirimir quaisquer dúvidas ou litígios decorrentes do uso da plataforma.
+            Estes Termos de Serviço são regidos pela legislação da República Federativa do Brasil. Fica eleito o foro da comarca da sede da empresa administradora do site <strong>leads.ciasuper.com.br</strong> para dirimir quaisquer dúvidas ou litígios decorrentes do uso da plataforma.
           </p>
         </section>
 
         <section style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '2rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.875rem', opacity: 0.7 }}>
           <span>© {new Date().getFullYear()} Leads Cia Super. Todos os direitos reservados.</span>
-          <span>Suporte: mkt.ciasuper.com.br</span>
+          <span>Suporte: leads.ciasuper.com.br</span>
         </section>
       </div>
     </div>

@@ -13,7 +13,7 @@ export default function PrivacyPolicy() {
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a' }}>1. Introdução</h2>
         <p style={{ marginBottom: '1rem' }}>
-          O aplicativo <strong>Leads Cia Super</strong> (acessível através do site mkt.ciasuper.com.br, doravante denominado "nós", "nosso" ou "Leads Cia Super") respeita a sua privacidade e está comprometido em proteger as suas informações pessoais. 
+          O aplicativo <strong>Leads Cia Super</strong> (acessível através do site leads.ciasuper.com.br, doravante denominado "nós", "nosso" ou "Leads Cia Super") respeita a sua privacidade e está comprometido em proteger as suas informações pessoais. 
           Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e compartilhamos os seus dados quando você utiliza nossa plataforma 
           e nossas integrações, incluindo a integração com plataformas de terceiros, redes sociais e aplicativos de mensagens parceiros.
         </p>
