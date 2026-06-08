@@ -473,7 +473,7 @@ export default function Dashboard() {
       </header>
 
       {/* STATS CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1.25rem', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
         <StatCard 
           icon={<MessageSquare size={24} />} 
           title="Conversas Pendentes" 
