@@ -81,10 +81,14 @@ export default function RelatoriosPage() {
     setIsProcessing(true);
     setLog(['Iniciando processamento...']);
     
-    await api.processQueue((msg) => {
-      setLog(prev => [msg, ...prev.slice(0, 9)]);
+    try {
+      const { processQueueServerAction } = await import('@/app/actions/queue');
+      const result = await processQueueServerAction();
+      setLog(prev => [result.message, ...prev.slice(0, 9)]);
       refreshData();
-    });
+    } catch (e: any) {
+      setLog(prev => [`Erro: ${e.message}`, ...prev.slice(0, 9)]);
+    }
     
     setIsProcessing(false);
   };

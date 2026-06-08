@@ -418,6 +418,39 @@ export const d1Api = {
     return newItems;
   },
 
+  updateQueueItem: async (id: string, data: Partial<FilaEnvio>): Promise<void> => {
+    const fields: string[] = [];
+    const params: any[] = [];
+    
+    if (data.status !== undefined) { fields.push('status = ?'); params.push(data.status); }
+    if (data.tentativa !== undefined) { fields.push('tentativa = ?'); params.push(data.tentativa); }
+    if (data.erroMensagem !== undefined) { fields.push('erroMensagem = ?'); params.push(data.erroMensagem); }
+    // dataEnvio não existe diretamente na FilaEnvio D1 schema, mas podemos ignorar ou atualizar na tabela se existir,
+    // na schema.sql só existe dataAgendada. Podemos deixar assim.
+    
+    if (fields.length === 0) return;
+    
+    const sql = `UPDATE queue SET ${fields.join(', ')} WHERE id = ?`;
+    params.push(id);
+    await executeRun(sql, params);
+  },
+
+  updateCampaignStats: async (id: string, updates: Partial<Campaign>): Promise<void> => {
+    const fields: string[] = [];
+    const params: any[] = [];
+    
+    if (updates.totalEnviados !== undefined) { fields.push('totalEnviados = ?'); params.push(updates.totalEnviados); }
+    if (updates.totalPendentes !== undefined) { fields.push('totalPendentes = ?'); params.push(updates.totalPendentes); }
+    if (updates.totalErro !== undefined) { fields.push('totalErro = ?'); params.push(updates.totalErro); }
+    if (updates.status !== undefined) { fields.push('status = ?'); params.push(updates.status); }
+    
+    if (fields.length === 0) return;
+    
+    const sql = `UPDATE campaigns SET ${fields.join(', ')} WHERE id = ?`;
+    params.push(id);
+    await executeRun(sql, params);
+  },
+
   // Settings
   getSettings: async (): Promise<Settings> => {
     try {

@@ -408,12 +408,25 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
 
   const handleProcessQueue = async () => {
     setIsProcessingQueue(true);
+    setProcessMessage('Iniciando processamento...');
     try {
-      await api.processQueue((msg) => setProcessMessage(msg));
+      // Usar a server action diretamente no lugar do api.processQueue (que enviaria callback incompatível via proxy)
+      const { processQueueServerAction } = await import('@/app/actions/queue');
+      const result = await processQueueServerAction();
+      setProcessMessage(result.message);
+      
+      // Atualizar a lista de campanhas para refletir envios
       setCampaigns(await api.getCampaigns());
-    } catch (error) {
-      alert('Erro ao processar fila');
-    } finally {
+      
+      // Esconder a mensagem após alguns segundos se foi sucesso
+      if (result.success) {
+        setTimeout(() => {
+          setIsProcessingQueue(false);
+          setProcessMessage('');
+        }, 5000);
+      }
+    } catch (error: any) {
+      alert('Erro ao processar fila: ' + error.message);
       setIsProcessingQueue(false);
       setProcessMessage('');
     }
