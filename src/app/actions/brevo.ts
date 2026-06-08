@@ -15,8 +15,7 @@ export async function testBrevoConnectionAction(apiKey: string) {
       headers: {
         'accept': 'application/json',
         'api-key': apiKey
-      },
-      cache: 'no-store'
+      }
     });
 
     const data = await response.json();
@@ -50,8 +49,7 @@ export async function sendEmailBrevoAction(params: {
         'api-key': apiKey,
         'content-type': 'application/json'
       },
-      body: JSON.stringify({ sender, to, subject, htmlContent }),
-      cache: 'no-store'
+      body: JSON.stringify({ sender, to, subject, htmlContent })
     });
 
     const data = await response.json();
@@ -75,8 +73,7 @@ export async function getBrevoCreditsAction(apiKey: string) {
       headers: {
         'accept': 'application/json',
         'api-key': apiKey
-      },
-      cache: 'no-store'
+      }
     });
 
     if (!response.ok) return 0;
