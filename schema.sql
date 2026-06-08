@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS queue (
   email TEXT,
   telefone TEXT,
   channel TEXT NOT NULL,
+  whatsappConnectionId TEXT,
   status TEXT NOT NULL,
   tentativa INTEGER DEFAULT 0,
   dataAgendada TEXT NOT NULL,
