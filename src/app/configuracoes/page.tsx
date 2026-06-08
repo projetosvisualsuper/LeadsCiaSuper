@@ -65,6 +65,8 @@ export default function ConfigPage() {
   const [saved, setSaved] = useState(false);
   const [showBrevoKey, setShowBrevoKey] = useState(false);
   const [showEvolutionKey, setShowEvolutionKey] = useState(false);
+  const [testingBrevo, setTestingBrevo] = useState(false);
+  const [testBrevoMessage, setTestBrevoMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   // States para Alteração de Senha
   const [passwordForm, setPasswordForm] = useState({
@@ -265,19 +267,44 @@ export default function ConfigPage() {
               </div>
               <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button 
+                  type="button"
                   className="btn btn-outline" 
-                  style={{ fontSize: '0.75rem', height: '32px', borderColor: 'var(--primary)', color: 'var(--primary)' }}
-                  onClick={async () => {
-                    const result = await testBrevoConnectionAction(settings.brevoApiKey || '');
-                    alert(result.message);
+                  style={{ fontSize: '0.75rem', height: '32px', borderColor: 'var(--primary)', color: 'var(--primary)', opacity: testingBrevo ? 0.5 : 1 }}
+                  disabled={testingBrevo}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    setTestingBrevo(true);
+                    setTestBrevoMessage(null);
+                    try {
+                      const apiKey = (settings.brevoApiKey || '').trim();
+                      const result = await testBrevoConnectionAction(apiKey);
+                      setTestBrevoMessage({ text: result.message, type: result.success ? 'success' : 'error' });
+                    } catch (error: any) {
+                      setTestBrevoMessage({ text: 'Erro ao conectar. Verifique o console.', type: 'error' });
+                    } finally {
+                      setTestingBrevo(false);
+                    }
                   }}
                 >
-                  Testar Conexão
+                  {testingBrevo ? 'Testando...' : 'Testar Conexão'}
                 </button>
                 <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
                   Teste sua chave antes de salvar as alterações.
                 </p>
               </div>
+              {testBrevoMessage && (
+                <div style={{ 
+                  marginTop: '0.75rem',
+                  padding: '0.5rem 0.75rem', 
+                  borderRadius: '6px', 
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  background: testBrevoMessage.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  color: testBrevoMessage.type === 'success' ? '#047857' : '#b91c1c'
+                }}>
+                  {testBrevoMessage.text}
+                </div>
+              )}
             </div>
             
             <div>
