@@ -87,13 +87,51 @@ export async function POST(req: NextRequest) {
     if (body.object === 'instagram' || body.object === 'page') {
       const entry = body.entry?.[0];
       const messaging = entry?.messaging?.[0];
+      const changes = entry?.changes?.[0];
+
+      let leadId = '';
+      let messageText = '';
+      let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
+      let isEcho = false;
+      let tempLeadName = '';
 
       if (messaging && messaging.message) {
-        const isEcho = messaging.message.is_echo;
+        isEcho = messaging.message.is_echo;
         // Se for eco (mensagem enviada por nós), o ID do lead está no recipient
         // Se não for eco (mensagem enviada pelo lead), o ID do lead está no sender
-        const leadId = isEcho ? messaging.recipient.id : messaging.sender.id;
-        const messageText = messaging.message.text || '';
+        leadId = isEcho ? messaging.recipient.id : messaging.sender.id;
+        messageText = messaging.message.text || '';
+        
+        // Lidar com anexos no Direct
+        const attachments = messaging.message.attachments;
+        if (attachments && attachments.length > 0) {
+          const attachment = attachments[0];
+          if (attachment.type === 'image') {
+            messageType = 'image';
+            messageText = attachment.payload?.url || messageText;
+          } else if (attachment.type === 'video') {
+            messageType = 'video';
+            messageText = attachment.payload?.url || messageText;
+          } else if (attachment.type === 'audio' || attachment.type === 'file') {
+            messageType = 'file';
+            messageText = attachment.payload?.url || messageText;
+          }
+        }
+      } else if (changes && changes.field === 'comments') {
+        const commentValue = changes.value;
+        if (commentValue && commentValue.from && commentValue.text) {
+          leadId = commentValue.from.id;
+          tempLeadName = commentValue.from.username || commentValue.from.name || '';
+          messageText = `[Comentário na Postagem]: ${commentValue.text}`;
+          messageType = 'text';
+          // Ignorar se formos nós mesmos comentando (verificação básica)
+          if (commentValue.from.id === entry.id) {
+            isEcho = true;
+          }
+        }
+      }
+
+      if (leadId && messageText) {
         const channel = body.object === 'instagram' ? 'instagram' : 'facebook';
 
         // 1. Identificador Único e Determinístico (Garante que nunca haverá duplicados)
@@ -101,7 +139,7 @@ export async function POST(req: NextRequest) {
         const chatRef = doc(db, 'atendimentos_v3', chatId);
         let chatSnap = await getDoc(chatRef);
 
-        let leadName = 'Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook');
+        let leadName = tempLeadName || ('Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook'));
         let leadAvatar = null;
 
         // Tentar buscar o nome e foto real do usuário no Meta
@@ -187,7 +225,7 @@ export async function POST(req: NextRequest) {
             senderName: leadName,
             content: messageText,
             timestamp: new Date().toISOString(),
-            type: 'text',
+            type: messageType,
             status: 'delivered',
             isIncoming: true
           };
