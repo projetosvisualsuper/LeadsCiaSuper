@@ -26,8 +26,8 @@ export async function testBrevoConnectionAction(apiKey: string) {
     }
 
     return { success: true, message: 'Conectado com sucesso!', account: data };
-  } catch (error) {
-    return { success: false, message: 'Erro ao conectar com o servidor do Brevo.' };
+  } catch (error: any) {
+    return { success: false, message: `Erro ao conectar com o servidor do Brevo: ${error.message || String(error)}` };
   }
 }
 
@@ -61,8 +61,8 @@ export async function sendEmailBrevoAction(params: {
     }
 
     return { success: true, message: 'Enviado com sucesso!', data };
-  } catch (error) {
-    return { success: false, message: 'Falha crítica no servidor de disparo.' };
+  } catch (error: any) {
+    return { success: false, message: `Falha crítica no servidor de disparo: ${error.message || String(error)}` };
   }
 }
 
