@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
 import { Lead, Campaign, FilaEnvio, ChatSession, LandingPageInstance } from '@/types/crm';
 import { useRouter } from 'next/navigation';
-import { getBrevoCreditsAction } from '@/app/actions/brevo';
 import { 
   Users, 
   Mail, 
@@ -261,7 +260,13 @@ export default function Dashboard() {
 
     try {
       const settings = await api.getSettings();
-      realCredits = await getBrevoCreditsAction(settings.brevoApiKey || '');
+      // Usando a rota Edge em vez da Server Action diretamente para evitar problemas de proxy
+      const brevoRes = await fetch('/api/brevo/credits');
+      if (brevoRes.ok) {
+        const data = await brevoRes.json();
+        realCredits = data.credits || 0;
+        console.log("Brevo Credits Debug:", data.debug, data.raw);
+      }
     } catch (err) {
       console.error("Erro ao buscar créditos brevo:", err);
     }
