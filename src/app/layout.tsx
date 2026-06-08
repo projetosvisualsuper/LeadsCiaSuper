@@ -22,7 +22,12 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       images: ["/api/img/og-logo"],
-    }
+    },
+    verification: {
+      other: {
+        "tiktok-developers-site-verification": "Vt4DhpjROhXI6c1j14YZqyeyvJgnwgOA",
+      },
+    },
   };
 }
 
