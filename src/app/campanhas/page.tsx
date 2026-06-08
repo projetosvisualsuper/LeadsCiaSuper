@@ -410,9 +410,8 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     setIsProcessingQueue(true);
     setProcessMessage('Iniciando processamento...');
     try {
-      // Usar a server action diretamente no lugar do api.processQueue (que enviaria callback incompatível via proxy)
-      const { processQueueServerAction } = await import('@/app/actions/queue');
-      const result = await processQueueServerAction();
+      const response = await fetch('/api/queue/process', { method: 'POST' });
+      const result = await response.json();
       setProcessMessage(result.message);
       
       // Atualizar a lista de campanhas para refletir envios
@@ -420,6 +419,11 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
       
       // Esconder a mensagem após alguns segundos se foi sucesso
       if (result.success) {
+        setTimeout(() => {
+          setIsProcessingQueue(false);
+          setProcessMessage('');
+        }, 5000);
+      } else {
         setTimeout(() => {
           setIsProcessingQueue(false);
           setProcessMessage('');

@@ -82,8 +82,8 @@ export default function RelatoriosPage() {
     setLog(['Iniciando processamento...']);
     
     try {
-      const { processQueueServerAction } = await import('@/app/actions/queue');
-      const result = await processQueueServerAction();
+      const response = await fetch('/api/queue/process', { method: 'POST' });
+      const result = await response.json();
       setLog(prev => [result.message, ...prev.slice(0, 9)]);
       refreshData();
     } catch (e: any) {
