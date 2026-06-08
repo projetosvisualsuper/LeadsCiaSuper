@@ -80,9 +80,9 @@ export async function getBrevoCreditsAction(apiKey: string) {
 
     const data = await response.json();
     
-    // 1. Tenta encontrar créditos diários (Plano Gratuito)
-    const dailyPlan = data.plan?.find((p: any) => p.creditsType === 'daily');
-    if (dailyPlan) return dailyPlan.credits;
+    // 1. Tenta encontrar créditos de envio (Plano Gratuito ou SendLimit)
+    const sendLimitPlan = data.plan?.find((p: any) => p.creditsType === 'sendLimit');
+    if (sendLimitPlan) return sendLimitPlan.credits;
 
     // 2. Tenta encontrar créditos de assinatura (Planos Pagos)
     const subscriptionPlan = data.plan?.find((p: any) => p.type === 'subscription');
