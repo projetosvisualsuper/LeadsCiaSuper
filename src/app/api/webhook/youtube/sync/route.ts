@@ -41,11 +41,16 @@ export async function GET(req: NextRequest) {
       const chatId = `youtube_${commentId}`;
       const chatRef = doc(db, 'atendimentos_v3', chatId);
       
-      // Verificar se essa mensagem já foi salva (para evitar duplicidade no poll)
+      // Usar um ID determinístico para a mensagem
+      const messageDocId = `yt_msg_${commentId}`;
+      const messageRef = doc(db, 'messages', messageDocId);
+      const messageSnap = await getDoc(messageRef);
+      
+      // Verificar também se já não existe com ID antigo (salvo via addDoc anteriormente)
       const msgQuery = query(collection(db, 'messages'), where('id', '==', commentId));
       const msgSnap = await getDocs(msgQuery);
       
-      if (msgSnap.empty) {
+      if (!messageSnap.exists() && msgSnap.empty) {
         newMessagesCount++;
 
         // Garantir Lead
@@ -94,8 +99,8 @@ export async function GET(req: NextRequest) {
           });
         }
 
-        // Salvar Mensagem
-        await addDoc(collection(db, 'messages'), {
+        // Salvar Mensagem com ID determinístico para evitar duplicatas
+        await setDoc(messageRef, {
           id: commentId,
           chatId: chatId,
           senderId: authorId,
