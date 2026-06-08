@@ -1,5 +1,8 @@
 'use client';
 
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import { Settings, Lead } from '@/types/crm';
