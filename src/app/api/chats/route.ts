@@ -65,6 +65,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result);
     }
 
+    if (body.action === 'sendOmnichannel') {
+      const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
+      const result = await sendOmnichannelMessageAction(
+        body.recipient,
+        body.channel,
+        body.message,
+        body.connectionId
+      );
+      return NextResponse.json(result);
+    }
+
     const result = await d1Api.sendMessage(body);
     return NextResponse.json({ success: true, message: result });
   } catch (error: any) {

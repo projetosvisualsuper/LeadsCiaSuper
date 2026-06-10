@@ -17,7 +17,6 @@ import {
   MoreVertical,
   Pencil
 } from 'lucide-react';
-import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 
 export default function ConexoesPage() {
   const [connections, setConnections] = useState<WhatsappConnection[]>([]);

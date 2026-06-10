@@ -38,7 +38,6 @@ const renderSocialIcon = (platform: string, size: number = 24, color?: string) =
   );
 };
 import { ChatSession, ChatMessage, Lead } from '@/types/crm';
-import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 
 const META_TEMPLATES = [
   "Olá! Aqui é da equipe de atendimento. Recebemos seu contato, como podemos ajudar hoje?",
@@ -218,16 +217,22 @@ function AtendimentoContent() {
           recipient = chat.lastPlatformMessageId;
         }
 
-        const result = await sendOmnichannelMessageAction(
-          recipient, 
-          chat.channel,
-          messageToSend,
-          chat.connectionId
-        );
+        const response = await fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'sendOmnichannel',
+            recipient,
+            channel: chat.channel,
+            message: messageToSend,
+            connectionId: chat.connectionId
+          })
+        });
+        const result = await response.json();
 
         if (!result.success) {
           console.error(`Erro ao enviar para ${chat.channel}:`, result.error);
-        } else if ((result as any).mock) {
+        } else if (result.mock) {
           console.log('Mensagem processada em modo simulação.');
         }
       }
@@ -283,12 +288,17 @@ function AtendimentoContent() {
           ? (selectedLead.celular || selectedLead.telefone || '').replace(/\D/g, '') 
           : chat.leadId;
 
-        await sendOmnichannelMessageAction(
-          recipient,
-          chat.channel,
-          `Arquivo enviado: ${url}`,
-          chat.connectionId
-        );
+        await fetch('/api/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'sendOmnichannel',
+            recipient,
+            channel: chat.channel,
+            message: `Arquivo enviado: ${url}`,
+            connectionId: chat.connectionId
+          })
+        });
       }
     } catch (error: any) {
       console.error('Erro no upload:', error);
