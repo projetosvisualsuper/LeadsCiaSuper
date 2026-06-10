@@ -70,9 +70,15 @@ export async function sendOmnichannelMessageAction(
           return { success: false, error: 'Credenciais da API Oficial ausentes nesta conexão.' };
         }
 
+        // Garante que o número tem o DDI 55 do Brasil se o usuário digitar apenas DDD + Número
+        let cleanNumber = recipientIdOrPhone.replace(/\D/g, '');
+        if (cleanNumber.length === 10 || cleanNumber.length === 11) {
+          cleanNumber = '55' + cleanNumber;
+        }
+
         let body: any = {
           messaging_product: "whatsapp",
-          to: recipientIdOrPhone
+          to: cleanNumber
         };
 
         if (templateData) {
