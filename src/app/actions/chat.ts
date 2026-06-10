@@ -311,7 +311,7 @@ export async function sendOmnichannelMessageAction(
     return { success: false, error: 'Canal desconhecido.' };
 
   } catch (error: any) {
-    console.error(`Erro ao enviar mensagem via omnichannel:`, error);
-    return { success: false, error: 'Erro interno do servidor ao enviar a mensagem.' };
+    console.log(`Erro ao enviar mensagem via omnichannel:`, error?.message || 'Erro desconhecido');
+    return { success: false, error: error?.message || 'Erro interno do servidor ao enviar a mensagem.' };
   }
 }
