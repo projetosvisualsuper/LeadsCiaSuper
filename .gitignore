@@ -52,3 +52,5 @@ next-env.d.ts
 
 # temp query files
 scripts/temp-query-*.sql
+
+.wrangler

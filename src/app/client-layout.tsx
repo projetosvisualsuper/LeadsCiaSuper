@@ -27,14 +27,15 @@ import {
   Menu,
   Filter,
   SquareStack,
-  MessageSquare
+  MessageSquare,
+  Bot
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
 const rolePermissions: Record<string, string[]> = {
   basico: ['/', '/leads', '/atendimento'],
-  intermediario: ['/', '/leads', '/atendimento', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups'],
-  master: ['/', '/leads', '/atendimento', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios']
+  intermediario: ['/', '/leads', '/atendimento', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups'],
+  master: ['/', '/leads', '/atendimento', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios']
 };
 
 export default function ClientLayout({
@@ -60,6 +61,7 @@ export default function ClientLayout({
     '/segmentacoes',
     '/popups',
     '/atendimento',
+    '/bots',
     '/conexoes'
   ];
 
@@ -310,6 +312,7 @@ export default function ClientLayout({
             {renderNavLink('/bio', 'Link na Bio', <Smartphone size={sidebarIconSize} />)}
             {renderNavLink('/popups', 'Pop-ups', <SquareStack size={sidebarIconSize} />)}
             {renderNavLink('/atendimento', 'Atendimento', <Zap size={sidebarIconSize} />)}
+            {renderNavLink('/bots', 'Bots e Automações', <Bot size={sidebarIconSize} />)}
             {renderNavLink('/conexoes', 'Conexões WhatsApp', <MessageSquare size={sidebarIconSize} />)}
             {renderNavLink('/configuracoes', 'Configurações', <SettingsIcon size={sidebarIconSize} />)}
             {renderNavLink('/usuarios', 'Usuários', <ShieldCheck size={sidebarIconSize} />, pendingUsersCount)}
