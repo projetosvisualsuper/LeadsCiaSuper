@@ -13,6 +13,9 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react'], // Alivia a memória durante renderização
+    serverActions: {
+      allowedOrigins: ['leads.ciasuper.com.br', '*.ciasuper.com.br', 'localhost:3000']
+    }
   }
 };
 
