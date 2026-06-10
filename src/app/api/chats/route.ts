@@ -53,6 +53,17 @@ export async function POST(req: NextRequest) {
       const result = await d1Api.saveChatSession(body.session);
       return NextResponse.json({ success: true, session: result });
     }
+    
+    if (body.action === 'testConnection') {
+      const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
+      const result = await sendOmnichannelMessageAction(
+        body.phone,
+        body.channel,
+        body.message,
+        body.connectionId
+      );
+      return NextResponse.json(result);
+    }
 
     const result = await d1Api.sendMessage(body);
     return NextResponse.json({ success: true, message: result });

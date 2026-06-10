@@ -90,12 +90,19 @@ export default function ConexoesPage() {
     e.preventDefault();
     setTestData(prev => ({ ...prev, loading: true }));
     try {
-      const result = await sendOmnichannelMessageAction(
-        testData.phone.replace(/\D/g, ''),
-        'whatsapp',
-        testData.message,
-        testData.connectionId
-      );
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'testConnection',
+          phone: testData.phone.replace(/\D/g, ''),
+          channel: 'whatsapp',
+          message: testData.message,
+          connectionId: testData.connectionId
+        })
+      });
+      
+      const result = await response.json();
 
       if (result.success) {
         showToast('Mensagem de teste enviada com sucesso!', 'success');
