@@ -122,6 +122,13 @@ export default function BotSidebar({ isOpen }: { isOpen: boolean }) {
           <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>Iniciar Salesbot</span>
         </div>
 
+        {/* Parar Bot */}
+        <div className="dndnode" onDragStart={(event) => onDragStart(event, 'stopBot')} draggable 
+          style={{ background: '#fef2f2', color: 'var(--card-foreground)', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid #fca5a5', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <div style={{ color: '#ef4444' }}>🛑</div>
+          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#b91c1c' }}>Parar Bot</span>
+        </div>
+
         {/* Etapa adaptada (cód.) */}
         <div className="dndnode" onDragStart={(event) => onDragStart(event, 'customCode')} draggable 
           style={{ background: 'var(--card)', color: 'var(--card-foreground)', padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border)', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>

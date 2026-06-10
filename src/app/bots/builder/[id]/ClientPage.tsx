@@ -23,6 +23,8 @@ import WidgetNode from '@/components/bots/nodes/WidgetNode';
 import RoundRobinNode from '@/components/bots/nodes/RoundRobinNode';
 import TriggerNode from '@/components/bots/nodes/TriggerNode';
 import MediaNode from '@/components/bots/nodes/MediaNode';
+import StopBotNode from '@/components/bots/nodes/StopBotNode';
+import CustomEdge from '@/components/bots/edges/CustomEdge';
 
 const nodeTypes: any = {
   trigger: TriggerNode,
@@ -41,6 +43,11 @@ const nodeTypes: any = {
   customCode: CustomCodeNode,
   widget: WidgetNode,
   roundRobin: RoundRobinNode,
+  stopBot: StopBotNode,
+};
+
+const edgeTypes: any = {
+  custom: CustomEdge,
 };
 
 const templatesData: Record<string, { nodes: any[], edges: any[] }> = {
@@ -55,8 +62,8 @@ const templatesData: Record<string, { nodes: any[], edges: any[] }> = {
       { id: '3', type: 'action', position: { x: 100, y: 500 }, data: { label: 'Transferir Atendente' } },
     ],
     edges: [
-      { id: 'e1-2', source: '1', target: '2' },
-      { id: 'e2-3', source: '2', sourceHandle: 'true', target: '3' },
+      { id: 'e1-2', source: '1', target: '2', type: 'custom' },
+      { id: 'e2-3', source: '2', sourceHandle: 'true', target: '3', type: 'custom' },
     ]
   },
   'qualificacao': {
@@ -67,9 +74,9 @@ const templatesData: Record<string, { nodes: any[], edges: any[] }> = {
       { id: '4', type: 'sendMessage', position: { x: 400, y: 450 }, data: { label: 'Pedir Novamente', message: 'Documento inválido. Tente novamente apenas com números.' } }
     ],
     edges: [
-      { id: 'e1-2', source: '1', target: '2' },
-      { id: 'e2-3', source: '2', sourceHandle: 'true', target: '3' },
-      { id: 'e2-4', source: '2', sourceHandle: 'false', target: '4' }
+      { id: 'e1-2', source: '1', target: '2', type: 'custom' },
+      { id: 'e2-3', source: '2', sourceHandle: 'true', target: '3', type: 'custom' },
+      { id: 'e2-4', source: '2', sourceHandle: 'false', target: '4', type: 'custom' }
     ]
   },
   'fora-horario': {
@@ -79,8 +86,8 @@ const templatesData: Record<string, { nodes: any[], edges: any[] }> = {
       { id: '3', type: 'sendMessage', position: { x: 400, y: 250 }, data: { label: 'Mensagem de Ausência', message: 'Lembrando que nossos horários de atendimento são de Segunda a quinta-feira das 09h às 17h. Deixe sua mensagem e retornaremos!' } }
     ],
     edges: [
-      { id: 'e1-2', source: '1', sourceHandle: 'true', target: '2' },
-      { id: 'e1-3', source: '1', sourceHandle: 'false', target: '3' }
+      { id: 'e1-2', source: '1', sourceHandle: 'true', target: '2', type: 'custom' },
+      { id: 'e1-3', source: '1', sourceHandle: 'false', target: '3', type: 'custom' }
     ]
   }
 };
@@ -94,6 +101,7 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
   const [botName, setBotName] = useState(id === 'novo' ? 'Novo Bot de Automação' : `Modelo: ${id}`);
   const [saveStatus, setSaveStatus] = useState('Salvar Fluxo');
   const [showTestModal, setShowTestModal] = useState(false);
+  const [rfInstance, setRfInstance] = useState<any>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(`bot_flow_${id}`);
@@ -122,7 +130,7 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
     setShowTestModal(true);
   };
 
-  const onConnect = useCallback((params: any) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+  const onConnect = useCallback((params: any) => setEdges((eds) => addEdge({ ...params, type: 'custom' }, eds)), [setEdges]);
 
   const onDragOver = useCallback((event: any) => {
     event.preventDefault();
@@ -138,8 +146,11 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
         return;
       }
 
-      // In a real app we'd map screen coords to react flow pane coords properly
-      const position = {
+      // Mapeia as coordenadas da tela para as coordenadas do React Flow (considerando zoom e pan)
+      const position = rfInstance?.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      }) || {
         x: event.clientX - 200,
         y: event.clientY - 100,
       };
@@ -160,7 +171,8 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
         startSalesbot: { label: 'Iniciar Salesbot', color: '#14b8a6' },
         customCode: { label: 'Código Customizado', color: '#0ea5e9' },
         widget: { label: 'Widget', color: '#3b82f6' },
-        roundRobin: { label: 'Round Robin', color: '#f59e0b' }
+        roundRobin: { label: 'Round Robin', color: '#f59e0b' },
+        stopBot: { label: 'Parar Bot', color: '#ef4444' }
       };
 
       const nodeData = typeLabels[type] || { label: 'Novo Nó', color: '#3b82f6' };
@@ -178,7 +190,7 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [setNodes],
+    [rfInstance, setNodes],
   );
 
   return (
@@ -237,7 +249,10 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onInit={setRfInstance}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            defaultEdgeOptions={{ type: 'custom' }}
             fitView
           >
             <Controls />
