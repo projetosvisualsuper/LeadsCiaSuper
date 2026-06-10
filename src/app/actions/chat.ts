@@ -32,7 +32,7 @@ export async function sendOmnichannelMessageAction(
       });
 
       const data = await response.json();
-      return response.ok ? { success: true, data } : { success: false, error: data.error?.message };
+      return response.ok ? { success: true, data } : { success: false, error: data.error?.message || 'Erro na API (Meta)' };
     }
 
     // 2. Lógica para WHATSAPP
@@ -97,7 +97,7 @@ export async function sendOmnichannelMessageAction(
         });
 
         const data = await response.json();
-        return response.ok ? { success: true, data } : { success: false, error: data.error?.message };
+        return response.ok ? { success: true, data } : { success: false, error: data.error?.message || 'Erro na API da Meta' };
       }
 
       // 2.B: Envio via EVOLUTION API
