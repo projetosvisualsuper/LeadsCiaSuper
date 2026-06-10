@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, use } from 'react';
+import { useCallback, useState, use, useEffect } from 'react';
 import { ReactFlow, MiniMap, Controls, Background, useNodesState, useEdgesState, addEdge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
@@ -91,6 +91,36 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
   const [nodes, setNodes, onNodesChange] = useNodesState(initialData.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [botName, setBotName] = useState(id === 'novo' ? 'Novo Bot de Automação' : `Modelo: ${id}`);
+  const [saveStatus, setSaveStatus] = useState('Salvar Fluxo');
+  const [showTestModal, setShowTestModal] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`bot_flow_${id}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.nodes && parsed.nodes.length > 0) {
+          setNodes(parsed.nodes);
+          setEdges(parsed.edges);
+          if (parsed.name) setBotName(parsed.name);
+        }
+      } catch(e) {}
+    }
+  }, [id, setNodes, setEdges]);
+
+  const handleSave = () => {
+    setSaveStatus('Salvando...');
+    setTimeout(() => {
+      localStorage.setItem(`bot_flow_${id}`, JSON.stringify({ nodes, edges, name: botName }));
+      setSaveStatus('Salvo! ✓');
+      setTimeout(() => setSaveStatus('Salvar Fluxo'), 2500);
+    }, 600);
+  };
+
+  const handleTest = () => {
+    setShowTestModal(true);
+  };
 
   const onConnect = useCallback((params: any) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
@@ -159,18 +189,39 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
           <Link href="/bots" style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '8px' }}>
             <ArrowLeft size={20} />
           </Link>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 600 }}>
-            {id === 'novo' ? 'Criar Novo Bot' : `Editando: ${id}`}
-          </h1>
+          <input 
+            value={botName}
+            onChange={(e) => setBotName(e.target.value)}
+            style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 600, 
+              background: 'transparent', 
+              border: 'none', 
+              borderBottom: '1px dashed transparent',
+              outline: 'none',
+              padding: '2px 8px',
+              transition: 'all 0.2s',
+              width: '350px'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderBottom = '1px dashed var(--primary)';
+              e.target.style.background = 'rgba(0,0,0,0.02)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderBottom = '1px dashed transparent';
+              e.target.style.background = 'transparent';
+            }}
+            title="Clique para renomear"
+          />
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button style={{ padding: '0.5rem 1rem', background: 'var(--success)', color: 'white', borderRadius: 'var(--radius)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button onClick={handleTest} style={{ padding: '0.5rem 1rem', background: 'var(--success)', color: 'white', borderRadius: 'var(--radius)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', border: 'none', transition: 'all 0.2s' }}>
             <Play size={18} />
             Testar
           </button>
-          <button style={{ padding: '0.5rem 1rem', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button onClick={handleSave} style={{ padding: '0.5rem 1rem', background: 'var(--primary)', color: 'white', borderRadius: 'var(--radius)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', border: 'none', transition: 'all 0.2s', opacity: saveStatus === 'Salvando...' ? 0.7 : 1 }}>
             <Save size={18} />
-            Salvar Fluxo
+            {saveStatus}
           </button>
         </div>
       </div>
@@ -195,6 +246,33 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
           </ReactFlow>
         </div>
       </div>
+
+      {/* Modal de Teste Customizado */}
+      {showTestModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>
+          <div style={{ background: 'var(--card)', color: 'var(--card-foreground)', padding: '24px', borderRadius: '12px', width: '400px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '12px', borderRadius: '50%' }}>
+                <Play size={24} />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Simulador de Bot</h2>
+            </div>
+            
+            <div style={{ color: 'var(--secondary)', lineHeight: 1.5 }}>
+              <p style={{ marginBottom: '12px' }}>O modo de teste interativo será disponibilizado em breve na sua tela de chat unificada.</p>
+              <p style={{ fontSize: '0.9rem', padding: '12px', background: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', borderRadius: '8px', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
+                <strong>Lembrete:</strong> Não esqueça de clicar em "Salvar Fluxo" para não perder as alterações que você acabou de fazer.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button onClick={() => setShowTestModal(false)} style={{ padding: '8px 16px', background: 'var(--primary)', color: 'white', borderRadius: '8px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
