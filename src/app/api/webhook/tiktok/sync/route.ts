@@ -51,7 +51,13 @@ export async function GET(req: NextRequest) {
       body: JSON.stringify({ max_count: 10 })
     });
 
-    const videosData = await videosRes.json();
+    const videosText = await videosRes.text();
+    let videosData;
+    try {
+      videosData = JSON.parse(videosText);
+    } catch (e) {
+      throw new Error(`TikTok video/list returned HTML/Invalid JSON (Status ${videosRes.status}): ${videosText.substring(0, 150)}`);
+    }
     if (!videosRes.ok || (videosData.error && videosData.error.code !== 'ok')) {
       const errMsg = videosData.error?.message || videosData.message || JSON.stringify(videosData);
       return NextResponse.json({ success: false, message: errMsg }, { status: 500 });
@@ -70,7 +76,13 @@ export async function GET(req: NextRequest) {
         body: JSON.stringify({ video_id: videoId, max_count: 20 })
       });
 
-      const commentsData = await commentsRes.json();
+      const commentsText = await commentsRes.text();
+      let commentsData;
+      try {
+        commentsData = JSON.parse(commentsText);
+      } catch (e) {
+        throw new Error(`TikTok comment/list returned HTML/Invalid JSON (Status ${commentsRes.status}): ${commentsText.substring(0, 150)}`);
+      }
       if (!commentsRes.ok || (commentsData.error && commentsData.error.code !== 'ok')) continue;
 
       const comments = commentsData.data?.comments || [];
