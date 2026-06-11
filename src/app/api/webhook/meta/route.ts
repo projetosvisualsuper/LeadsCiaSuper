@@ -1,9 +1,8 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, updateDoc, doc, setDoc, getDoc } from 'firebase/firestore';
-import { ChatMessage, ChatSession, Lead } from '@/types/crm';
+import { d1Api } from '@/services/d1';
+import { ChatSession } from '@/types/crm';
 import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 
 // O Meta envia um desafio GET para verificar o webhook na configuração inicial
@@ -26,11 +25,9 @@ export async function GET(req: NextRequest) {
 // Função auxiliar para buscar o perfil do usuário no Meta (Nome e Foto)
 async function getMetaProfile(userId: string, channel: string) {
   try {
-    // Buscar tokens nas configurações globais
-    const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-    if (!settingsSnap.exists()) return null;
+    const settings = await d1Api.getSettings();
+    if (!settings) return null;
     
-    const settings = settingsSnap.data();
     // Fallback: Tentar buscar na raiz ou dentro de omnichannel
     const token = channel === 'instagram' 
       ? (settings.omnichannel?.instagramAccessToken || settings.instagramAccessToken)
@@ -42,7 +39,6 @@ async function getMetaProfile(userId: string, channel: string) {
     }
 
     // Campos variam levemente entre Instagram e Facebook
-    // Para Instagram Business, tentamos name e profile_pic
     const fields = channel === 'instagram' 
       ? 'name,profile_pic' 
       : 'name,first_name,last_name,profile_pic';
@@ -59,14 +55,16 @@ async function getMetaProfile(userId: string, channel: string) {
       const errorData = await response.json();
       console.error('Meta API Error:', JSON.stringify(errorData));
       
-      // Salvar erro no banco para podermos debugar sem acesso ao terminal
       try {
-        await setDoc(doc(db, 'settings', 'meta_debug'), {
-          lastError: errorData,
-          timestamp: new Date().toISOString(),
-          userIdAttempted: userId,
-          channel: channel
-        });
+        await d1Api.executeRun(`INSERT OR REPLACE INTO settings (id, value) VALUES (?, ?)`, [
+          'meta_debug',
+          JSON.stringify({
+            lastError: errorData,
+            timestamp: new Date().toISOString(),
+            userIdAttempted: userId,
+            channel: channel
+          })
+        ]);
       } catch(e) {}
     }
   } catch (error) {
@@ -80,10 +78,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Log para depuração (remover em produção se necessário)
     console.log('Webhook Meta recebido:', JSON.stringify(body, null, 2));
 
-    // Verifica se é uma notificação do Instagram ou Facebook
     if (body.object === 'instagram' || body.object === 'page') {
       const entry = body.entry?.[0];
       const messaging = entry?.messaging?.[0];
@@ -97,12 +93,9 @@ export async function POST(req: NextRequest) {
 
       if (messaging && messaging.message) {
         isEcho = messaging.message.is_echo;
-        // Se for eco (mensagem enviada por nós), o ID do lead está no recipient
-        // Se não for eco (mensagem enviada pelo lead), o ID do lead está no sender
         leadId = isEcho ? messaging.recipient.id : messaging.sender.id;
         messageText = messaging.message.text || '';
         
-        // Lidar com anexos no Direct
         const attachments = messaging.message.attachments;
         if (attachments && attachments.length > 0) {
           const attachment = attachments[0];
@@ -124,7 +117,6 @@ export async function POST(req: NextRequest) {
           tempLeadName = commentValue.from.username || commentValue.from.name || '';
           messageText = `[Comentário na Postagem]: ${commentValue.text}`;
           messageType = 'text';
-          // Ignorar se formos nós mesmos comentando (verificação básica)
           if (commentValue.from.id === entry.id) {
             isEcho = true;
           }
@@ -133,109 +125,107 @@ export async function POST(req: NextRequest) {
 
       if (leadId && messageText) {
         const channel = body.object === 'instagram' ? 'instagram' : 'facebook';
-
-        // 1. Identificador Único e Determinístico (Garante que nunca haverá duplicados)
         const chatId = `${channel}_${leadId}`;
-        const chatRef = doc(db, 'atendimentos_v3', chatId);
-        let chatSnap = await getDoc(chatRef);
 
         let leadName = tempLeadName || ('Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook'));
         let leadAvatar = null;
 
-        // Tentar buscar o nome e foto real do usuário no Meta
         const profile = await getMetaProfile(leadId, channel);
         if (profile) {
           leadName = profile.name || leadName;
           leadAvatar = profile.avatar || leadAvatar;
         }
 
-        // 2. Criar ou Atualizar o Lead (Usando o leadId como chave única)
-        const leadRef = doc(db, 'leads', leadId);
-        const leadSnap = await getDoc(leadRef);
+        const { results: existingLeads } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
+        const agora = new Date().toISOString();
 
-        if (!leadSnap.exists()) {
-          const newLead: Partial<Lead> = {
+        if (!existingLeads || existingLeads.length === 0) {
+          await d1Api.saveLead({
+            id: leadId,
             nome: leadName,
             origem: channel === 'instagram' ? 'Instagram Direct' : 'Facebook Messenger',
             status: 'novo',
-            dataCriacao: new Date().toISOString(),
+            dataCriacao: agora,
+            dataUltimaAtividade: agora,
             tags: ['omnichannel', channel],
             avatar: leadAvatar,
             isMetaLead: true
-          };
-          await setDoc(leadRef, newLead);
+          });
         } else {
-          // Atualizar última atividade e enriquecer dados se forem genéricos
-          const leadData = leadSnap.data();
-          const updateData: any = { dataUltimaAtividade: new Date().toISOString() };
-          
+          const leadData = existingLeads[0];
+          let updatedName = leadData.nome;
+          let updatedAvatar = leadData.avatar;
+
           if (profile) {
             if (!leadData.nome || leadData.nome.startsWith('Lead via')) {
-              updateData.nome = profile.name || leadData.nome;
+              updatedName = profile.name || leadData.nome;
             }
             if (!leadData.avatar) {
-              updateData.avatar = profile.avatar || leadData.avatar;
+              updatedAvatar = profile.avatar || leadData.avatar;
             }
           }
-          await updateDoc(leadRef, updateData);
+          await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ?, nome = ?, avatar = ? WHERE id = ?`, [
+            agora, updatedName, updatedAvatar, leadId
+          ]);
         }
 
-        // 3. Garantir que o ChatSession exista (Usando o ID determinístico)
-        if (!chatSnap.exists()) {
+        const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
+        const hasChat = chatResults && chatResults.length > 0;
+
+        if (!hasChat) {
           const newChat: ChatSession = {
             id: chatId,
             leadId: leadId,
             leadName: leadName,
             channel: channel as any,
             lastMessage: messageText,
-            lastTimestamp: new Date().toISOString(),
+            lastTimestamp: agora,
             unreadCount: isEcho ? 0 : 1,
             status: 'active',
             leadAvatar: leadAvatar,
-            dataCriacao: new Date().toISOString()
+            dataCriacao: agora
           };
-          await setDoc(chatRef, newChat);
+          await d1Api.saveChatSession(newChat);
         } else {
-          // Atualizar última mensagem e tentar atualizar nome/avatar se forem genéricos
-          const chatData = chatSnap.data();
-          const updateData: any = {
-            lastMessage: messageText,
-            lastTimestamp: new Date().toISOString(),
-            unreadCount: isEcho ? 0 : (chatData?.unreadCount || 0) + 1
-          };
+          const chatData = chatResults[0];
+          const unreadCount = isEcho ? 0 : (chatData.unreadCount || 0) + 1;
+          
+          let updatedLeadName = chatData.leadName;
+          let updatedLeadAvatar = chatData.leadAvatar;
 
           if (profile) {
-            if (!chatData?.leadName || chatData.leadName.startsWith('Lead via')) {
-              updateData.leadName = profile.name || chatData?.leadName;
+            if (!chatData.leadName || chatData.leadName.startsWith('Lead via')) {
+              updatedLeadName = profile.name || chatData.leadName;
             }
-            if (!chatData?.leadAvatar) {
-              updateData.leadAvatar = profile.avatar || chatData?.leadAvatar;
+            if (!chatData.leadAvatar) {
+              updatedLeadAvatar = profile.avatar || chatData.leadAvatar;
             }
           }
 
-          await updateDoc(chatRef, updateData);
+          await d1Api.executeRun(`UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, leadName = ?, leadAvatar = ? WHERE id = ?`, [
+            messageText, agora, unreadCount, updatedLeadName, updatedLeadAvatar, chatId
+          ]);
         }
 
-        // 4. Salvar a mensagem (APENAS se não for um Eco)
-        // Se for um Eco, o CRM já salvou a mensagem quando o usuário clicou em enviar.
         if (!isEcho) {
-          const newMessage: Partial<ChatMessage> = {
+          await d1Api.sendMessage({
+            id: Math.random().toString(36).substr(2, 9),
             chatId: chatId,
             senderId: leadId,
             senderName: leadName,
             content: messageText,
-            timestamp: new Date().toISOString(),
+            timestamp: agora,
             type: messageType,
             status: 'delivered',
-            isIncoming: true
-          };
-          await addDoc(collection(db, 'messages'), newMessage);
+            isIncoming: true,
+            channel: channel as any,
+            leadId: leadId,
+            leadName: leadName
+          });
 
-          // 5. Autoresponder Meta
-          if (!chatSnap.exists()) {
+          if (!hasChat) {
             try {
-              const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-              const settings = settingsSnap.exists() ? settingsSnap.data() : null;
+              const settings = await d1Api.getSettings();
               if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
                 sendOmnichannelMessageAction(
                   leadId,
@@ -250,7 +240,6 @@ export async function POST(req: NextRequest) {
         }
       }
     } else if (body.object === 'whatsapp_business_account') {
-      // Processar mensagens recebidas pela API Oficial do WhatsApp Meta
       const entry = body.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
@@ -259,94 +248,71 @@ export async function POST(req: NextRequest) {
         const message = value.messages[0];
         const contact = value.contacts?.[0];
         
-        const rawPhone = message.from; // Número do cliente (ex: 554884040762)
+        const rawPhone = message.from; 
         const leadName = contact?.profile?.name || 'Cliente (WhatsApp)';
         const messageText = message.text?.body || '';
-        const phoneId = value.metadata?.phone_number_id; // ID do telefone que recebeu a msg
+        const phoneId = value.metadata?.phone_number_id; 
 
-        // Função para normalizar número do Brasil (Trata o 9º dígito)
         const normalizeBRNumber = (phone: string) => {
           let normalized = phone.replace(/\D/g, '');
           if (normalized.startsWith('55') && normalized.length === 12) {
-            // Se tem 12 dígitos (55 + DDD + 8 dígitos), tenta adicionar o 9
             const ddd = normalized.substring(2, 4);
             const num = normalized.substring(4);
-            return {
-              with9: `55${ddd}9${num}`,
-              without9: normalized
-            };
+            return { with9: `55${ddd}9${num}`, without9: normalized };
           } else if (normalized.startsWith('55') && normalized.length === 13) {
-            // Se tem 13 dígitos (55 + DDD + 9 + 8 dígitos), tenta remover o 9
             const ddd = normalized.substring(2, 4);
             const num = normalized.substring(5);
-            return {
-              with9: normalized,
-              without9: `55${ddd}${num}`
-            };
+            return { with9: normalized, without9: `55${ddd}${num}` };
           }
           return { with9: normalized, without9: normalized };
         };
 
         const { with9, without9 } = normalizeBRNumber(rawPhone);
 
-        // 1. Encontrar a conexão WhatsApp que recebeu
-        const connectionsRef = collection(db, 'whatsapp_connections');
-        const qConn = query(connectionsRef, where('metaPhoneNumberId', '==', phoneId));
-        const connSnap = await getDocs(qConn);
+        const connections = await d1Api.getWhatsappConnections();
+        const connection = connections.find(c => c.metaPhoneNumberId === phoneId);
         
         let connectionId = '';
         let connectionName = 'WhatsApp Oficial';
-        if (!connSnap.empty) {
-          const connDoc = connSnap.docs[0];
-          connectionId = connDoc.id;
-          connectionName = connDoc.data().name;
+        if (connection) {
+          connectionId = connection.id;
+          connectionName = connection.name;
         }
 
-        // 2. Buscar Lead (Tenta com e sem o 9)
-        const leadsRef = collection(db, 'leads');
-        const qLeadWith9 = query(leadsRef, where('telefone', '==', with9));
-        const qLeadWithout9 = query(leadsRef, where('telefone', '==', without9));
-        
-        const [snapWith9, snapWithout9] = await Promise.all([
-          getDocs(qLeadWith9),
-          getDocs(qLeadWithout9)
-        ]);
+        const { results: existingLeads } = await d1Api.runQuery(`SELECT * FROM leads WHERE telefone = ? OR celular = ? LIMIT 1`, [with9, without9]);
 
         let leadId = '';
+        const agora = new Date().toISOString();
 
-        if (!snapWith9.empty) {
-          leadId = snapWith9.docs[0].id;
-        } else if (!snapWithout9.empty) {
-          leadId = snapWithout9.docs[0].id;
-          // Se encontramos sem o 9, atualizamos o lead para ter o 9 (melhor para o envio da Meta)
-          await updateDoc(doc(db, 'leads', leadId), { 
-            telefone: with9,
-            celular: with9,
-            dataUltimaAtividade: new Date().toISOString() 
-          });
+        if (existingLeads && existingLeads.length > 0) {
+          const leadData = existingLeads[0];
+          leadId = leadData.id;
+          
+          if (!leadData.telefone || !leadData.telefone.includes('9')) {
+            await d1Api.executeRun(`UPDATE leads SET telefone = ?, celular = ?, dataUltimaAtividade = ? WHERE id = ?`, [with9, with9, agora, leadId]);
+          } else {
+            await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`, [agora, leadId]);
+          }
         } else {
-          // Criar Lead Novo (Sempre criamos com o 9 para evitar erros de envio depois)
-          const newLeadRef = doc(leadsRef);
-          leadId = newLeadRef.id;
-          await setDoc(newLeadRef, {
+          leadId = Math.random().toString(36).substr(2, 9);
+          await d1Api.saveLead({
+            id: leadId,
             nome: leadName,
             telefone: with9,
             celular: with9,
             origem: `WhatsApp (${connectionName})`,
             status: 'novo',
-            dataCriacao: new Date().toISOString(),
-            dataUltimaAtividade: new Date().toISOString(),
+            dataCriacao: agora,
+            dataUltimaAtividade: agora,
             tags: ['whatsapp', 'meta_official']
           });
         }
 
-        // 3. Buscar ou Criar ChatSession
-        const chatId = `whatsapp_${with9}`; // Usamos o formato com 9 para o ID do chat ser consistente
-        const chatRef = doc(db, 'atendimentos_v3', chatId);
-        let chatSnap = await getDoc(chatRef);
+        const chatId = `whatsapp_${with9}`; 
+        const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
         const timestampIso = new Date().toISOString();
 
-        if (!chatSnap.exists()) {
+        if (!chatResults || chatResults.length === 0) {
           const newChat: ChatSession = {
             id: chatId,
             leadId: leadId,
@@ -360,23 +326,16 @@ export async function POST(req: NextRequest) {
             status: 'active',
             dataCriacao: timestampIso
           };
-          await setDoc(chatRef, newChat);
+          await d1Api.saveChatSession(newChat);
         } else {
-          const currentData = chatSnap.data() as ChatSession;
-          await updateDoc(chatRef, {
-            lastMessage: messageText,
-            lastTimestamp: timestampIso,
-            unreadCount: (currentData.unreadCount || 0) + 1,
-            status: 'active',
-            connectionId: connectionId,
-            connectionName: connectionName
-          });
+          const currentData = chatResults[0];
+          await d1Api.executeRun(`UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ? WHERE id = ?`, [
+             messageText, timestampIso, (currentData.unreadCount || 0) + 1, connectionId, connectionName, chatId
+          ]);
         }
 
-        // 4. Salvar Mensagem
         const messageId = message.id;
-        const messageRef = doc(db, 'messages', `${chatId}_${messageId}`);
-        await setDoc(messageRef, {
+        await d1Api.sendMessage({
           id: messageId,
           chatId: chatId,
           senderId: leadId,
@@ -385,14 +344,15 @@ export async function POST(req: NextRequest) {
           timestamp: timestampIso,
           type: 'text',
           status: 'delivered',
-          isIncoming: true
-        }, { merge: true });
+          isIncoming: true,
+          channel: 'whatsapp',
+          leadId: leadId,
+          leadName: leadName
+        });
 
-        // 5. Autoresponder WhatsApp Cloud API
-        if (!chatSnap.exists()) {
+        if (!chatResults || chatResults.length === 0) {
           try {
-            const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-            const settings = settingsSnap.exists() ? settingsSnap.data() : null;
+            const settings = await d1Api.getSettings();
             if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
               sendOmnichannelMessageAction(
                 with9,
