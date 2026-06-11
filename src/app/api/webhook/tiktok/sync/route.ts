@@ -52,8 +52,9 @@ export async function GET(req: NextRequest) {
     });
 
     const videosData = await videosRes.json();
-    if (!videosRes.ok || videosData.error) {
-      return NextResponse.json({ success: false, message: videosData.error?.message || 'Erro ao buscar vídeos' }, { status: 500 });
+    if (!videosRes.ok || (videosData.error && videosData.error.code !== 'ok')) {
+      const errMsg = videosData.error?.message || videosData.message || JSON.stringify(videosData);
+      return NextResponse.json({ success: false, message: errMsg }, { status: 500 });
     }
 
     const videos = videosData.data?.videos || [];
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
       });
 
       const commentsData = await commentsRes.json();
-      if (!commentsRes.ok || commentsData.error) continue;
+      if (!commentsRes.ok || (commentsData.error && commentsData.error.code !== 'ok')) continue;
 
       const comments = commentsData.data?.comments || [];
 
