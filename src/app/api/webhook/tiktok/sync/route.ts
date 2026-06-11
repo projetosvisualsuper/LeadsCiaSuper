@@ -140,6 +140,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, newMessages });
   } catch (error) {
     console.error('Error syncing TikTok:', error);
-    return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: false, message: `Internal Server Error: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 });
   }
 }
