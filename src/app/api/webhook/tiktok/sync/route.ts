@@ -81,7 +81,8 @@ export async function GET(req: NextRequest) {
       try {
         commentsData = JSON.parse(commentsText);
       } catch (e) {
-        throw new Error(`TikTok comment/list returned HTML/Invalid JSON (Status ${commentsRes.status}): ${commentsText.substring(0, 150)}`);
+        console.warn(`[TikTok Sync] Falha ao buscar comentários (Status ${commentsRes.status}). Endpoint indisponível nesta versão da API.`);
+        continue;
       }
       if (!commentsRes.ok || (commentsData.error && commentsData.error.code !== 'ok')) continue;
 
