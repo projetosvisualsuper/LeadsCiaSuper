@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 1. Buscar vídeos da conta (API V2)
-    const videosRes = await fetch(`https://open.tiktokapis.com/v2/video/list/`, {
+    const videosRes = await fetch(`https://open.tiktokapis.com/v2/video/list/?fields=id,title`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ max_count: 10 })
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     for (const video of videos) {
       const videoId = video.id;
       
-      const commentsRes = await fetch(`https://open.tiktokapis.com/v2/video/comment/list/`, {
+      const commentsRes = await fetch(`https://open.tiktokapis.com/v2/video/comment/list/?fields=id,video_id,user_id,create_time,text`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ video_id: videoId, max_count: 20 })
