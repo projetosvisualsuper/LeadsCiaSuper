@@ -852,7 +852,15 @@ export default function ConfigPage() {
               </button>
               {settings.omnichannel?.tiktokRefreshToken && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Conectado</span>
+                  {settings.omnichannel?.tiktokAvatar && (
+                    <img src={settings.omnichannel.tiktokAvatar} alt={settings.omnichannel.tiktokName || 'TikTok User'} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>✓ Conectado</span>
+                    {settings.omnichannel?.tiktokName && (
+                      <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{settings.omnichannel.tiktokName}</span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     style={{ 
