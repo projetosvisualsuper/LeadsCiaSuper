@@ -236,15 +236,16 @@ export async function POST(req: NextRequest) {
 
         let skipSave = false;
 
-        if (isEcho) {
-          const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-          const { results: recentMessages } = await d1Api.runQuery(
-            `SELECT id FROM messages WHERE chatId = ? AND content = ? AND isIncoming = 0 AND timestamp >= ? LIMIT 1`,
-            [chatId, messageText, fiveMinsAgo]
-          );
-          if (recentMessages && recentMessages.length > 0) {
-            skipSave = true;
-          }
+        // Dedup: Evita salvar a mesma mensagem duas vezes num intervalo de 5 minutos
+        // O Webhook da Meta costuma fazer retentativas (retries) se demorar para responder
+        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const incomingFlag = isEcho ? 0 : 1;
+        const { results: recentMessages } = await d1Api.runQuery(
+          `SELECT id FROM messages WHERE chatId = ? AND content = ? AND isIncoming = ? AND timestamp >= ? LIMIT 1`,
+          [chatId, messageText, incomingFlag, fiveMinsAgo]
+        );
+        if (recentMessages && recentMessages.length > 0) {
+          skipSave = true;
         }
 
         if (!skipSave) {
