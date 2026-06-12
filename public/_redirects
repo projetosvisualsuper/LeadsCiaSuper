@@ -12,6 +12,8 @@
 /segmentacoes       /segmentacoes       200
 /popups             /popups             200
 /atendimento        /atendimento        200
+/chat-interno       /chat-interno       200
+/bots               /bots               200
 /conexoes           /conexoes           200
 /privacy            /privacy            200
 /privacy-policy     /privacy-policy     200
