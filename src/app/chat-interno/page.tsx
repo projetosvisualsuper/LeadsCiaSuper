@@ -284,26 +284,32 @@ export default function ChatInternoPage() {
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Selecionar Participante(s)</label>
               <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-                {users.filter(u => u.uid !== me?.uid).map(u => (
-                  <label key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>
-                    <input 
-                      type={newChatType === 'group' ? 'checkbox' : 'radio'} 
-                      name="chat_user"
-                      checked={selectedUsers.includes(u.uid)}
-                      onChange={(e) => {
-                        if (newChatType === 'group') {
-                          setSelectedUsers(prev => e.target.checked ? [...prev, u.uid] : prev.filter(id => id !== u.uid));
-                        } else {
-                          setSelectedUsers([u.uid]);
-                        }
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{u.name || 'Sem Nome'}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{u.email}</div>
-                    </div>
-                  </label>
-                ))}
+                {users.filter(u => u.uid !== me?.uid).length === 0 ? (
+                  <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                    Nenhum outro usuário cadastrado no sistema para iniciar uma conversa.
+                  </div>
+                ) : (
+                  users.filter(u => u.uid !== me?.uid).map(u => (
+                    <label key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>
+                      <input 
+                        type={newChatType === 'group' ? 'checkbox' : 'radio'} 
+                        name="chat_user"
+                        checked={selectedUsers.includes(u.uid)}
+                        onChange={(e) => {
+                          if (newChatType === 'group') {
+                            setSelectedUsers(prev => e.target.checked ? [...prev, u.uid] : prev.filter(id => id !== u.uid));
+                          } else {
+                            setSelectedUsers([u.uid]);
+                          }
+                        }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{u.name || 'Sem Nome'}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{u.email}</div>
+                      </div>
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 
