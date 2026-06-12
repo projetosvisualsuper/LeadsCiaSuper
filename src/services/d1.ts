@@ -1209,8 +1209,8 @@ export const d1Api = {
 
   sendInternalMessage: async (message: any): Promise<any> => {
     const sql = `
-      INSERT INTO internal_messages (id, chatId, senderId, senderName, content, timestamp, readByJson)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO internal_messages (id, chatId, senderId, senderName, content, timestamp, readByJson, attachmentUrl, attachmentName)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       message.id,
@@ -1219,7 +1219,9 @@ export const d1Api = {
       message.senderName,
       message.content,
       message.timestamp || new Date().toISOString(),
-      JSON.stringify(message.readBy || [])
+      JSON.stringify(message.readBy || []),
+      message.attachmentUrl || null,
+      message.attachmentName || null
     ];
     await executeRun(sql, params);
 
@@ -1231,6 +1233,24 @@ export const d1Api = {
     ]);
 
     return message;
+  },
+
+  markMessagesAsRead: async (chatId: string, userId: string): Promise<void> => {
+    // Para simplificar no SQLite, pegamos as mensagens do chat onde o readByJson NÃO contém o userId
+    // e atualizamos adicionando o userId ao array.
+    // Usaremos a função JSON do SQLite se possível, ou puxaremos e atualizaremos.
+    const { results } = await runQuery(`SELECT id, readByJson FROM internal_messages WHERE chatId = ? AND readByJson NOT LIKE ?`, [chatId, `%${userId}%`]);
+    if (!results || results.length === 0) return;
+
+    for (const msg of results) {
+      try {
+        const readBy = JSON.parse(msg.readByJson || '[]');
+        if (!readBy.includes(userId)) {
+          readBy.push(userId);
+          await executeRun(`UPDATE internal_messages SET readByJson = ? WHERE id = ?`, [JSON.stringify(readBy), msg.id]);
+        }
+      } catch (e) {}
+    }
   },
 
   // Database Execution Helpers

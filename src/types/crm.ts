@@ -390,4 +390,6 @@ export interface InternalMessage {
   content: string;
   timestamp: string;
   readByJson: string; // JSON array of user uids
+  attachmentUrl?: string;
+  attachmentName?: string;
 }

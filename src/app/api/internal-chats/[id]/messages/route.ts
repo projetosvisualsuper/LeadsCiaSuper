@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const messages = await d1Api.getInternalMessages(chatId);
     return NextResponse.json(messages);
   } catch (error: any) {
-    console.error(`Error in GET /api/internal-chats/${params.id}/messages:`, error);
+    console.error(`Error in GET /api/internal-chats/messages:`, error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ success: true, message: newMessage });
   } catch (error: any) {
-    console.error(`Error in POST /api/internal-chats/${params.id}/messages:`, error);
+    console.error(`Error in POST /api/internal-chats/messages:`, error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

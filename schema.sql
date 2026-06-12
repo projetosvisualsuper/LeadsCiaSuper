@@ -212,5 +212,7 @@ CREATE TABLE IF NOT EXISTS internal_messages (
   senderName TEXT NOT NULL,
   content TEXT NOT NULL,
   timestamp TEXT NOT NULL,
-  readByJson TEXT DEFAULT '[]'
+  readByJson TEXT DEFAULT '[]',
+  attachmentUrl TEXT,
+  attachmentName TEXT
 );
