@@ -19,7 +19,8 @@ import {
   ChevronLeft,
   X,
   MessageSquare,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 
 const renderSocialIcon = (platform: string, size: number = 24, color?: string) => {
@@ -64,6 +65,9 @@ function AtendimentoContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatMenuRef = useRef<HTMLDivElement>(null);
+  
+  const [syncingYoutube, setSyncingYoutube] = useState(false);
+  const [syncingTiktok, setSyncingTiktok] = useState(false);
   
   // Estados para Filtros de Mensagens / Conversas
   const [filterChannel, setFilterChannel] = useState<string>('all');
@@ -473,33 +477,51 @@ function AtendimentoContent() {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button 
                 onClick={async () => {
-                  const res = await fetch('/api/webhook/youtube/sync');
-                  const data = await res.json();
-                  if (data.success) {
-                    alert(`${data.newMessages} novas mensagens do YouTube sincronizadas!`);
-                  } else {
-                    alert('Erro ao sincronizar YouTube: ' + (data.message || 'Erro desconhecido'));
+                  if (syncingYoutube) return;
+                  setSyncingYoutube(true);
+                  try {
+                    const res = await fetch('/api/webhook/youtube/sync');
+                    const data = await res.json();
+                    if (data.success) {
+                      alert(`${data.newMessages} novas mensagens do YouTube sincronizadas!`);
+                    } else {
+                      alert('Erro ao sincronizar YouTube: ' + (data.message || 'Erro desconhecido'));
+                    }
+                  } catch (e: any) {
+                    alert('Erro ao sincronizar YouTube: ' + e.message);
+                  } finally {
+                    setSyncingYoutube(false);
                   }
                 }}
                 title="Sincronizar YouTube"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '5px' }}
+                disabled={syncingYoutube}
+                style={{ background: 'none', border: 'none', cursor: syncingYoutube ? 'wait' : 'pointer', opacity: syncingYoutube ? 0.8 : 0.5, padding: '5px' }}
               >
-                {renderSocialIcon('youtube', 18)}
+                {syncingYoutube ? <Loader2 size={18} className="animate-spin" /> : renderSocialIcon('youtube', 18)}
               </button>
               <button 
                 onClick={async () => {
-                  const res = await fetch('/api/webhook/tiktok/sync');
-                  const data = await res.json();
-                  if (data.success) {
-                    alert(`${data.newMessages} novas mensagens do TikTok sincronizadas!`);
-                  } else {
-                    alert('Erro ao sincronizar TikTok: ' + (data.message || 'Erro desconhecido'));
+                  if (syncingTiktok) return;
+                  setSyncingTiktok(true);
+                  try {
+                    const res = await fetch('/api/webhook/tiktok/sync');
+                    const data = await res.json();
+                    if (data.success) {
+                      alert(`${data.newMessages} novas mensagens do TikTok sincronizadas!`);
+                    } else {
+                      alert('Erro ao sincronizar TikTok: ' + (data.message || 'Erro desconhecido'));
+                    }
+                  } catch (e: any) {
+                    alert('Erro ao sincronizar TikTok: ' + e.message);
+                  } finally {
+                    setSyncingTiktok(false);
                   }
                 }}
                 title="Sincronizar TikTok"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: '5px' }}
+                disabled={syncingTiktok}
+                style={{ background: 'none', border: 'none', cursor: syncingTiktok ? 'wait' : 'pointer', opacity: syncingTiktok ? 0.8 : 0.5, padding: '5px' }}
               >
-                {renderSocialIcon('tiktok', 18)}
+                {syncingTiktok ? <Loader2 size={18} className="animate-spin" /> : renderSocialIcon('tiktok', 18)}
               </button>
             </div>
           </div>
