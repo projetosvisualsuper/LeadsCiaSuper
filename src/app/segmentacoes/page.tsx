@@ -27,7 +27,7 @@ export default function SegmentacoesPage() {
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState<Segmentation | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
-  const [tagFilter, setTagFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');\n  const [emailFilter, setEmailFilter] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -146,8 +146,10 @@ export default function SegmentacoesPage() {
   const uniqueTags = Array.from(new Set(leads.flatMap(l => l.tags || []))).filter(Boolean).sort();
 
   const modalFilteredLeads = leads.filter(lead => {
-    if (!tagFilter) return true;
-    return lead.tags?.includes(tagFilter);
+    let match = true;
+    if (tagFilter && !lead.tags?.includes(tagFilter)) match = false;
+    if (emailFilter && !lead.email) match = false;
+    return match;
   });
 
   const selectAllFiltered = () => {
@@ -293,6 +295,14 @@ export default function SegmentacoesPage() {
                       <option value="">Filtrar por Tag...</option>
                       {uniqueTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
                     </select>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={emailFilter} 
+                        onChange={e => setEmailFilter(e.target.checked)} 
+                      />
+                      Somente com E-mail
+                    </label>
                     <button 
                       className="btn btn-outline" 
                       style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem' }}
