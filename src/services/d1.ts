@@ -1177,6 +1177,62 @@ export const d1Api = {
     };
   },
 
+  // Internal Chats
+  getInternalChats: async (userId: string): Promise<any[]> => {
+    // Busca chats onde o participantsJson contém o userId
+    const { results } = await runQuery(`SELECT * FROM internal_chats WHERE participantsJson LIKE ? ORDER BY lastTimestamp DESC`, [`%${userId}%`]);
+    return results || [];
+  },
+
+  createInternalChat: async (chat: any): Promise<any> => {
+    const sql = `
+      INSERT INTO internal_chats (id, type, name, participantsJson, lastMessage, lastTimestamp, dataCriacao)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      chat.id,
+      chat.type,
+      chat.name || null,
+      JSON.stringify(chat.participants),
+      chat.lastMessage || '',
+      chat.lastTimestamp || new Date().toISOString(),
+      chat.dataCriacao || new Date().toISOString()
+    ];
+    await executeRun(sql, params);
+    return chat;
+  },
+
+  getInternalMessages: async (chatId: string): Promise<any[]> => {
+    const { results } = await runQuery(`SELECT * FROM internal_messages WHERE chatId = ? ORDER BY timestamp ASC`, [chatId]);
+    return results || [];
+  },
+
+  sendInternalMessage: async (message: any): Promise<any> => {
+    const sql = `
+      INSERT INTO internal_messages (id, chatId, senderId, senderName, content, timestamp, readByJson)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      message.id,
+      message.chatId,
+      message.senderId,
+      message.senderName,
+      message.content,
+      message.timestamp || new Date().toISOString(),
+      JSON.stringify(message.readBy || [])
+    ];
+    await executeRun(sql, params);
+
+    // Atualiza o lastMessage do chat
+    await executeRun(`UPDATE internal_chats SET lastMessage = ?, lastTimestamp = ? WHERE id = ?`, [
+      message.content,
+      message.timestamp || new Date().toISOString(),
+      message.chatId
+    ]);
+
+    return message;
+  },
+
   // Database Execution Helpers
   runQuery: async (sql: string, params: any[] = []): Promise<any> => {
     return runQuery(sql, params);

@@ -33,9 +33,9 @@ import {
 import { UserProfile, Lead } from '@/types/crm';
 
 const rolePermissions: Record<string, string[]> = {
-  basico: ['/', '/leads', '/atendimento'],
-  intermediario: ['/', '/leads', '/atendimento', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups'],
-  master: ['/', '/leads', '/atendimento', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios']
+  basico: ['/', '/leads', '/atendimento', '/chat-interno'],
+  intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups'],
+  master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios']
 };
 
 export default function ClientLayout({
@@ -61,6 +61,7 @@ export default function ClientLayout({
     '/segmentacoes',
     '/popups',
     '/atendimento',
+    '/chat-interno',
     '/bots',
     '/conexoes'
   ];
@@ -312,6 +313,7 @@ export default function ClientLayout({
             {renderNavLink('/bio', 'Link na Bio', <Smartphone size={sidebarIconSize} />)}
             {renderNavLink('/popups', 'Pop-ups', <SquareStack size={sidebarIconSize} />)}
             {renderNavLink('/atendimento', 'Atendimento', <Zap size={sidebarIconSize} />)}
+            {renderNavLink('/chat-interno', 'Chat Interno', <MessageSquare size={sidebarIconSize} />)}
             {renderNavLink('/bots', 'Bots e Automações', <Bot size={sidebarIconSize} />)}
             {renderNavLink('/conexoes', 'Conexões WhatsApp', <MessageSquare size={sidebarIconSize} />)}
             {renderNavLink('/configuracoes', 'Configurações', <SettingsIcon size={sidebarIconSize} />)}

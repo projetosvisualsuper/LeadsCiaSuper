@@ -371,3 +371,23 @@ export interface ChatSession {
   lastVideoId?: string; // ID do vídeo (para o YouTube)
   dataCriacao: string;
 }
+
+export interface InternalChat {
+  id: string;
+  type: 'direct' | 'group';
+  name?: string;
+  participantsJson: string; // JSON array of user uids
+  lastMessage?: string;
+  lastTimestamp?: string;
+  dataCriacao: string;
+}
+
+export interface InternalMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: string;
+  readByJson: string; // JSON array of user uids
+}

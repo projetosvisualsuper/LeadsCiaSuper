@@ -194,3 +194,23 @@ CREATE TABLE IF NOT EXISTS whatsapp_templates (
   componentsJson TEXT,
   dataCriacao TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS internal_chats (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  name TEXT,
+  participantsJson TEXT NOT NULL,
+  lastMessage TEXT,
+  lastTimestamp TEXT,
+  dataCriacao TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS internal_messages (
+  id TEXT PRIMARY KEY,
+  chatId TEXT NOT NULL,
+  senderId TEXT NOT NULL,
+  senderName TEXT NOT NULL,
+  content TEXT NOT NULL,
+  timestamp TEXT NOT NULL,
+  readByJson TEXT DEFAULT '[]'
+);
