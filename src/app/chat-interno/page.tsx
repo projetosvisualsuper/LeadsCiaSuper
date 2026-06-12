@@ -147,7 +147,7 @@ export default function ChatInternoPage() {
   if (loading) return <div style={{ padding: '2rem' }}>Carregando Chat Interno...</div>;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#f8fafc' }}>
+    <div style={{ display: 'flex', height: '100vh', margin: '-2rem', background: '#f8fafc', overflow: 'hidden' }}>
       {/* Sidebar */}
       <div style={{ width: '320px', background: 'white', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
