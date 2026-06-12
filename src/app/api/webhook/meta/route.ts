@@ -113,12 +113,39 @@ export async function POST(req: NextRequest) {
       } else if (changes && changes.field === 'comments') {
         const commentValue = changes.value;
         if (commentValue && commentValue.from && commentValue.text) {
-          leadId = commentValue.from.id;
-          tempLeadName = commentValue.from.username || commentValue.from.name || '';
           messageText = `[Comentário na Postagem]: ${commentValue.text}`;
           messageType = 'text';
+
           if (commentValue.from.id === entry.id) {
             isEcho = true;
+            if (commentValue.parent_id) {
+              try {
+                const settings = await d1Api.getSettings();
+                const token = body.object === 'instagram' 
+                  ? (settings?.omnichannel?.instagramAccessToken || settings?.instagramAccessToken)
+                  : (settings?.omnichannel?.messengerAccessToken || settings?.messengerAccessToken);
+
+                if (token) {
+                  const parentRes = await fetch(`https://graph.facebook.com/v19.0/${commentValue.parent_id}?fields=from&access_token=${token}`);
+                  if (parentRes.ok) {
+                    const parentData = await parentRes.json();
+                    if (parentData.from && parentData.from.id) {
+                      leadId = parentData.from.id;
+                      tempLeadName = parentData.from.username || parentData.from.name || '';
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error("Erro ao buscar parent comment:", e);
+              }
+            }
+            if (!leadId) {
+              leadId = commentValue.from.id;
+              tempLeadName = commentValue.from.username || commentValue.from.name || '';
+            }
+          } else {
+            leadId = commentValue.from.id;
+            tempLeadName = commentValue.from.username || commentValue.from.name || '';
           }
         }
       }
@@ -207,23 +234,36 @@ export async function POST(req: NextRequest) {
           ]);
         }
 
-        if (!isEcho) {
+        let skipSave = false;
+
+        if (isEcho) {
+          const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+          const { results: recentMessages } = await d1Api.runQuery(
+            `SELECT id FROM messages WHERE chatId = ? AND content = ? AND isIncoming = 0 AND timestamp >= ? LIMIT 1`,
+            [chatId, messageText, fiveMinsAgo]
+          );
+          if (recentMessages && recentMessages.length > 0) {
+            skipSave = true;
+          }
+        }
+
+        if (!skipSave) {
           await d1Api.sendMessage({
             id: Math.random().toString(36).substr(2, 9),
             chatId: chatId,
-            senderId: leadId,
-            senderName: leadName,
+            senderId: isEcho ? entry.id : leadId,
+            senderName: isEcho ? 'Nossa Conta' : leadName,
             content: messageText,
             timestamp: agora,
             type: messageType,
             status: 'delivered',
-            isIncoming: true,
+            isIncoming: !isEcho,
             channel: channel as any,
             leadId: leadId,
             leadName: leadName
           });
 
-          if (!hasChat) {
+          if (!isEcho && !hasChat) {
             try {
               const settings = await d1Api.getSettings();
               if (settings?.autoresponder?.enabled && settings.autoresponder.message) {

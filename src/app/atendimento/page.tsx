@@ -216,6 +216,10 @@ function AtendimentoContent() {
         if (chat.channel === 'youtube' && chat.lastPlatformMessageId) {
           recipient = chat.lastPlatformMessageId;
         }
+        
+        if (chat.channel === 'tiktok') {
+          recipient = chat.id.replace('tiktok_', '');
+        }
 
         const response = await fetch('/api/chats', {
           method: 'POST',

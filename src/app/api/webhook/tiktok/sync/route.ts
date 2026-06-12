@@ -1,13 +1,11 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { d1Api } from '@/services/d1';
 
 export async function GET(req: NextRequest) {
   try {
-    const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-    const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+    const settings = await d1Api.getSettings();
     
     let accessToken = settings.omnichannel?.tiktokAccessToken;
     const refreshToken = settings.omnichannel?.tiktokRefreshToken;
@@ -36,11 +34,11 @@ export async function GET(req: NextRequest) {
       const refreshData = await refreshResponse.json();
       if (refreshResponse.ok) {
         accessToken = refreshData.access_token;
-        await updateDoc(doc(db, 'settings', 'global'), {
-          'omnichannel.tiktokAccessToken': accessToken,
-          'omnichannel.tiktokRefreshToken': refreshData.refresh_token,
-          'omnichannel.tiktokTokenExpiry': new Date(Date.now() + refreshData.expires_in * 1000).toISOString()
-        });
+        if (!settings.omnichannel) settings.omnichannel = {};
+        settings.omnichannel.tiktokAccessToken = accessToken;
+        settings.omnichannel.tiktokRefreshToken = refreshData.refresh_token;
+        settings.omnichannel.tiktokTokenExpiry = new Date(Date.now() + refreshData.expires_in * 1000).toISOString();
+        await d1Api.saveSettings(settings);
       }
     }
 
@@ -96,47 +94,30 @@ export async function GET(req: NextRequest) {
         const timestamp = new Date(comment.create_time * 1000).toISOString();
 
         const chatId = `tiktok_${commentId}`;
-        const chatRef = doc(db, 'atendimentos_v3', chatId);
-        
         const msgId = `tiktok_msg_${commentId}`;
-        const msgCheck = await getDoc(doc(db, 'messages', msgId));
-        if (msgCheck.exists()) continue;
+
+        // Checar se mensagem já existe
+        const { results: msgCheck } = await d1Api.runQuery(`SELECT id FROM messages WHERE id = ? LIMIT 1`, [msgId]);
+        if (msgCheck && msgCheck.length > 0) continue;
 
         newMessages++;
 
         // Garantir Lead
-        const leadRef = doc(db, 'leads', authorId);
-        const leadSnap = await getDoc(leadRef);
-        if (!leadSnap.exists()) {
-          await setDoc(leadRef, {
+        const { results: leadCheck } = await d1Api.runQuery(`SELECT id FROM leads WHERE id = ? LIMIT 1`, [authorId]);
+        if (!leadCheck || leadCheck.length === 0) {
+          await d1Api.saveLead({
+            id: authorId,
             nome: authorName,
             origem: 'TikTok Comments',
             status: 'novo',
             dataCriacao: timestamp,
+            dataUltimaAtividade: timestamp,
             tags: ['tiktok', 'omnichannel']
           });
         }
 
-        // Garantir Sessão de Chat
-        const chatSnap = await getDoc(chatRef);
-        if (!chatSnap.exists()) {
-          await setDoc(chatRef, {
-            id: chatId,
-            leadId: authorId,
-            leadName: authorName,
-            channel: 'tiktok',
-            lastMessage: text,
-            lastTimestamp: timestamp,
-            unreadCount: 1,
-            status: 'active',
-            lastPlatformMessageId: commentId,
-            lastVideoId: videoId,
-            dataCriacao: timestamp
-          });
-        }
-
-        // Salvar Mensagem
-        await setDoc(doc(db, 'messages', msgId), {
+        // Salvar Mensagem (também cria/atualiza a sessão de chat automaticamente via d1Api)
+        await d1Api.sendMessage({
           id: msgId,
           chatId: chatId,
           senderId: authorId,
@@ -145,7 +126,10 @@ export async function GET(req: NextRequest) {
           timestamp: timestamp,
           type: 'text',
           status: 'delivered',
-          isIncoming: true
+          isIncoming: true,
+          channel: 'tiktok',
+          leadId: authorId,
+          leadName: authorName
         });
       }
     }
