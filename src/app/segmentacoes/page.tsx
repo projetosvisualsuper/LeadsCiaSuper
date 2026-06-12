@@ -27,7 +27,8 @@ export default function SegmentacoesPage() {
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState<Segmentation | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
-  const [tagFilter, setTagFilter] = useState('');\n  const [emailFilter, setEmailFilter] = useState(false);
+  const [tagFilter, setTagFilter] = useState('');
+  const [emailFilter, setEmailFilter] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
