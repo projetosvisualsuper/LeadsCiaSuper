@@ -3,9 +3,9 @@ import { d1Api } from '@/services/d1';
 
 export const runtime = 'edge';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const chatId = params.id;
+    const { id: chatId } = await params;
     if (!chatId) {
       return NextResponse.json({ error: 'Chat ID required' }, { status: 400 });
     }
@@ -18,9 +18,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const chatId = params.id;
+    const { id: chatId } = await params;
     const body = await req.json();
 
     if (!chatId || !body.id || !body.senderId || !body.content) {

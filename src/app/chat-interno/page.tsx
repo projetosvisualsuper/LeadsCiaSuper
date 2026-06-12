@@ -65,7 +65,7 @@ export default function ChatInternoPage() {
     try {
       const res = await fetch(`/api/internal-chats/${chatId}/messages`);
       const data = await res.json();
-      setMessages(data || []);
+      setMessages(Array.isArray(data) ? data : []);
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
