@@ -46,33 +46,37 @@ export default function WhatsappWidgetStandalone() {
   const handleStartChat = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Salvar Lead
-    const leadId = Math.random().toString(36).substr(2, 9);
-    await api.saveLead({
-      id: leadId,
-      nome: formData.nome,
-      email: formData.email,
-      celular: formData.telefone,
-      origem: `Widget Externo - Atendente: ${selectedAttendant.nome}`,
-      consentimentoLGPD: true,
-      status: 'novo',
-      tags: ['whatsapp-widget'],
-      dataCriacao: new Date().toISOString()
-    } as Lead);
-
-    // GTM Event
-    if (typeof window !== 'undefined' && (window as any).dataLayer) {
-      (window as any).dataLayer.push({
-        event: 'whatsapp_click',
-        attendant_name: selectedAttendant.nome,
-        attendant_id: selectedAttendant.id,
-        page_source: 'external_widget',
-        lead_name: formData.nome,
-        lead_email: formData.email,
-        lead_phone: formData.telefone,
+    // Tentar salvar o lead, mas não impedir a abertura do WhatsApp em caso de erro
+    try {
+      const leadId = Math.random().toString(36).substr(2, 9);
+      await api.saveLead({
+        id: leadId,
+        nome: formData.nome,
         email: formData.email,
-        phone: formData.telefone
-      });
+        celular: formData.telefone,
+        origem: `Widget Externo - Atendente: ${selectedAttendant.nome}`,
+        consentimentoLGPD: true,
+        status: 'novo',
+        tags: ['whatsapp-widget'],
+        dataCriacao: new Date().toISOString()
+      } as Lead);
+
+      // GTM Event
+      if (typeof window !== 'undefined' && (window as any).dataLayer) {
+        (window as any).dataLayer.push({
+          event: 'whatsapp_click',
+          attendant_name: selectedAttendant.nome,
+          attendant_id: selectedAttendant.id,
+          page_source: 'external_widget',
+          lead_name: formData.nome,
+          lead_email: formData.email,
+          lead_phone: formData.telefone,
+          email: formData.email,
+          phone: formData.telefone
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao salvar lead no widget:', err);
     }
 
     const msg = encodeURIComponent(`Olá ${selectedAttendant.nome}, vim pelo seu site e gostaria de falar com você.`);
