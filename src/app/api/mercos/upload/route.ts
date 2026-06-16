@@ -3,6 +3,8 @@ import { api } from '@/services/api';
 import * as xlsx from 'xlsx';
 import { Lead } from '@/types/crm';
 
+export const runtime = 'edge';
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
