@@ -39,6 +39,33 @@ export default function ChatInternoPage() {
   const groupAvatarRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showEmojiPicker && 
+        emojiPickerRef.current && 
+        !emojiPickerRef.current.contains(event.target as Node) &&
+        emojiButtonRef.current &&
+        !emojiButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (showEmojiPicker && event.key === 'Escape') {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showEmojiPicker]);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -593,7 +620,7 @@ export default function ChatInternoPage() {
 
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
-              <div style={{ position: 'absolute', bottom: editingMessageId ? '110px' : '80px', left: '1rem', background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', zIndex: 10 }}>
+              <div ref={emojiPickerRef} style={{ position: 'absolute', bottom: editingMessageId ? '110px' : '80px', left: '1rem', background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', zIndex: 10 }}>
                 {EMOJIS.map(emoji => (
                   <button 
                     key={emoji} 
@@ -610,7 +637,7 @@ export default function ChatInternoPage() {
 
             {/* Input Area */}
             <div style={{ padding: '0.75rem 1rem', background: '#f0f2f5', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ padding: '0.5rem', color: '#54656f' }}>
+              <button ref={emojiButtonRef} onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ padding: '0.5rem', color: '#54656f' }}>
                 <Smile size={24} />
               </button>
               
