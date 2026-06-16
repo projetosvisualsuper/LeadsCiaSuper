@@ -183,7 +183,7 @@ export const d1Api = {
             dataUltimaAtividade = ?, status = ?, tags = ?, consentimentoLGPD = ?, observacoes = ?, 
             utm_source = ?, utm_medium = ?, utm_campaign = ?, cidade = ?, estado = ?, 
             totalConversoes = ?, dataUltimaConversao = ?, avatar = ?, isMetaLead = ?,
-            documento = ?, faturamento = ?
+            documento = ?, faturamento = ?, cicloVendasDias = ?
         WHERE id = ?
       `;
       const params = [
@@ -209,6 +209,7 @@ export const d1Api = {
         isMeta,
         lead.documento || existingData.documento || null,
         (existingData.faturamento || 0) + (lead.faturamento || 0),
+        lead.cicloVendasDias !== undefined ? lead.cicloVendasDias : existingData.cicloVendasDias,
         targetId
       ];
       await executeRun(sql, params);
@@ -219,8 +220,8 @@ export const d1Api = {
         INSERT INTO leads (
           id, nome, email, telefone, celular, empresa, origem, dataCriacao, dataUltimaAtividade, 
           status, tags, consentimentoLGPD, observacoes, utm_source, utm_medium, utm_campaign, 
-          cidade, estado, totalConversoes, dataUltimaConversao, avatar, isMetaLead, documento, faturamento
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          cidade, estado, totalConversoes, dataUltimaConversao, avatar, isMetaLead, documento, faturamento, cicloVendasDias
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         lead.id,
@@ -246,7 +247,8 @@ export const d1Api = {
         lead.avatar || null,
         isMeta,
         lead.documento || null,
-        lead.faturamento || 0
+        lead.faturamento || 0,
+        lead.cicloVendasDias !== undefined ? lead.cicloVendasDias : null
       ];
       await executeRun(sql, params);
     }
@@ -1179,6 +1181,13 @@ export const d1Api = {
       ltvRevenue = recompraRes[0].ltvRevenue || 0;
     }
 
+    // Calcular Ciclo de Vendas Médio
+    const { results: cicloRes } = await runQuery(`SELECT AVG(cicloVendasDias) as avgCicloVendas FROM leads${whereClause} AND cicloVendasDias IS NOT NULL`, params);
+    let avgCicloVendas = 0;
+    if (cicloRes && cicloRes.length > 0 && cicloRes[0].avgCicloVendas) {
+      avgCicloVendas = parseFloat(cicloRes[0].avgCicloVendas) || 0;
+    }
+
     return {
       statusData: statusRes || [],
       sourceData: sourceRes || [],
@@ -1189,7 +1198,8 @@ export const d1Api = {
       cityData: cityRes || [],
       estimatedRevenue,
       totalRepurchasers,
-      ltvRevenue
+      ltvRevenue,
+      avgCicloVendas
     };
   },
 

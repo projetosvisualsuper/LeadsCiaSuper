@@ -156,6 +156,7 @@ export default function RelatoriosPage() {
   const repurchasers = reportsData?.totalRepurchasers || 0;
   const repurchaseRate = convertedCount > 0 ? ((repurchasers / convertedCount) * 100).toFixed(1) : '0';
   const ltvRevenue = reportsData?.ltvRevenue || 0;
+  const avgCicloVendas = reportsData?.avgCicloVendas || 0;
 
   // SVG Chart Calculation Helpers
   const getMaxTimelineCount = () => {
@@ -352,6 +353,18 @@ export default function RelatoriosPage() {
                   <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
                     {repurchasers} leads geraram R$ {ltvRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
+                </div>
+              </div>
+
+              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', borderLeft: '5px solid #ec4899' }}>
+                <div style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', padding: '1rem', borderRadius: '12px' }}>
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600 }}>Ciclo de Vendas (Médio)</p>
+                  <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginTop: '0.25rem' }}>
+                    {avgCicloVendas > 0 ? `${avgCicloVendas.toFixed(1)} dias` : 'N/A'}
+                  </h3>
                 </div>
               </div>
             </div>

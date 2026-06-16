@@ -27,6 +27,7 @@ export interface Lead {
   isMetaLead?: boolean;
   documento?: string;
   faturamento?: number;
+  cicloVendasDias?: number;
 }
 
 export interface Campaign {

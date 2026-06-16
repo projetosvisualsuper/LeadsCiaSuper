@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { api } from '@/services/api';
+import { d1Api } from '@/services/d1';
 import * as xlsx from 'xlsx';
 import { Lead } from '@/types/crm';
 
@@ -53,20 +54,60 @@ export async function POST(req: Request) {
         continue; // Sem dados para identificar o lead
       }
 
+      // Data de emissão do pedido na planilha
+      const emissaoStr = row['Emissão'] || row['Data'] || row['Data de emissão'] || row['Data de Emissão'];
+      let dataEmissao = new Date();
+      if (emissaoStr) {
+        // Tentar dar parse na data (DD/MM/YYYY)
+        const parts = String(emissaoStr).split(' ')[0].split('/'); // Pega só a data e ignora hora se houver
+        if (parts.length === 3) {
+          dataEmissao = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`);
+        } else {
+          const parsed = new Date(emissaoStr);
+          if (!isNaN(parsed.getTime())) {
+            dataEmissao = parsed;
+          }
+        }
+      }
+
+      // Buscar a data de criação original do lead para calcular o ciclo de vendas
+      let cicloVendasDias: number | undefined;
+      let existingLeadData: any = null;
+
+      try {
+        if (documento) {
+          existingLeadData = await d1Api.runQuery(`SELECT dataCriacao FROM leads WHERE documento = ? LIMIT 1`, [documento]).then(res => res.results?.[0]);
+        }
+        if (!existingLeadData && email) {
+          existingLeadData = await d1Api.runQuery(`SELECT dataCriacao FROM leads WHERE email = ? LIMIT 1`, [email]).then(res => res.results?.[0]);
+        }
+        if (!existingLeadData && telefone) {
+          existingLeadData = await d1Api.runQuery(`SELECT dataCriacao FROM leads WHERE celular = ? LIMIT 1`, [telefone]).then(res => res.results?.[0]);
+        }
+
+        if (existingLeadData && existingLeadData.dataCriacao) {
+          const dataCriacao = new Date(existingLeadData.dataCriacao);
+          const diffTime = dataEmissao.getTime() - dataCriacao.getTime();
+          cicloVendasDias = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+        } else {
+          cicloVendasDias = 0; // Lead novo, consideramos 0 dias
+        }
+      } catch (err) {
+        console.error('Erro ao buscar lead existente para ciclo de vendas:', err);
+      }
+
       // Procurar lead e salvar
       const leadPayload: Lead = {
-        id: Math.random().toString(36).substr(2, 9), // Se não achar, não deve criar um novo lead apenas com vendas (opcional, mas aqui podemos criar se quiser, por enquanto vamos tentar atualizar)
+        id: Math.random().toString(36).substr(2, 9),
         nome: row['Razao Social'] || row['Nome Fantasia'] || 'Cliente Mercos',
         email,
         celular: telefone,
         documento,
         origem: 'Mercos Import',
         dataCriacao: new Date().toISOString(),
-        status: 'convertido', // Atualiza para convertido
-        faturamento, // O saveLead deve somar ou sobrescrever? A lógica no d1.ts `lead.faturamento !== undefined ? lead.faturamento : ...` vai sobrescrever se passarmos. Como queremos somar as vendas da planilha?
-        // Mas se a planilha contiver várias compras do mesmo lead, isso vai substituir a última. 
-        // Para uma integração completa, precisaríamos somar `existingData.faturamento + lead.faturamento`.
-        // Na nossa atualização em d1.ts, fizemos: `lead.faturamento !== undefined ? lead.faturamento : ...`
+        status: 'convertido',
+        faturamento,
+        cicloVendasDias,
         tags: ['mercos', 'venda'],
         consentimentoLGPD: true
       };

@@ -41,6 +41,10 @@ export async function GET() {
     try {
       await db.prepare(`ALTER TABLE leads ADD COLUMN faturamento REAL DEFAULT 0`).run();
     } catch (e) { console.log('Coluna faturamento já existe ou erro:', e); }
+
+    try {
+      await db.prepare(`ALTER TABLE leads ADD COLUMN cicloVendasDias REAL`).run();
+    } catch (e) { console.log('Coluna cicloVendasDias já existe ou erro:', e); }
     
     // Adicionar colunas para funcionalidades avançadas do chat interno
     try {
