@@ -1182,10 +1182,14 @@ export const d1Api = {
     }
 
     // Calcular Ciclo de Vendas Médio
-    const { results: cicloRes } = await runQuery(`SELECT AVG(cicloVendasDias) as avgCicloVendas FROM leads${whereClause} AND cicloVendasDias IS NOT NULL`, params);
     let avgCicloVendas = 0;
-    if (cicloRes && cicloRes.length > 0 && cicloRes[0].avgCicloVendas) {
-      avgCicloVendas = parseFloat(cicloRes[0].avgCicloVendas) || 0;
+    try {
+      const { results: cicloRes } = await runQuery(`SELECT AVG(cicloVendasDias) as avgCicloVendas FROM leads${whereClause} AND cicloVendasDias IS NOT NULL`, params);
+      if (cicloRes && cicloRes.length > 0 && cicloRes[0].avgCicloVendas) {
+        avgCicloVendas = parseFloat(cicloRes[0].avgCicloVendas) || 0;
+      }
+    } catch (e) {
+      console.log('Erro ao calcular cicloVendasDias (talvez a coluna não exista ainda):', e);
     }
 
     return {
