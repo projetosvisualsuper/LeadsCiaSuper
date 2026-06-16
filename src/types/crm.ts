@@ -25,6 +25,8 @@ export interface Lead {
   dataUltimaConversao?: string;
   avatar?: string;
   isMetaLead?: boolean;
+  documento?: string;
+  faturamento?: number;
 }
 
 export interface Campaign {

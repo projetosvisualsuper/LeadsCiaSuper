@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api } from '@/services/api';
 import { FilaEnvio, Campaign } from '@/types/crm';
 import { 
@@ -14,7 +14,8 @@ import {
   DollarSign,
   Compass,
   MapPin,
-  ListOrdered
+  ListOrdered,
+  Upload
 } from 'lucide-react';
 
 export default function RelatoriosPage() {
@@ -42,6 +43,9 @@ export default function RelatoriosPage() {
   const [period, setPeriod] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingMercos, setIsUploadingMercos] = useState(false);
 
   useEffect(() => {
     refreshData();
@@ -91,6 +95,37 @@ export default function RelatoriosPage() {
     }
     
     setIsProcessing(false);
+  };
+
+  const handleMercosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingMercos(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/api/mercos/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await res.json();
+      if (res.ok) {
+        alert(`Sucesso! ${result.message}`);
+        loadReports(); // recarregar estatísticas
+      } else {
+        alert(`Erro: ${result.error}`);
+      }
+    } catch (e: any) {
+      alert(`Erro no upload: ${e.message}`);
+    } finally {
+      setIsUploadingMercos(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   // Process monitor stats
@@ -184,6 +219,39 @@ export default function RelatoriosPage() {
                   />
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'crm' && (
+            <div>
+              <input 
+                type="file" 
+                accept=".xls,.xlsx,.csv" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                onChange={handleMercosUpload}
+              />
+              <button 
+                className="btn" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingMercos}
+                style={{
+                  background: '#fbbf24',
+                  color: '#1e293b',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '50px',
+                  border: 'none',
+                  cursor: isUploadingMercos ? 'not-allowed' : 'pointer',
+                  opacity: isUploadingMercos ? 0.7 : 1
+                }}
+              >
+                {isUploadingMercos ? <RefreshCw className="animate-spin" size={16} /> : <Upload size={16} />}
+                {isUploadingMercos ? 'Importando...' : 'Importar Vendas (Mercos)'}
+              </button>
             </div>
           )}
 

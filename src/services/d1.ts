@@ -121,7 +121,9 @@ export const d1Api = {
       ...row,
       consentimentoLGPD: row.consentimentoLGPD === 1,
       isMetaLead: row.isMetaLead === 1,
-      tags: row.tags ? JSON.parse(row.tags) : []
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      faturamento: row.faturamento || 0,
+      documento: row.documento || undefined
     })) as Lead[];
   },
 
@@ -135,8 +137,17 @@ export const d1Api = {
     if (resultsId && resultsId.length > 0) {
       existingData = resultsId[0];
     } else {
-      // 2. Se não encontrar por ID, tentar por E-mail
-      if (lead.email) {
+      // 1.5. Se não encontrar por ID, tentar por Documento
+      if (lead.documento) {
+        const { results: resultsDoc } = await runQuery(`SELECT * FROM leads WHERE documento = ? LIMIT 1`, [lead.documento]);
+        if (resultsDoc && resultsDoc.length > 0) {
+          targetId = resultsDoc[0].id;
+          existingData = resultsDoc[0];
+        }
+      }
+
+      // 2. Se não encontrar, tentar por E-mail
+      if (!existingData && lead.email) {
         const { results: resultsEmail } = await runQuery(`SELECT * FROM leads WHERE email = ? LIMIT 1`, [lead.email]);
         if (resultsEmail && resultsEmail.length > 0) {
           targetId = resultsEmail[0].id;
@@ -171,7 +182,8 @@ export const d1Api = {
         SET nome = ?, email = ?, telefone = ?, celular = ?, empresa = ?, origem = ?, 
             dataUltimaAtividade = ?, status = ?, tags = ?, consentimentoLGPD = ?, observacoes = ?, 
             utm_source = ?, utm_medium = ?, utm_campaign = ?, cidade = ?, estado = ?, 
-            totalConversoes = ?, dataUltimaConversao = ?, avatar = ?, isMetaLead = ?
+            totalConversoes = ?, dataUltimaConversao = ?, avatar = ?, isMetaLead = ?,
+            documento = ?, faturamento = ?
         WHERE id = ?
       `;
       const params = [
@@ -195,6 +207,8 @@ export const d1Api = {
         resultsId && resultsId.length > 0 ? (existingData.dataUltimaConversao || existingData.dataCriacao) : agora,
         lead.avatar || existingData.avatar,
         isMeta,
+        lead.documento || existingData.documento || null,
+        (existingData.faturamento || 0) + (lead.faturamento || 0),
         targetId
       ];
       await executeRun(sql, params);
@@ -205,8 +219,8 @@ export const d1Api = {
         INSERT INTO leads (
           id, nome, email, telefone, celular, empresa, origem, dataCriacao, dataUltimaAtividade, 
           status, tags, consentimentoLGPD, observacoes, utm_source, utm_medium, utm_campaign, 
-          cidade, estado, totalConversoes, dataUltimaConversao, avatar, isMetaLead
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          cidade, estado, totalConversoes, dataUltimaConversao, avatar, isMetaLead, documento, faturamento
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         lead.id,
@@ -230,7 +244,9 @@ export const d1Api = {
         1,
         agora,
         lead.avatar || null,
-        isMeta
+        isMeta,
+        lead.documento || null,
+        lead.faturamento || 0
       ];
       await executeRun(sql, params);
     }
@@ -256,11 +272,12 @@ export const d1Api = {
       const sql = `
         INSERT INTO leads (
           id, nome, email, telefone, celular, empresa, origem, dataCriacao, dataUltimaAtividade, 
-          status, tags, consentimentoLGPD, observacoes, totalConversoes, dataUltimaConversao, avatar, isMetaLead
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          status, tags, consentimentoLGPD, observacoes, totalConversoes, dataUltimaConversao, avatar, isMetaLead, documento, faturamento
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           nome = excluded.nome, email = excluded.email, celular = excluded.celular,
-          dataUltimaAtividade = excluded.dataUltimaAtividade, status = excluded.status
+          dataUltimaAtividade = excluded.dataUltimaAtividade, status = excluded.status,
+          documento = excluded.documento, faturamento = excluded.faturamento
       `;
       const params = [
         lead.id,
@@ -279,7 +296,9 @@ export const d1Api = {
         lead.totalConversoes || 1,
         lead.dataUltimaConversao || agora,
         lead.avatar || null,
-        isMeta
+        isMeta,
+        lead.documento || null,
+        lead.faturamento || 0
       ];
       await executeRun(sql, params);
     }
@@ -1144,26 +1163,13 @@ export const d1Api = {
     const { results: stateRes } = await runQuery(`SELECT estado, COUNT(id) as count FROM leads${whereClause} AND estado IS NOT NULL AND estado != '' GROUP BY estado ORDER BY count DESC LIMIT 10`, params);
     const { results: cityRes } = await runQuery(`SELECT cidade, COUNT(id) as count FROM leads${whereClause} AND cidade IS NOT NULL AND cidade != '' GROUP BY cidade ORDER BY count DESC LIMIT 10`, params);
     
-    // Calcular faturamento aproximado com base nos tags 'valor-X'
-    const { results: leadsTags } = await runQuery(`SELECT tags FROM leads${whereClause} AND tags IS NOT NULL`, params);
+    // Calcular faturamento real com base na coluna faturamento
+    const { results: faturamentoRes } = await runQuery(`SELECT SUM(faturamento) as faturamentoTotal FROM leads${whereClause} AND faturamento > 0`, params);
     let estimatedRevenue = 0;
-    if (leadsTags) {
-      leadsTags.forEach((row: any) => {
-        try {
-          const tags = JSON.parse(row.tags);
-          if (Array.isArray(tags)) {
-            tags.forEach((tag: string) => {
-              if (tag.startsWith('valor-')) {
-                const val = parseFloat(tag.replace('valor-', '').replace(',', '.'));
-                if (!isNaN(val)) {
-                  estimatedRevenue += val;
-                }
-              }
-            });
-          }
-        } catch (e) {}
-      });
+    if (faturamentoRes && faturamentoRes.length > 0 && faturamentoRes[0].faturamentoTotal) {
+      estimatedRevenue = faturamentoRes[0].faturamentoTotal;
     }
+
 
     return {
       statusData: statusRes || [],

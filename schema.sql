@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS leads (
   totalConversoes INTEGER DEFAULT 1,
   dataUltimaConversao TEXT,
   avatar TEXT,
-  isMetaLead INTEGER DEFAULT 0
+  isMetaLead INTEGER DEFAULT 0,
+  documento TEXT,
+  faturamento REAL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS campaigns (

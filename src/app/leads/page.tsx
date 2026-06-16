@@ -20,7 +20,10 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -61,6 +64,9 @@ function LeadsContent() {
   const [landingPages, setLandingPages] = useState<LandingPageInstance[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Lead; direction: 'asc' | 'desc' } | null>({ key: 'dataCriacao', direction: 'desc' });
   
   // Filtros
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
@@ -488,11 +494,33 @@ function LeadsContent() {
     return matchesSearch && matchesStatus && matchesOrigem && matchesEstado && matchesCanal;
   });
 
+  // Sorting Logic
+  const sortedLeads = [...filteredLeads].sort((a, b) => {
+    if (!sortConfig) return 0;
+    
+    const { key, direction } = sortConfig;
+    let aValue = a[key] || '';
+    let bValue = b[key] || '';
+
+    if (key === 'tags') {
+      aValue = a.tags?.[0] || '';
+      bValue = b.tags?.[0] || '';
+    }
+
+    if (aValue < bValue) {
+      return direction === 'asc' ? -1 : 1;
+    }
+    if (aValue > bValue) {
+      return direction === 'asc' ? 1 : -1;
+    }
+    return 0;
+  });
+
   // Pagination Logic
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedLeads.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentLeads = filteredLeads.slice(indexOfFirstItem, indexOfLastItem);
+  const currentLeads = sortedLeads.slice(indexOfFirstItem, indexOfLastItem);
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -725,13 +753,36 @@ function LeadsContent() {
               <th style={{ width: '40px' }}>
                 <input type="checkbox" checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0} onChange={selectAll} />
               </th>
-              <th>Nome</th>
-              <th>E-mail</th>
-              <th>Celular</th>
-              <th>Empresa</th>
-              <th>Origem</th>
-              <th>Status</th>
-              <th>Tags</th>
+              {[
+                { label: 'Nome', key: 'nome' },
+                { label: 'E-mail', key: 'email' },
+                { label: 'Celular', key: 'celular' },
+                { label: 'Empresa', key: 'empresa' },
+                { label: 'Origem', key: 'origem' },
+                { label: 'Status', key: 'status' },
+                { label: 'Tags', key: 'tags' }
+              ].map((col) => (
+                <th 
+                  key={col.key}
+                  onClick={() => {
+                    let direction: 'asc' | 'desc' = 'asc';
+                    if (sortConfig && sortConfig.key === col.key && sortConfig.direction === 'asc') {
+                      direction = 'desc';
+                    }
+                    setSortConfig({ key: col.key as keyof Lead, direction });
+                  }}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    {col.label}
+                    {sortConfig?.key === col.key ? (
+                      sortConfig.direction === 'asc' ? <ArrowUp size={14} opacity={0.7} /> : <ArrowDown size={14} opacity={0.7} />
+                    ) : (
+                      <ArrowUpDown size={14} opacity={0.3} />
+                    )}
+                  </div>
+                </th>
+              ))}
               <th style={{ width: '40px' }}></th>
             </tr>
           </thead>
