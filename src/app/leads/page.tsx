@@ -66,7 +66,7 @@ function LeadsContent() {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   
   // Sorting State
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Lead; direction: 'asc' | 'desc' } | null>({ key: 'dataCriacao', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Lead; direction: 'asc' | 'desc' } | null>({ key: 'dataUltimaConversao', direction: 'desc' });
   
   // Filtros
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
@@ -758,7 +758,7 @@ function LeadsContent() {
                 { label: 'E-mail', key: 'email' },
                 { label: 'Celular', key: 'celular' },
                 { label: 'Empresa', key: 'empresa' },
-                { label: 'Origem', key: 'origem' },
+                { label: 'Última Conversão', key: 'dataUltimaConversao' },
                 { label: 'Status', key: 'status' },
                 { label: 'Tags', key: 'tags' }
               ].map((col) => (
@@ -796,7 +796,7 @@ function LeadsContent() {
                 <td style={{ opacity: 0.8 }}>{lead.email}</td>
                 <td>{lead.celular || lead.telefone || '-'}</td>
                 <td>{lead.empresa || '-'}</td>
-                <td>{lead.origem}</td>
+                <td>{lead.dataUltimaConversao ? new Date(lead.dataUltimaConversao).toLocaleDateString('pt-BR') : new Date(lead.dataCriacao!).toLocaleDateString('pt-BR')}</td>
                 <td>
                   <span className={`badge badge-${lead.status}`}>
                     {lead.status.toUpperCase()}
