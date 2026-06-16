@@ -413,6 +413,21 @@ export default function ChatInternoPage() {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatMessageDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Hoje';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Ontem';
+    } else {
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    }
+  };
+
   if (loading) return <div style={{ padding: '2rem' }}>Carregando Chat Interno...</div>;
 
   const chatParticipants = selectedChat ? JSON.parse(selectedChat.participantsJson || '[]') : [];
@@ -517,8 +532,19 @@ export default function ChatInternoPage() {
                 const prevMsg = messages[index - 1];
                 const showTail = !prevMsg || prevMsg.senderId !== msg.senderId;
 
+                const showDateSeparator = !prevMsg || new Date(prevMsg.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
+                const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
+
                 return (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px' }} className="group">
+                  <React.Fragment key={msg.id}>
+                    {showDateSeparator && (
+                      <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+                        <span style={{ background: 'rgba(255,255,255,0.95)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#54656f', boxShadow: '0 1px 2px rgba(11,20,26,0.1)' }}>
+                          {dateLabel}
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px' }} className="group">
                     {!isMe && showTail && selectedChat.type === 'group' && (
                       <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 600, marginBottom: '0.15rem', marginLeft: '0.5rem' }}>
                         {msg.senderName}
@@ -592,7 +618,7 @@ export default function ChatInternoPage() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })}
               <div ref={messagesEndRef} />

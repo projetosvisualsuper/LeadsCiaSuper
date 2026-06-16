@@ -460,6 +460,21 @@ function AtendimentoContent() {
 
   const activeChat = chats.find(c => c.id === selectedChatId);
 
+  const formatMessageDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Hoje';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Ontem';
+    } else {
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    }
+  };
+
   return (
     <div style={{ 
       height: 'calc(100vh - 4rem)', 
@@ -800,22 +815,32 @@ function AtendimentoContent() {
               
               {messages.map((msg, i) => {
                 const isFirstOfGroup = i === 0 || messages[i-1].isIncoming !== msg.isIncoming;
+                const showDateSeparator = i === 0 || new Date(messages[i-1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
+                const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
+
                 return (
-                  <div 
-                    key={msg.id} 
-                    style={{ 
-                      maxWidth: '70%', 
-                      alignSelf: msg.isIncoming ? 'flex-start' : 'flex-end',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px'
-                    }}
-                  >
-                    {isFirstOfGroup && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.5, marginLeft: msg.isIncoming ? '12px' : 0, marginRight: !msg.isIncoming ? '12px' : 0, textAlign: msg.isIncoming ? 'left' : 'right' }}>
-                        {msg.senderName} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                  <React.Fragment key={msg.id}>
+                    {showDateSeparator && (
+                      <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+                        <span style={{ background: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                          {dateLabel}
+                        </span>
+                      </div>
                     )}
+                    <div 
+                      style={{ 
+                        maxWidth: '70%', 
+                        alignSelf: msg.isIncoming ? 'flex-start' : 'flex-end',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                    >
+                      {isFirstOfGroup && (
+                        <span style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.5, marginLeft: msg.isIncoming ? '12px' : 0, marginRight: !msg.isIncoming ? '12px' : 0, textAlign: msg.isIncoming ? 'left' : 'right' }}>
+                          {msg.senderName} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
                     <div 
                       style={{ 
                         padding: msg.type === 'image' ? '4px' : '0.75rem 1rem', 
@@ -850,6 +875,7 @@ function AtendimentoContent() {
                       )}
                     </div>
                   </div>
+                  </React.Fragment>
                 );
               })}
               <div ref={messagesEndRef} />
