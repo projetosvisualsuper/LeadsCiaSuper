@@ -618,6 +618,7 @@ export default function ChatInternoPage() {
                         </div>
                       )}
                     </div>
+                  </div>
                   </React.Fragment>
                 );
               })}
