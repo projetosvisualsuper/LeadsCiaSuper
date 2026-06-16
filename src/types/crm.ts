@@ -378,6 +378,7 @@ export interface InternalChat {
   id: string;
   type: 'direct' | 'group';
   name?: string;
+  avatarUrl?: string; // NOVO: Foto do grupo
   participantsJson: string; // JSON array of user uids
   lastMessage?: string;
   lastTimestamp?: string;
@@ -394,4 +395,6 @@ export interface InternalMessage {
   readByJson: string; // JSON array of user uids
   attachmentUrl?: string;
   attachmentName?: string;
+  isEdited?: boolean; // NOVO
+  isDeleted?: boolean; // NOVO
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { InternalChat, InternalMessage, UserProfile } from '@/types/crm';
-import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus } from 'lucide-react';
 
 const EMOJIS = ['😀','😂','😍','😭','🙏','👍','🔥','❤️','🎉','😊','😎','🤔','😡','🥺','✨','💯','🙌','👏','👀','🚀'];
 
@@ -21,12 +21,23 @@ export default function ChatInternoPage() {
   const [newChatName, setNewChatName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
-  // New states for WhatsApp-like features
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Novas funcionalidades
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  
+  // Edição de grupo
+  const [isEditingGroupName, setIsEditingGroupName] = useState(false);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const groupAvatarRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,6 +73,12 @@ export default function ChatInternoPage() {
       const data = await res.json();
       setChats(data.chats || []);
       setUsers(data.users || []);
+      
+      // Update selected chat references if it changed
+      if (selectedChat) {
+        const updatedChat = data.chats?.find((c: any) => c.id === selectedChat.id);
+        if (updatedChat) setSelectedChat(updatedChat);
+      }
       setLoading(false);
     } catch (e) {
       console.error(e);
@@ -75,8 +92,6 @@ export default function ChatInternoPage() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setMessages(data);
-        
-        // Mark messages as read
         if (me) {
           fetch(`/api/internal-chats/${chatId}/read`, {
             method: 'POST',
@@ -87,17 +102,41 @@ export default function ChatInternoPage() {
       } else {
         setMessages([]);
       }
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
     } catch (e) {
       console.error(e);
     }
   };
 
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  useEffect(() => {
+    if (messages.length > 0) scrollToBottom();
+  }, [messages.length]);
+
   const handleSendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
     if ((!newMessage.trim() && !attachmentUrl) || !selectedChat || !me) return;
     
+    if (editingMessageId) {
+      // Edição de mensagem
+      try {
+        await fetch(`/api/internal-chats/${selectedChat.id}/messages/${editingMessageId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: newMessage.trim() })
+        });
+        setMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, content: newMessage.trim(), isEdited: true } : m));
+        setEditingMessageId(null);
+        setNewMessage('');
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
+
     const msg: any = {
       id: Math.random().toString(36).substr(2, 9),
       senderId: me.uid,
@@ -109,12 +148,10 @@ export default function ChatInternoPage() {
     
     setNewMessage('');
     setShowEmojiPicker(false);
+    setShowMentions(false);
 
-    // Optimistic update
     setMessages(prev => [...prev, { ...msg, chatId: selectedChat.id, timestamp: new Date().toISOString(), readByJson: '[]' }]);
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    scrollToBottom();
 
     try {
       await fetch(`/api/internal-chats/${selectedChat.id}/messages`, {
@@ -122,7 +159,19 @@ export default function ChatInternoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(msg)
       });
-      loadData(); // Update sidebar last message
+      loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedChat) return;
+    try {
+      await fetch(`/api/internal-chats/${selectedChat.id}/messages/${messageId}`, {
+        method: 'DELETE'
+      });
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: '🚫 Mensagem apagada', isDeleted: true } : m));
     } catch (e) {
       console.error(e);
     }
@@ -132,7 +181,6 @@ export default function ChatInternoPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Check size limit (e.g., 2MB)
     if (file.size > 2 * 1024 * 1024) {
       alert("Arquivo muito grande. O limite é de 2MB.");
       return;
@@ -143,10 +191,7 @@ export default function ChatInternoPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const data = await res.json();
       
       if (data.success && data.url) {
@@ -194,6 +239,93 @@ export default function ChatInternoPage() {
     }
   };
 
+  // Group Management
+  const handleUpdateGroup = async (updates: any) => {
+    if (!selectedChat) return;
+    try {
+      await fetch(`/api/internal-chats/${selectedChat.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleGroupAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success && data.url) {
+        await handleUpdateGroup({ avatarUrl: data.url });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveGroupName = async () => {
+    if (editGroupName.trim() && editGroupName !== selectedChat?.name) {
+      await handleUpdateGroup({ name: editGroupName });
+    }
+    setIsEditingGroupName(false);
+  };
+
+  const handleAddParticipant = async (userId: string) => {
+    if (!selectedChat) return;
+    const parts = JSON.parse(selectedChat.participantsJson || '[]');
+    if (!parts.includes(userId)) {
+      await handleUpdateGroup({ participants: [...parts, userId] });
+    }
+    setShowAddParticipant(false);
+  };
+
+  const handleRemoveParticipant = async (userId: string) => {
+    if (!selectedChat || !confirm('Remover participante?')) return;
+    const parts = JSON.parse(selectedChat.participantsJson || '[]');
+    const newParts = parts.filter((id: string) => id !== userId);
+    await handleUpdateGroup({ participants: newParts });
+  };
+
+  // Input & Mentions
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewMessage(val);
+
+    if (selectedChat?.type === 'group') {
+      const cursor = e.target.selectionStart || 0;
+      const textBeforeCursor = val.slice(0, cursor);
+      const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+      
+      if (mentionMatch) {
+        setShowMentions(true);
+        setMentionFilter(mentionMatch[1].toLowerCase());
+      } else {
+        setShowMentions(false);
+      }
+    }
+  };
+
+  const insertMention = (userName: string) => {
+    if (!inputRef.current) return;
+    const cursor = inputRef.current.selectionStart || 0;
+    const textBeforeCursor = newMessage.slice(0, cursor);
+    const textAfterCursor = newMessage.slice(cursor);
+    
+    const textBeforeMention = textBeforeCursor.replace(/@\w*$/, '');
+    const newText = `${textBeforeMention}@${userName} ${textAfterCursor}`;
+    setNewMessage(newText);
+    setShowMentions(false);
+    inputRef.current.focus();
+  };
+
+  // Render Helpers
   const getChatName = (chat: InternalChat) => {
     if (chat.type === 'group') return chat.name;
     try {
@@ -202,6 +334,20 @@ export default function ChatInternoPage() {
       const otherUser = users.find(u => u.uid === otherId);
       return otherUser?.name || otherUser?.email || 'Usuário Desconhecido';
     } catch(e) { return 'Chat'; }
+  };
+
+  const renderMessageText = (text: string) => {
+    // Basic regex for mentions (@Name)
+    const mentionRegex = /@([A-Za-z0-9_]+)/g;
+    const parts = text.split(mentionRegex);
+    if (parts.length === 1) return text;
+    
+    return parts.map((part, i) => {
+      if (i % 2 === 1) { // This is a mention
+        return <span key={i} style={{ color: '#0284c7', fontWeight: 600, background: 'rgba(2,132,199,0.1)', padding: '0 4px', borderRadius: '4px' }}>@{part}</span>;
+      }
+      return part;
+    });
   };
 
   const renderMessageStatus = (msg: InternalMessage) => {
@@ -225,10 +371,14 @@ export default function ChatInternoPage() {
 
   if (loading) return <div style={{ padding: '2rem' }}>Carregando Chat Interno...</div>;
 
+  const chatParticipants = selectedChat ? JSON.parse(selectedChat.participantsJson || '[]') : [];
+  const availableUsersForMention = users.filter(u => chatParticipants.includes(u.uid) && u.name?.toLowerCase().includes(mentionFilter));
+  const availableUsersToAdd = users.filter(u => !chatParticipants.includes(u.uid) && u.uid !== me?.uid);
+
   return (
     <div style={{ display: 'flex', height: '100vh', margin: '-2rem', background: '#f8fafc', overflow: 'hidden' }}>
       {/* Sidebar */}
-      <div style={{ width: '320px', background: 'white', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ width: '320px', background: 'white', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0, zIndex: 5 }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Chat Interno</h2>
           <button className="btn btn-outline" style={{ padding: '0.5rem' }} onClick={() => setIsNewChatModalOpen(true)}>
@@ -239,7 +389,7 @@ export default function ChatInternoPage() {
           {chats.map(chat => (
             <div 
               key={chat.id} 
-              onClick={() => { setSelectedChat(chat); setShowGroupInfo(false); setShowEmojiPicker(false); }}
+              onClick={() => { setSelectedChat(chat); setShowGroupInfo(false); setShowEmojiPicker(false); setEditingMessageId(null); setNewMessage(''); }}
               style={{ 
                 padding: '1rem', 
                 borderBottom: '1px solid var(--border)', 
@@ -250,8 +400,14 @@ export default function ChatInternoPage() {
                 alignItems: 'center'
               }}
             >
-              <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {chat.type === 'group' ? <Users size={20} color="#64748b" /> : <User size={20} color="#64748b" />}
+              <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {chat.avatarUrl ? (
+                  <img src={chat.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : chat.type === 'group' ? (
+                  <Users size={20} color="#64748b" />
+                ) : (
+                  <User size={20} color="#64748b" />
+                )}
               </div>
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <h4 style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getChatName(chat)}</h4>
@@ -275,11 +431,17 @@ export default function ChatInternoPage() {
           <>
             {/* Header */}
             <div 
-              style={{ padding: '1rem', background: '#f0f2f5', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', cursor: selectedChat.type === 'group' ? 'pointer' : 'default' }}
+              style={{ padding: '1rem', background: '#f0f2f5', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', cursor: selectedChat.type === 'group' ? 'pointer' : 'default', zIndex: 5 }}
               onClick={() => selectedChat.type === 'group' && setShowGroupInfo(true)}
             >
-               <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {selectedChat.type === 'group' ? <Users size={20} color="#475569" /> : <User size={20} color="#475569" />}
+               <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {selectedChat.avatarUrl ? (
+                  <img src={selectedChat.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : selectedChat.type === 'group' ? (
+                  <Users size={20} color="#475569" />
+                ) : (
+                  <User size={20} color="#475569" />
+                )}
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontWeight: '600', fontSize: '1rem', color: '#111b21' }}>{getChatName(selectedChat)}</h3>
@@ -309,60 +471,79 @@ export default function ChatInternoPage() {
                 const showTail = !prevMsg || prevMsg.senderId !== msg.senderId;
 
                 return (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px' }}>
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px' }} className="group">
                     {!isMe && showTail && selectedChat.type === 'group' && (
                       <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 600, marginBottom: '0.15rem', marginLeft: '0.5rem' }}>
                         {msg.senderName}
                       </div>
                     )}
-                    <div style={{
-                      position: 'relative',
-                      background: isMe ? '#dcf8c6' : 'white',
-                      color: '#111b21',
-                      padding: '0.4rem 0.5rem 0.4rem 0.6rem',
-                      borderRadius: '7.5px',
-                      borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
-                      borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
-                      maxWidth: '75%',
-                      boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
-                      display: 'flex',
-                      flexDirection: 'column'
-                    }}>
-                      {/* Tail SVG */}
-                      {showTail && isMe && (
-                        <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, right: '-8px', color: '#dcf8c6' }}>
-                          <path opacity=".13" d="M5.188 1H0v11.193l6.467-8.625C7.526 2.156 6.958 1 5.188 1z"></path>
-                          <path fill="currentColor" d="M5.188 0H0v11.193l6.467-8.625C7.526 1.156 6.958 0 5.188 0z"></path>
-                        </svg>
-                      )}
-                      {showTail && !isMe && (
-                        <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, left: '-8px', color: 'white' }}>
-                          <path opacity=".13" fill="#0000000" d="M1.533 3.568 8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568z"></path>
-                          <path fill="currentColor" d="M1.533 2.568 8 11.193V0H2.812C1.042 0 .474 1.156 1.533 2.568z"></path>
-                        </svg>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                      
+                      <div style={{
+                        position: 'relative',
+                        background: isMe ? '#dcf8c6' : 'white',
+                        color: msg.isDeleted ? '#94a3b8' : '#111b21',
+                        fontStyle: msg.isDeleted ? 'italic' : 'normal',
+                        padding: '0.4rem 0.5rem 0.4rem 0.6rem',
+                        borderRadius: '7.5px',
+                        borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
+                        borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
+                        maxWidth: '75%',
+                        boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}>
+                        {/* Tail SVG */}
+                        {showTail && isMe && (
+                          <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, right: '-8px', color: '#dcf8c6' }}>
+                            <path opacity=".13" d="M5.188 1H0v11.193l6.467-8.625C7.526 2.156 6.958 1 5.188 1z"></path>
+                            <path fill="currentColor" d="M5.188 0H0v11.193l6.467-8.625C7.526 1.156 6.958 0 5.188 0z"></path>
+                          </svg>
+                        )}
+                        {showTail && !isMe && (
+                          <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, left: '-8px', color: 'white' }}>
+                            <path opacity=".13" fill="#0000000" d="M1.533 3.568 8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568z"></path>
+                            <path fill="currentColor" d="M1.533 2.568 8 11.193V0H2.812C1.042 0 .474 1.156 1.533 2.568z"></path>
+                          </svg>
+                        )}
 
-                      {/* Attachment Render */}
-                      {msg.attachmentUrl && (
-                        <div style={{ marginBottom: '0.25rem' }}>
-                          {msg.attachmentUrl.startsWith('data:image') || msg.attachmentUrl.match(/\.(jpeg|jpg|gif|png)$/) ? (
-                            <img src={msg.attachmentUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.attachmentUrl, '_blank')} />
-                          ) : (
-                            <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit' }}>
-                              <FileText size={20} />
-                              <span style={{ fontSize: '0.85rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{msg.attachmentName || 'Arquivo Anexo'}</span>
-                            </a>
-                          )}
-                        </div>
-                      )}
+                        {/* Attachment Render */}
+                        {msg.attachmentUrl && !msg.isDeleted && (
+                          <div style={{ marginBottom: '0.25rem' }}>
+                            {msg.attachmentUrl.startsWith('data:image') || msg.attachmentUrl.match(/\.(jpeg|jpg|gif|png)$/) ? (
+                              <img src={msg.attachmentUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.attachmentUrl, '_blank')} />
+                            ) : (
+                              <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit' }}>
+                                <FileText size={20} />
+                                <span style={{ fontSize: '0.85rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{msg.attachmentName || 'Arquivo Anexo'}</span>
+                              </a>
+                            )}
+                          </div>
+                        )}
 
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.875rem', lineHeight: '1.4' }}>{msg.content}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', color: '#667781', fontSize: '0.65rem', marginBottom: '-2px', minWidth: isMe ? '45px' : 'auto' }}>
-                          <span style={{ marginTop: '2px' }}>{formatTime(msg.timestamp)}</span>
-                          {renderMessageStatus(msg)}
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.875rem', lineHeight: '1.4' }}>
+                            {renderMessageText(msg.content)}
+                            {msg.isEdited && !msg.isDeleted && <span style={{ fontSize: '0.65rem', color: '#64748b', marginLeft: '4px' }}>(editado)</span>}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', color: '#667781', fontSize: '0.65rem', marginBottom: '-2px', minWidth: isMe ? '45px' : 'auto' }}>
+                            <span style={{ marginTop: '2px' }}>{formatTime(msg.timestamp)}</span>
+                            {renderMessageStatus(msg)}
+                          </div>
                         </div>
                       </div>
+
+                      {/* Hover Actions */}
+                      {isMe && !msg.isDeleted && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <button onClick={() => { setEditingMessageId(msg.id); setNewMessage(msg.content); inputRef.current?.focus(); }} style={{ padding: '0.25rem', color: '#64748b', cursor: 'pointer', background: 'white', borderRadius: '50%' }}>
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteMessage(msg.id)} style={{ padding: '0.25rem', color: '#ef4444', cursor: 'pointer', background: 'white', borderRadius: '50%' }}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -370,9 +551,29 @@ export default function ChatInternoPage() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Editing Bar */}
+            {editingMessageId && (
+              <div style={{ background: '#f8fafc', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '0.875rem', color: '#0284c7' }}><Pencil size={14} style={{ display: 'inline', marginRight: '0.25rem' }}/> Editando mensagem...</span>
+                <button onClick={() => { setEditingMessageId(null); setNewMessage(''); }} style={{ color: '#64748b' }}><X size={16} /></button>
+              </div>
+            )}
+
+            {/* Mentions Popover */}
+            {showMentions && (
+              <div style={{ position: 'absolute', bottom: editingMessageId ? '110px' : '80px', left: '1rem', background: 'white', borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', zIndex: 10, width: '250px', maxHeight: '200px', overflowY: 'auto' }}>
+                {availableUsersForMention.map(u => (
+                  <div key={u.uid} onClick={() => insertMention(u.name?.replace(/\s/g, '') || u.uid)} style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }} className="hover:bg-slate-50">
+                    <User size={16} color="#64748b" />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{u.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Emoji Picker Popover */}
             {showEmojiPicker && (
-              <div style={{ position: 'absolute', bottom: '80px', left: '1rem', background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', zIndex: 10 }}>
+              <div style={{ position: 'absolute', bottom: editingMessageId ? '110px' : '80px', left: '1rem', background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', zIndex: 10 }}>
                 {EMOJIS.map(emoji => (
                   <button 
                     key={emoji} 
@@ -409,11 +610,12 @@ export default function ChatInternoPage() {
                   <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Enviando arquivo...</span>
                 ) : (
                   <input 
+                    ref={inputRef}
                     type="text" 
                     style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.95rem' }} 
                     placeholder="Mensagem"
                     value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                   />
                 )}
@@ -434,29 +636,75 @@ export default function ChatInternoPage() {
           </div>
         )}
 
-        {/* Group Info Modal */}
+        {/* Group Info Modal (Lateral Direito) */}
         {showGroupInfo && selectedChat?.type === 'group' && (
           <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '350px', background: '#f0f2f5', borderLeft: '1px solid var(--border)', zIndex: 20, display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.2s ease-out' }}>
             <div style={{ padding: '1.25rem', background: 'white', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border)' }}>
               <button onClick={() => setShowGroupInfo(false)} style={{ color: '#54656f' }}><X size={20} /></button>
               <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#111b21' }}>Dados do grupo</h3>
             </div>
+            
             <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'white', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ width: '150px', height: '150px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                <Users size={60} color="#475569" />
+              <div 
+                style={{ width: '150px', height: '150px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+                onClick={() => groupAvatarRef.current?.click()}
+              >
+                {selectedChat.avatarUrl ? (
+                  <img src={selectedChat.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <Users size={60} color="#475569" />
+                )}
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }} className="hover:opacity-100">
+                  <Camera color="white" size={32} />
+                </div>
               </div>
-              <h2 style={{ fontSize: '1.5rem', color: '#111b21', fontWeight: 400 }}>{selectedChat.name}</h2>
+              <input type="file" ref={groupAvatarRef} style={{ display: 'none' }} accept="image/*" onChange={handleGroupAvatarUpload} />
+              
+              {isEditingGroupName ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input type="text" value={editGroupName} onChange={e => setEditGroupName(e.target.value)} style={{ padding: '0.5rem', border: '1px solid var(--primary)', borderRadius: '4px', width: '200px' }} autoFocus />
+                  <button onClick={handleSaveGroupName} style={{ background: 'var(--primary)', color: 'white', padding: '0.5rem', borderRadius: '4px' }}><Check size={16}/></button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h2 style={{ fontSize: '1.5rem', color: '#111b21', fontWeight: 400 }}>{selectedChat.name}</h2>
+                  <button onClick={() => { setIsEditingGroupName(true); setEditGroupName(selectedChat.name || ''); }} style={{ color: '#64748b' }}><Pencil size={16}/></button>
+                </div>
+              )}
+
               <p style={{ color: '#667781', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                Grupo · {JSON.parse(selectedChat.participantsJson || '[]').length} participantes
+                Grupo · {chatParticipants.length} participantes
               </p>
             </div>
+            
             <div style={{ padding: '1rem', background: 'white', marginTop: '0.5rem', flex: 1, overflowY: 'auto' }}>
-              <h4 style={{ fontSize: '0.9rem', color: '#008069', marginBottom: '1rem', paddingLeft: '0.5rem' }}>Participantes</h4>
-              {JSON.parse(selectedChat.participantsJson || '[]').map((participantId: string) => {
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingLeft: '0.5rem' }}>
+                <h4 style={{ fontSize: '0.9rem', color: '#008069' }}>Participantes</h4>
+                <button onClick={() => setShowAddParticipant(!showAddParticipant)} style={{ color: '#008069', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                  <UserPlus size={16} /> Adicionar
+                </button>
+              </div>
+
+              {showAddParticipant && (
+                <div style={{ marginBottom: '1rem', background: '#f8fafc', padding: '0.5rem', borderRadius: '8px' }}>
+                  {availableUsersToAdd.length === 0 ? (
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Todos os usuários já estão no grupo.</span>
+                  ) : (
+                    availableUsersToAdd.map(u => (
+                      <div key={u.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: '0.875rem' }}>{u.name}</span>
+                        <button onClick={() => handleAddParticipant(u.uid)} style={{ color: '#22c55e' }}><Plus size={16}/></button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {chatParticipants.map((participantId: string) => {
                 const user = users.find(u => u.uid === participantId);
                 const isYou = participantId === me?.uid;
                 return (
-                  <div key={participantId} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', transition: 'background 0.2s', borderRadius: '8px' }}>
+                  <div key={participantId} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', transition: 'background 0.2s', borderRadius: '8px' }} className="group">
                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <User size={20} color="#64748b" />
                     </div>
@@ -464,6 +712,11 @@ export default function ChatInternoPage() {
                       <div style={{ fontSize: '0.95rem', color: '#111b21' }}>{isYou ? 'Você' : (user?.name || 'Usuário Desconhecido')}</div>
                       <div style={{ fontSize: '0.8rem', color: '#667781' }}>{user?.email || ''}</div>
                     </div>
+                    {!isYou && (
+                      <button onClick={() => handleRemoveParticipant(participantId)} style={{ color: '#ef4444', padding: '0.25rem' }} className="opacity-0 group-hover:opacity-100 transition-opacity" title="Remover participante">
+                        <UserMinus size={16} />
+                      </button>
+                    )}
                   </div>
                 );
               })}

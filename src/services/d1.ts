@@ -1197,18 +1197,22 @@ export const d1Api = {
   getInternalChats: async (userId: string): Promise<any[]> => {
     // Busca chats onde o participantsJson contém o userId
     const { results } = await runQuery(`SELECT * FROM internal_chats WHERE participantsJson LIKE ? ORDER BY lastTimestamp DESC`, [`%${userId}%`]);
-    return results || [];
+    return (results || []).map(r => ({
+      ...r,
+      avatarUrl: r.avatarUrl || undefined
+    }));
   },
 
   createInternalChat: async (chat: any): Promise<any> => {
     const sql = `
-      INSERT INTO internal_chats (id, type, name, participantsJson, lastMessage, lastTimestamp, dataCriacao)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO internal_chats (id, type, name, avatarUrl, participantsJson, lastMessage, lastTimestamp, dataCriacao)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       chat.id,
       chat.type,
       chat.name || null,
+      chat.avatarUrl || null,
       JSON.stringify(chat.participants),
       chat.lastMessage || '',
       chat.lastTimestamp || new Date().toISOString(),
@@ -1220,13 +1224,17 @@ export const d1Api = {
 
   getInternalMessages: async (chatId: string): Promise<any[]> => {
     const { results } = await runQuery(`SELECT * FROM internal_messages WHERE chatId = ? ORDER BY timestamp ASC`, [chatId]);
-    return results || [];
+    return (results || []).map(r => ({
+      ...r,
+      isEdited: r.isEdited === 1,
+      isDeleted: r.isDeleted === 1
+    }));
   },
 
   sendInternalMessage: async (message: any): Promise<any> => {
     const sql = `
-      INSERT INTO internal_messages (id, chatId, senderId, senderName, content, timestamp, readByJson, attachmentUrl, attachmentName)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO internal_messages (id, chatId, senderId, senderName, content, timestamp, readByJson, attachmentUrl, attachmentName, isEdited, isDeleted)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
     `;
     const params = [
       message.id,
@@ -1267,6 +1275,39 @@ export const d1Api = {
         }
       } catch (e) {}
     }
+  },
+
+  // Novas funções para edição de chats e mensagens
+  updateInternalChat: async (chatId: string, updates: any): Promise<void> => {
+    const setClauses: string[] = [];
+    const params: any[] = [];
+    
+    if (updates.name !== undefined) {
+      setClauses.push('name = ?');
+      params.push(updates.name);
+    }
+    if (updates.avatarUrl !== undefined) {
+      setClauses.push('avatarUrl = ?');
+      params.push(updates.avatarUrl);
+    }
+    if (updates.participants !== undefined) {
+      setClauses.push('participantsJson = ?');
+      params.push(JSON.stringify(updates.participants));
+    }
+
+    if (setClauses.length > 0) {
+      params.push(chatId);
+      const sql = `UPDATE internal_chats SET ${setClauses.join(', ')} WHERE id = ?`;
+      await executeRun(sql, params);
+    }
+  },
+
+  editInternalMessage: async (messageId: string, newContent: string): Promise<void> => {
+    await executeRun(`UPDATE internal_messages SET content = ?, isEdited = 1 WHERE id = ?`, [newContent, messageId]);
+  },
+
+  deleteInternalMessage: async (messageId: string): Promise<void> => {
+    await executeRun(`UPDATE internal_messages SET content = '🚫 Mensagem apagada', isDeleted = 1 WHERE id = ?`, [messageId]);
   },
 
   // Database Execution Helpers

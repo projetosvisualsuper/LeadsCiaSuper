@@ -11,6 +11,7 @@
   "dependencies": {
     "@cloudflare/next-on-pages": "^1.13.16",
     "@xyflow/react": "^12.11.0",
+    "date-fns": "^4.4.0",
     "firebase": "^12.12.1",
     "lucide-react": "^1.8.0",
     "next": "16.2.4",
