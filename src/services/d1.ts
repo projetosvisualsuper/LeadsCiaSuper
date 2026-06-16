@@ -1170,6 +1170,14 @@ export const d1Api = {
       estimatedRevenue = faturamentoRes[0].faturamentoTotal;
     }
 
+    // Calcular Recompra (LTV)
+    const { results: recompraRes } = await runQuery(`SELECT COUNT(id) as totalRepurchasers, SUM(faturamento) as ltvRevenue FROM leads${whereClause} AND totalConversoes > 1`, params);
+    let totalRepurchasers = 0;
+    let ltvRevenue = 0;
+    if (recompraRes && recompraRes.length > 0) {
+      totalRepurchasers = recompraRes[0].totalRepurchasers || 0;
+      ltvRevenue = recompraRes[0].ltvRevenue || 0;
+    }
 
     return {
       statusData: statusRes || [],
@@ -1179,7 +1187,9 @@ export const d1Api = {
       utmSourceData: utmRes || [],
       stateData: stateRes || [],
       cityData: cityRes || [],
-      estimatedRevenue
+      estimatedRevenue,
+      totalRepurchasers,
+      ltvRevenue
     };
   },
 

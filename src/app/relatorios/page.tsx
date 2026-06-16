@@ -15,7 +15,8 @@ import {
   Compass,
   MapPin,
   ListOrdered,
-  Upload
+  Upload,
+  Repeat
 } from 'lucide-react';
 
 export default function RelatoriosPage() {
@@ -150,8 +151,11 @@ export default function RelatoriosPage() {
   };
 
   const totalLeads = reportsData.statusData?.reduce((acc: number, item: any) => acc + item.count, 0) || 0;
-  const totalConverted = getStatusCount('convertido');
-  const conversionRate = totalLeads > 0 ? ((totalConverted / totalLeads) * 100).toFixed(1) : '0';
+  const convertedCount = getStatusCount('convertido');
+  const conversionRate = totalLeads > 0 ? ((convertedCount / totalLeads) * 100).toFixed(1) : '0';
+  const repurchasers = reportsData?.totalRepurchasers || 0;
+  const repurchaseRate = convertedCount > 0 ? ((repurchasers / convertedCount) * 100).toFixed(1) : '0';
+  const ltvRevenue = reportsData?.ltvRevenue || 0;
 
   // SVG Chart Calculation Helpers
   const getMaxTimelineCount = () => {
@@ -333,6 +337,21 @@ export default function RelatoriosPage() {
                   <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginTop: '0.25rem' }}>
                     R$ {reportsData.estimatedRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </h3>
+                </div>
+              </div>
+
+              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', borderLeft: '5px solid #8b5cf6' }}>
+                <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', padding: '1rem', borderRadius: '12px' }}>
+                  <Repeat size={24} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600 }}>Taxa de Recompra (LTV)</p>
+                  <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginTop: '0.25rem' }}>
+                    {repurchaseRate}%
+                  </h3>
+                  <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
+                    {repurchasers} leads geraram R$ {ltvRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
                 </div>
               </div>
             </div>
