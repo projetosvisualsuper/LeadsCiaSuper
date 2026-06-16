@@ -248,7 +248,24 @@ export default function ChatInternoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
+      
+      // Update state locally
+      setSelectedChat(prev => prev ? { ...prev, ...updates, participantsJson: updates.participants ? JSON.stringify(updates.participants) : prev.participantsJson } : prev);
+      setChats(prev => prev.map(c => c.id === selectedChat.id ? { ...c, ...updates, participantsJson: updates.participants ? JSON.stringify(updates.participants) : c.participantsJson } : c));
+      
       loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!selectedChat || !confirm('Tem certeza que deseja apagar esta conversa inteira? Essa ação não pode ser desfeita.')) return;
+    try {
+      await fetch(`/api/internal-chats/${selectedChat.id}`, { method: 'DELETE' });
+      setChats(prev => prev.filter(c => c.id !== selectedChat.id));
+      setSelectedChat(null);
+      setMessages([]);
     } catch (e) {
       console.error(e);
     }
@@ -448,8 +465,11 @@ export default function ChatInternoPage() {
                 {selectedChat.type === 'group' && <p style={{ fontSize: '0.75rem', color: '#667781', marginTop: '0.1rem' }}>Clique para ver os participantes</p>}
               </div>
               {selectedChat.type === 'group' && (
-                <Info size={20} color="#64748b" style={{ cursor: 'pointer' }} />
+                <Info size={20} color="#64748b" style={{ cursor: 'pointer', marginRight: '0.5rem' }} />
               )}
+              <button onClick={handleDeleteChat} style={{ color: '#ef4444', padding: '0.25rem' }} title="Apagar conversa">
+                <Trash2 size={20} />
+              </button>
             </div>
 
             {/* Messages Area */}

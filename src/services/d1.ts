@@ -1310,6 +1310,11 @@ export const d1Api = {
     await executeRun(`UPDATE internal_messages SET content = '🚫 Mensagem apagada', isDeleted = 1 WHERE id = ?`, [messageId]);
   },
 
+  deleteInternalChat: async (chatId: string): Promise<void> => {
+    await executeRun(`DELETE FROM internal_chats WHERE id = ?`, [chatId]);
+    await executeRun(`DELETE FROM internal_messages WHERE chatId = ?`, [chatId]);
+  },
+
   // Database Execution Helpers
   runQuery: async (sql: string, params: any[] = []): Promise<any> => {
     return runQuery(sql, params);

@@ -25,3 +25,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    if (!params.id) {
+      return NextResponse.json({ error: 'Chat ID required' }, { status: 400 });
+    }
+
+    await d1Api.deleteInternalChat(params.id);
+
+    return NextResponse.json({ success: true, message: 'Chat deleted' });
+  } catch (error: any) {
+    console.error(`Error in DELETE /api/internal-chats/${params.id}:`, error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
