@@ -32,8 +32,17 @@ export async function GET() {
         readByJson TEXT DEFAULT '[]'
       );
     `).run();
+
+    // Adicionar colunas da Mercos (se não existirem, o try-catch evita erro)
+    try {
+      await db.prepare(`ALTER TABLE leads ADD COLUMN documento TEXT`).run();
+    } catch (e) { console.log('Coluna documento já existe ou erro:', e); }
+
+    try {
+      await db.prepare(`ALTER TABLE leads ADD COLUMN faturamento REAL DEFAULT 0`).run();
+    } catch (e) { console.log('Coluna faturamento já existe ou erro:', e); }
     
-    return NextResponse.json({ success: true, message: 'Tabelas internal_chats e internal_messages criadas com sucesso no D1!' });
+    return NextResponse.json({ success: true, message: 'Tabelas internal_chats e internal_messages criadas, e colunas da Mercos adicionadas com sucesso no D1!' });
   } catch (err: any) {
     return NextResponse.json({ error: err.message, success: false });
   }
