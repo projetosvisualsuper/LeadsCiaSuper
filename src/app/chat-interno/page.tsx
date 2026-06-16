@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { InternalChat, InternalMessage, UserProfile } from '@/types/crm';
 import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus } from 'lucide-react';
 
@@ -536,7 +536,7 @@ export default function ChatInternoPage() {
                 const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
 
                 return (
-                  <React.Fragment key={msg.id}>
+                  <Fragment key={msg.id}>
                     {showDateSeparator && (
                       <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
                         <span style={{ background: 'rgba(255,255,255,0.95)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#54656f', boxShadow: '0 1px 2px rgba(11,20,26,0.1)' }}>
@@ -619,7 +619,7 @@ export default function ChatInternoPage() {
                       )}
                     </div>
                   </div>
-                  </React.Fragment>
+                  </Fragment>
                 );
               })}
               <div ref={messagesEndRef} />

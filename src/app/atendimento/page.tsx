@@ -1,7 +1,7 @@
 'use client';
 // Updated: 2026-05-07 10:40
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { 
   Search, 
@@ -819,7 +819,7 @@ function AtendimentoContent() {
                 const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
 
                 return (
-                  <React.Fragment key={msg.id}>
+                  <Fragment key={msg.id}>
                     {showDateSeparator && (
                       <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
                         <span style={{ background: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
@@ -875,7 +875,7 @@ function AtendimentoContent() {
                       )}
                     </div>
                   </div>
-                  </React.Fragment>
+                  </Fragment>
                 );
               })}
               <div ref={messagesEndRef} />
