@@ -725,12 +725,13 @@ function AtendimentoContent() {
                   alignItems: 'center',
                   background: selectedChatId === chat.id 
                     ? '#f8fafc' 
-                    : ((chat.unreadCount || 0) > 0 ? 'rgba(99, 102, 241, 0.08)' : 'transparent'),
+                    : ((chat.unreadCount || 0) > 0 ? '#f0fdf4' : 'transparent'),
                   borderLeft: selectedChatId === chat.id 
                     ? '4px solid var(--primary)' 
-                    : ((chat.unreadCount || 0) > 0 ? '4px solid var(--primary)' : '4px solid transparent'),
+                    : ((chat.unreadCount || 0) > 0 ? '4px solid #22c55e' : '4px solid transparent'),
                   transition: 'all 0.2s'
                 }}
+                className="hover:bg-slate-50"
               >
                 <div style={{ position: 'relative' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -741,18 +742,41 @@ function AtendimentoContent() {
                   </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.leadName}</h4>
-                    <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', alignItems: 'center' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, color: (chat.unreadCount || 0) > 0 ? '#1e293b' : 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.leadName}</h4>
+                    <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400, color: (chat.unreadCount || 0) > 0 ? '#22c55e' : 'inherit' }}>
                       {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '0.8rem', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.lastMessage}</p>
+                      <p style={{ 
+                        fontSize: '0.8rem', 
+                        color: (chat.unreadCount || 0) > 0 ? '#475569' : '#64748b',
+                        fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400,
+                        margin: 0,
+                        whiteSpace: 'nowrap', 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis' 
+                      }}>
+                        {chat.lastMessage}
+                      </p>
                     </div>
-                    {chat.unreadCount > 0 && (
-                      <span style={{ background: 'var(--primary)', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '10px', minWidth: '18px', textAlign: 'center' }}>
+                    {(chat.unreadCount || 0) > 0 && (
+                      <span style={{ 
+                        background: '#22c55e', 
+                        color: 'white', 
+                        fontSize: '0.7rem', 
+                        fontWeight: 'bold', 
+                        minWidth: '20px',
+                        height: '20px',
+                        borderRadius: '10px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        padding: '0 6px',
+                        flexShrink: 0
+                      }}>
                         {chat.unreadCount}
                       </span>
                     )}
