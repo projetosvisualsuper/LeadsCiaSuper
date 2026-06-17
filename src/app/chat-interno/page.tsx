@@ -380,6 +380,16 @@ export default function ChatInternoPage() {
     } catch(e) { return 'Chat'; }
   };
 
+  const getChatAvatar = (chat: InternalChat) => {
+    if (chat.type === 'group') return chat.avatarUrl;
+    try {
+      const parts = JSON.parse(chat.participantsJson);
+      const otherId = parts.find((id: string) => id !== me?.uid);
+      const otherUser = users.find(u => u.uid === otherId);
+      return otherUser?.avatarUrl;
+    } catch(e) { return undefined; }
+  };
+
   const renderMessageText = (text: string) => {
     // Basic regex for mentions (@Name)
     const mentionRegex = /@([A-Za-z0-9_]+)/g;
@@ -459,9 +469,9 @@ export default function ChatInternoPage() {
                 alignItems: 'center'
               }}
             >
-              <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                {chat.avatarUrl ? (
-                  <img src={chat.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                {getChatAvatar(chat) ? (
+                  <img src={getChatAvatar(chat)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : chat.type === 'group' ? (
                   <Users size={20} color="#64748b" />
                 ) : (
@@ -493,9 +503,9 @@ export default function ChatInternoPage() {
               style={{ padding: '1rem', background: '#f0f2f5', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', cursor: selectedChat.type === 'group' ? 'pointer' : 'default', zIndex: 5 }}
               onClick={() => selectedChat.type === 'group' && setShowGroupInfo(true)}
             >
-               <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                {selectedChat.avatarUrl ? (
-                  <img src={selectedChat.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+               <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                {getChatAvatar(selectedChat) ? (
+                  <img src={getChatAvatar(selectedChat)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : selectedChat.type === 'group' ? (
                   <Users size={20} color="#475569" />
                 ) : (
@@ -544,13 +554,28 @@ export default function ChatInternoPage() {
                         </span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px' }} className="group">
-                    {!isMe && showTail && selectedChat.type === 'group' && (
-                      <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 600, marginBottom: '0.15rem', marginLeft: '0.5rem' }}>
-                        {msg.senderName}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px', width: '100%' }} className="group">
+                    
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexDirection: isMe ? 'row-reverse' : 'row', maxWidth: '85%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
+                      {/* Avatar do Remetente (Apenas Grupos ou Direct, se não for "Eu") */}
+                      {!isMe && (
+                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: showTail ? '#e2e8f0' : 'transparent', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '0.2rem' }}>
+                          {showTail ? (
+                            users.find(u => u.uid === msg.senderId)?.avatarUrl ? (
+                              <img src={users.find(u => u.uid === msg.senderId)?.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <User size={14} color="#64748b" />
+                            )
+                          ) : null}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                        {!isMe && showTail && selectedChat.type === 'group' && (
+                          <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 600, marginBottom: '0.15rem', marginLeft: '0.5rem' }}>
+                            {msg.senderName}
+                          </div>
+                        )}
                       
                       <div style={{
                         position: 'relative',
@@ -606,9 +631,10 @@ export default function ChatInternoPage() {
                         </div>
                       </div>
 
+                      </div>
                       {/* Hover Actions */}
                       {isMe && !msg.isDeleted && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1" style={{ alignSelf: 'center' }}>
                           <button onClick={() => { setEditingMessageId(msg.id); setNewMessage(msg.content); inputRef.current?.focus(); }} style={{ padding: '0.25rem', color: '#64748b', cursor: 'pointer', background: 'white', borderRadius: '50%' }}>
                             <Pencil size={14} />
                           </button>
@@ -779,8 +805,12 @@ export default function ChatInternoPage() {
                 const isYou = participantId === me?.uid;
                 return (
                   <div key={participantId} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', transition: 'background 0.2s', borderRadius: '8px' }} className="group">
-                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <User size={20} color="#64748b" />
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {user?.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <User size={20} color="#64748b" />
+                      )}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '0.95rem', color: '#111b21' }}>{isYou ? 'Você' : (user?.name || 'Usuário Desconhecido')}</div>
@@ -844,8 +874,12 @@ export default function ChatInternoPage() {
                           }
                         }}
                       />
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                         <User size={16} color="#64748b" />
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        {u.avatarUrl ? (
+                          <img src={u.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <User size={16} color="#64748b" />
+                        )}
                       </div>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e293b' }}>{u.name || 'Sem Nome'}</div>

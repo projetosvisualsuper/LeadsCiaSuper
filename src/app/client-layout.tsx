@@ -28,7 +28,9 @@ import {
   Filter,
   SquareStack,
   MessageSquare,
-  Bot
+  Bot,
+  User,
+  Camera
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
@@ -73,6 +75,37 @@ export default function ClientLayout({
   const [loading, setLoading] = useState(true);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success && data.url) {
+        const updateRes = await fetch('/api/auth/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatarUrl: data.url })
+        });
+        const updateData = await updateRes.json();
+        if (updateData.success && updateData.user) {
+          setUserProfile(updateData.user);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const userRole = userProfile?.role === 'admin' ? 'master' : (userProfile?.role === 'editor' ? 'intermediario' : (userProfile?.role || 'basico'));
 
@@ -320,24 +353,35 @@ export default function ClientLayout({
             {renderNavLink('/usuarios', 'Usuários', <ShieldCheck size={sidebarIconSize} />, pendingUsersCount)}
           </nav>
  
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button 
-              onClick={async () => {
-                try {
-                  await fetch('/api/auth/logout', { method: 'POST' });
-                  setUserProfile(null);
-                  router.push('/login');
-                } catch (e) {
-                  console.error(e);
-                }
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0 0.5rem', paddingBottom: '1rem' }}>
+            <div 
+              onClick={() => setShowProfileModal(true)}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', 
+                background: 'rgba(0,0,0,0.03)', borderRadius: '12px', cursor: 'pointer',
+                transition: 'background 0.2s',
+                justifyContent: isSidebarCollapsed ? 'center' : 'flex-start'
               }}
-              className="nav-link" 
-              style={isSidebarCollapsed ? { width: '100%', cursor: 'pointer', border: 'none', background: 'transparent', justifyContent: 'center', padding: '0.75rem' } : { width: '100%', cursor: 'pointer', border: 'none', background: 'transparent' }}
+              className="hover:bg-slate-100"
             >
-              <LogIn size={sidebarIconSize} />
-              {!isSidebarCollapsed && <span className="nav-text">Sair</span>}
-            </button>
-            {!isSidebarCollapsed && <p style={{ fontSize: '0.75rem', opacity: 0.5, textAlign: 'center' }}>v1.2.0</p>}
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#cbd5e1', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {userProfile?.avatarUrl ? (
+                  <img src={userProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <User size={18} color="#475569" />
+                )}
+              </div>
+              {!isSidebarCollapsed && (
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                    {userProfile?.name || 'Usuário'}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', textTransform: 'capitalize' }}>
+                    {userRole === 'master' ? 'Master' : (userRole === 'intermediario' ? 'Intermediário' : 'Básico')}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </aside>
         
@@ -387,6 +431,62 @@ export default function ClientLayout({
             <button onClick={() => setNotification(null)} style={{ opacity: 0.3, alignSelf: 'flex-start' }}>
               <X size={18} />
             </button>
+          </div>
+        )}
+        {/* Modal de Perfil */}
+        {showProfileModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>Meu Perfil</h3>
+                <button onClick={() => setShowProfileModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <div 
+                  onClick={() => avatarInputRef.current?.click()}
+                  style={{ width: '120px', height: '120px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', overflow: 'hidden', border: '2px dashed #cbd5e1' }}
+                  className="hover:border-slate-400 group"
+                >
+                  {uploadingAvatar ? (
+                    <div style={{ width: '20px', height: '20px', border: '2px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                  ) : userProfile?.avatarUrl ? (
+                    <>
+                      <img src={userProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }} className="group-hover:opacity-100">
+                        <Camera size={24} color="white" />
+                      </div>
+                    </>
+                  ) : (
+                    <Camera size={32} color="#94a3b8" />
+                  )}
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{userProfile?.name || 'Usuário'}</h4>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>{userProfile?.email}</p>
+                </div>
+                <input type="file" ref={avatarInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleAvatarUpload} />
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                <button 
+                  onClick={async () => {
+                    try {
+                      await fetch('/api/auth/logout', { method: 'POST' });
+                      setUserProfile(null);
+                      router.push('/login');
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }}
+                  className="btn btn-outline" 
+                  style={{ width: '100%', color: 'var(--danger)', borderColor: 'var(--danger)', display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}
+                >
+                  <LogIn size={18} />
+                  Sair da Conta
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
