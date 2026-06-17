@@ -75,10 +75,60 @@ export default function ClientLayout({
   const [loading, setLoading] = useState(true);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.authenticated) {
+          router.push('/login');
+        } else {
+          setUserProfile(data.user);
+        }
+        setLoading(false);
+      });
+  }, [router]);
+
+  useEffect(() => {
+    if (userProfile?.uid) {
+      const fetchUnreadChats = async () => {
+        try {
+          const res = await fetch(`/api/internal-chats/unread?userId=${userProfile.uid}`);
+          const data = await res.json();
+          if (data.unreadCount !== undefined) {
+            setUnreadChatCount(data.unreadCount);
+          }
+        } catch(e) { }
+      };
+
+      // Traz as infos uma vez
+      fetchUnreadChats();
+
+      // Poll apenas de pendencias e chat (como era antes para pending users)
+      const fetchPending = async () => {
+        if (userProfile?.role === 'admin') {
+          try {
+            const res = await fetch('/api/usuarios/pendentes/count');
+            const data = await res.json();
+            if (data.count !== undefined) {
+              setPendingUsersCount(data.count);
+            }
+          } catch (error) { }
+        }
+      };
+
+      fetchPending();
+      const interval = setInterval(() => {
+        fetchPending();
+        fetchUnreadChats();
+      }, 10000); // Check a cada 10s
+      return () => clearInterval(interval);
+    }
+  }, [userProfile]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -346,7 +396,7 @@ export default function ClientLayout({
             {renderNavLink('/bio', 'Link na Bio', <Smartphone size={sidebarIconSize} />)}
             {renderNavLink('/popups', 'Pop-ups', <SquareStack size={sidebarIconSize} />)}
             {renderNavLink('/atendimento', 'Atendimento', <Zap size={sidebarIconSize} />)}
-            {renderNavLink('/chat-interno', 'Chat Interno', <MessageSquare size={sidebarIconSize} />)}
+            {renderNavLink('/chat-interno', 'Chat Interno', <MessageSquare size={sidebarIconSize} />, unreadChatCount > 0 ? unreadChatCount : undefined)}
             {renderNavLink('/bots', 'Bots e Automações', <Bot size={sidebarIconSize} />)}
             {renderNavLink('/conexoes', 'Conexões WhatsApp', <MessageSquare size={sidebarIconSize} />)}
             {renderNavLink('/configuracoes', 'Configurações', <SettingsIcon size={sidebarIconSize} />)}

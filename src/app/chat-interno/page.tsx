@@ -586,7 +586,8 @@ export default function ChatInternoPage() {
                         borderRadius: '7.5px',
                         borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
                         borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
-                        maxWidth: '75%',
+                        maxWidth: '100%',
+                        width: 'fit-content',
                         boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
                         display: 'flex',
                         flexDirection: 'column'
@@ -620,11 +621,11 @@ export default function ChatInternoPage() {
                         )}
 
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.875rem', lineHeight: '1.4' }}>
+                          <span style={{ fontSize: '0.9rem', lineHeight: '1.4', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
                             {renderMessageText(msg.content)}
                             {msg.isEdited && !msg.isDeleted && <span style={{ fontSize: '0.65rem', color: '#64748b', marginLeft: '4px' }}>(editado)</span>}
                           </span>
-                          <div style={{ display: 'flex', alignItems: 'center', color: '#667781', fontSize: '0.65rem', marginBottom: '-2px', minWidth: isMe ? '45px' : 'auto' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', color: '#667781', fontSize: '0.65rem', marginBottom: '-2px', minWidth: isMe ? '45px' : 'auto', flexShrink: 0 }}>
                             <span style={{ marginTop: '2px' }}>{formatTime(msg.timestamp)}</span>
                             {renderMessageStatus(msg)}
                           </div>
