@@ -125,6 +125,8 @@ export async function sendOmnichannelMessageAction(
         
         if (isLid && !cleanNumber.includes('@lid')) {
           cleanNumber = cleanNumber.split('@')[0] + '@lid';
+        } else if (!isLid && (cleanNumber.length === 10 || cleanNumber.length === 11)) {
+          cleanNumber = '55' + cleanNumber;
         }
         
         console.log(`>>> Enviando para Evolution: ${cleanNumber} (LID: ${isLid})`);

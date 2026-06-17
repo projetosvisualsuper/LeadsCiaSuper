@@ -16,8 +16,21 @@ export async function GET(req: NextRequest) {
     }
 
     if (leadId) {
-      // Buscar lead pelo campo 'id'
-      const { results } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
+      // Buscar lead pelo campo 'id' ou telefone
+      let query = `SELECT * FROM leads WHERE id = ? LIMIT 1`;
+      let params: any[] = [leadId];
+      
+      const cleanPhone = leadId.replace(/\D/g, '');
+      if (cleanPhone.length >= 10) {
+        let strippedPhone = cleanPhone;
+        if (cleanPhone.startsWith('55') && cleanPhone.length >= 12) {
+          strippedPhone = cleanPhone.substring(2);
+        }
+        query = `SELECT * FROM leads WHERE id = ? OR celular LIKE ? OR telefone LIKE ? LIMIT 1`;
+        params = [leadId, `%${strippedPhone}%`, `%${strippedPhone}%`];
+      }
+
+      const { results } = await d1Api.runQuery(query, params);
       if (results && results.length > 0) {
         const lead = results[0];
         return NextResponse.json({

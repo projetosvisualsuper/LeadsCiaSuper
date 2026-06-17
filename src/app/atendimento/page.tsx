@@ -375,7 +375,10 @@ function AtendimentoContent() {
     
     setLoading(true);
     try {
-      const cleanNumber = searchQuery.replace(/\D/g, '');
+      let cleanNumber = searchQuery.replace(/\D/g, '');
+      if (cleanNumber.length === 10 || cleanNumber.length === 11) {
+        cleanNumber = '55' + cleanNumber;
+      }
       const chatId = `${cleanNumber}@s.whatsapp.net`;
       const leadNameFromUrl = searchParams.get('name');
       
