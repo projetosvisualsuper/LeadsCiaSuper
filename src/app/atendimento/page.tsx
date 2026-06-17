@@ -89,7 +89,7 @@ function AtendimentoContent() {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const res = await fetch('/api/chats');
+        const res = await fetch(`/api/chats?t=${Date.now()}`);
         if (res.ok) {
           const chatList = await res.json();
           setChats(chatList);

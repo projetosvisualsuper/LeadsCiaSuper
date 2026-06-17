@@ -108,7 +108,7 @@ export default function ClientLayout({
 
       const fetchWhatsappUnread = async () => {
         try {
-          const res = await fetch(`/api/chats/unread`);
+          const res = await fetch(`/api/chats/unread?t=${Date.now()}`);
           const data = await res.json();
           if (data.unreadCount !== undefined) {
             setWhatsappUnreadCount(data.unreadCount);
