@@ -84,7 +84,7 @@ export async function processQueueServerAction() {
             message,
             item.whatsappConnectionId || campaign.whatsappConnectionId,
             item.templateData,
-            campaign.bannerImg
+            undefined // Teste: removendo envio de mídia (campaign.bannerImg)
           );
           sendResult = { success: result.success, message: result.error };
         }
