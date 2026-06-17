@@ -386,11 +386,17 @@ function AtendimentoContent() {
       if (cleanNumber.length === 10 || cleanNumber.length === 11) {
         cleanNumber = '55' + cleanNumber;
       }
-      const chatId = `${cleanNumber}@s.whatsapp.net`;
+      const chatId = `whatsapp_${cleanNumber}`;
+      const legacyChatId = `${cleanNumber}@s.whatsapp.net`;
       const leadNameFromUrl = searchParams.get('name');
       
-      // Verifica se já existe (prevenção)
-      const existing = chats.find(c => c.id === chatId || c.leadId.includes(cleanNumber));
+      // Verifica se já existe (prevenção para não duplicar a conversa)
+      const existing = chats.find(c => 
+        c.id === chatId || 
+        c.id === legacyChatId || 
+        (c.leadId && c.leadId.includes(cleanNumber))
+      );
+      
       if (existing) {
         setSelectedChatId(existing.id);
         return;
@@ -398,7 +404,7 @@ function AtendimentoContent() {
 
       const newChat: ChatSession = {
         id: chatId,
-        leadId: chatId,
+        leadId: cleanNumber,
         leadName: leadNameFromUrl || `Lead ${cleanNumber}`,
         channel: 'whatsapp',
         lastMessage: 'Iniciando conversa...',
