@@ -430,6 +430,7 @@ export default function ConexoesPage() {
                       >
                         <Zap size={16} /> Testar Envio
                       </button>
+                    )}
                     {conn.status === 'connected' && (
                       <button 
                         onClick={() => handleDisconnect(conn)}
