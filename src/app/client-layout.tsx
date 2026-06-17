@@ -78,6 +78,7 @@ export default function ClientLayout({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [whatsappUnreadCount, setWhatsappUnreadCount] = useState(0);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -105,8 +106,19 @@ export default function ClientLayout({
         } catch(e) { }
       };
 
+      const fetchWhatsappUnread = async () => {
+        try {
+          const res = await fetch(`/api/chats/unread`);
+          const data = await res.json();
+          if (data.unreadCount !== undefined) {
+            setWhatsappUnreadCount(data.unreadCount);
+          }
+        } catch(e) { }
+      };
+
       // Traz as infos uma vez
       fetchUnreadChats();
+      fetchWhatsappUnread();
 
       // Poll apenas de pendencias e chat (como era antes para pending users)
       const fetchPending = async () => {
@@ -125,6 +137,7 @@ export default function ClientLayout({
       const interval = setInterval(() => {
         fetchPending();
         fetchUnreadChats();
+        fetchWhatsappUnread();
       }, 10000); // Check a cada 10s
       return () => clearInterval(interval);
     }
@@ -395,7 +408,7 @@ export default function ClientLayout({
             {renderNavLink('/whatsapp', 'Botão WhatsApp', <MessageCircle size={sidebarIconSize} />)}
             {renderNavLink('/bio', 'Link na Bio', <Smartphone size={sidebarIconSize} />)}
             {renderNavLink('/popups', 'Pop-ups', <SquareStack size={sidebarIconSize} />)}
-            {renderNavLink('/atendimento', 'Atendimento', <Zap size={sidebarIconSize} />)}
+            {renderNavLink('/atendimento', 'Atendimento', <Zap size={sidebarIconSize} />, whatsappUnreadCount > 0 ? whatsappUnreadCount : undefined)}
             {renderNavLink('/chat-interno', 'Chat Interno', <MessageSquare size={sidebarIconSize} />, unreadChatCount > 0 ? unreadChatCount : undefined)}
             {renderNavLink('/bots', 'Bots e Automações', <Bot size={sidebarIconSize} />)}
             {renderNavLink('/conexoes', 'Conexões WhatsApp', <MessageSquare size={sidebarIconSize} />)}

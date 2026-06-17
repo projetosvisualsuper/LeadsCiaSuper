@@ -13,12 +13,36 @@ export async function GET(req: NextRequest) {
     }
 
     const chats = await d1Api.getInternalChats(userId);
+    const chatIds = chats.map((c: any) => c.id);
+
+    let unreadMap: Record<string, number> = {};
+    if (chatIds.length > 0) {
+      const sql = `
+        SELECT chatId, COUNT(*) as count 
+        FROM internal_messages 
+        WHERE senderId != ? 
+        AND readByJson NOT LIKE ? 
+        AND chatId IN (${chatIds.map(() => '?').join(',')})
+        GROUP BY chatId
+      `;
+      const params = [userId, `%${userId}%`, ...chatIds];
+      const { results } = await (d1Api as any).runQuery(sql, params);
+      
+      results?.forEach((row: any) => {
+        unreadMap[row.chatId] = row.count;
+      });
+    }
+
+    const chatsWithUnread = chats.map((c: any) => ({
+      ...c,
+      unreadCount: unreadMap[c.id] || 0
+    }));
     
     // Also fetch users to display their names/info
     const users = await d1Api.getAllUserProfiles();
     
     // Para simplificar no frontend, enviamos os usuários junto
-    return NextResponse.json({ chats, users });
+    return NextResponse.json({ chats: chatsWithUnread, users });
   } catch (error: any) {
     console.error('Error in GET /api/internal-chats:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

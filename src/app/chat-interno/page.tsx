@@ -463,11 +463,14 @@ export default function ChatInternoPage() {
                 padding: '1rem', 
                 borderBottom: '1px solid var(--border)', 
                 cursor: 'pointer',
-                background: selectedChat?.id === chat.id ? 'var(--accent)' : 'transparent',
+                background: selectedChat?.id === chat.id 
+                  ? 'var(--accent)' 
+                  : (chat.unreadCount > 0 ? '#f0fdf4' : 'transparent'),
                 display: 'flex',
                 gap: '1rem',
                 alignItems: 'center'
               }}
+              className="hover:bg-slate-50"
             >
               <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
                 {getChatAvatar(chat) ? (
@@ -478,11 +481,43 @@ export default function ChatInternoPage() {
                   <User size={20} color="#64748b" />
                 )}
               </div>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <h4 style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getChatName(chat)}</h4>
-                <p style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '0.25rem' }}>
-                  {chat.lastMessage || 'Nova conversa'}
-                </p>
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontWeight: chat.unreadCount > 0 ? 700 : 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>
+                    {getChatName(chat)}
+                  </h4>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                  <p style={{ 
+                    fontSize: '0.8rem', 
+                    color: chat.unreadCount > 0 ? '#475569' : '#64748b', 
+                    fontWeight: chat.unreadCount > 0 ? 600 : 400,
+                    whiteSpace: 'nowrap', 
+                    overflow: 'hidden', 
+                    textOverflow: 'ellipsis', 
+                    margin: 0
+                  }}>
+                    {chat.lastMessage || 'Nova conversa'}
+                  </p>
+                  {chat.unreadCount > 0 && (
+                    <span style={{ 
+                      background: '#22c55e', 
+                      color: 'white', 
+                      fontSize: '0.7rem', 
+                      fontWeight: 'bold', 
+                      minWidth: '20px',
+                      height: '20px',
+                      borderRadius: '10px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      padding: '0 6px',
+                      flexShrink: 0
+                    }}>
+                      {chat.unreadCount}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
