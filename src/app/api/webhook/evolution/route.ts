@@ -264,11 +264,36 @@ export async function POST(req: NextRequest) {
       const hasChat = chatResults && chatResults.length > 0;
 
       if (!hasChat) {
+        let leadAvatar = null;
+        if (!isFromMe) {
+          try {
+            const settings = await d1Api.getSettings();
+            const apiUrl = settings?.omnichannel?.evolutionApiUrl || 'http://localhost:8080';
+            const apiKey = settings?.omnichannel?.evolutionApiKey || '';
+            if (apiUrl && apiKey) {
+              const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                body: JSON.stringify({ number: remoteJid })
+              });
+              if (picRes.ok) {
+                const picData = await picRes.json();
+                if (picData && picData.profilePictureUrl) {
+                  leadAvatar = picData.profilePictureUrl;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Erro ao buscar foto de perfil novo chat:', e);
+          }
+        }
+
         // Criar nova sessão de chat
         const newChat: ChatSession = {
           id: chatId,
           leadId: leadId,
           leadName: leadName,
+          leadAvatar: leadAvatar || undefined,
           channel: 'whatsapp',
           connectionId: connectionId,
           connectionName: connectionName,
@@ -282,10 +307,36 @@ export async function POST(req: NextRequest) {
       } else {
         // Atualizar sessão existente
         const currentData = chatResults[0];
-        const unreadCount = isFromMe ? 0 : (currentData.unreadCount || 0) + 1;
+        let unreadCount = isFromMe ? 0 : (currentData.unreadCount || 0) + 1;
+        let leadAvatar = currentData.leadAvatar || null;
+
+        // Tentar buscar foto de perfil de forma assíncrona se não existir
+        if (!isFromMe && !leadAvatar) {
+          try {
+            const settings = await d1Api.getSettings();
+            const apiUrl = settings?.omnichannel?.evolutionApiUrl || 'http://localhost:8080';
+            const apiKey = settings?.omnichannel?.evolutionApiKey || '';
+            if (apiUrl && apiKey) {
+              const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                body: JSON.stringify({ number: remoteJid })
+              });
+              if (picRes.ok) {
+                const picData = await picRes.json();
+                if (picData && picData.profilePictureUrl) {
+                  leadAvatar = picData.profilePictureUrl;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Erro ao buscar foto de perfil:', e);
+          }
+        }
+
         await d1Api.executeRun(
-          `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ? WHERE id = ?`,
-          [messageText, timestampIso, unreadCount, connectionId, connectionName, leadName, chatId]
+          `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ?, leadAvatar = ? WHERE id = ?`,
+          [messageText, timestampIso, unreadCount, connectionId, connectionName, leadName, leadAvatar, chatId]
         );
       }
 

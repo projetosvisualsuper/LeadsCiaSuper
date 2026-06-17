@@ -717,8 +717,12 @@ function AtendimentoContent() {
                   display: 'flex', 
                   gap: '1rem', 
                   alignItems: 'center',
-                  background: selectedChatId === chat.id ? '#f8fafc' : 'transparent',
-                  borderLeft: selectedChatId === chat.id ? '4px solid var(--primary)' : '4px solid transparent',
+                  background: selectedChatId === chat.id 
+                    ? '#f8fafc' 
+                    : ((chat.unreadCount || 0) > 0 ? 'rgba(99, 102, 241, 0.08)' : 'transparent'),
+                  borderLeft: selectedChatId === chat.id 
+                    ? '4px solid var(--primary)' 
+                    : ((chat.unreadCount || 0) > 0 ? '4px solid var(--primary)' : '4px solid transparent'),
                   transition: 'all 0.2s'
                 }}
               >
