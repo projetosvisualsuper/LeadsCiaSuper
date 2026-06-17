@@ -56,12 +56,13 @@ export default function ConexoesPage() {
   const [showTestModal, setShowTestModal] = useState(false);
   const [testData, setTestData] = useState({ connectionId: '', phone: '', message: 'Olá! Este é um teste de conexão do Leads Cia Super. 🚀', loading: false });
 
-  const fetchQrCode = async (connectionId: string, instanceName?: string) => {
+  const fetchQrCode = async (connectionId: string) => {
     setShowQrModal(true);
     setQrCodeData({ loading: true });
     try {
       const connection = connections.find(c => c.id === connectionId);
-      const res = await fetch(`/api/whatsapp/evolution/instance?connectionId=${connectionId}&instanceName=${connection?.name || ''}`);
+      const instanceName = connection?.evolutionInstanceName || connection?.name || '';
+      const res = await fetch(`/api/whatsapp/evolution/instance?connectionId=${connectionId}&instanceName=${encodeURIComponent(instanceName)}`);
       const data = await res.json();
       
       if (!res.ok) throw new Error(data.error || 'Erro ao carregar QR Code');
@@ -140,6 +141,29 @@ export default function ConexoesPage() {
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
     }
+  };
+
+  const handleDisconnect = async (conn: WhatsappConnection) => {
+    if (!confirm(`Tem certeza que deseja desconectar a instância ${conn.evolutionInstanceName || conn.name}? O WhatsApp vai ser deslogado.`)) return;
+    
+    try {
+      const instanceName = conn.evolutionInstanceName || conn.name || '';
+      const res = await fetch(`/api/whatsapp/evolution/instance?connectionId=${conn.id}&instanceName=${encodeURIComponent(instanceName)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao desconectar');
+      
+      showToast('Desconectado com sucesso', 'success');
+      loadConnections();
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleTestSend = (conn: WhatsappConnection) => {
+    setTestData(prev => ({ ...prev, connectionId: conn.id }));
+    setShowTestModal(true);
   };
 
   const handleEdit = (conn: WhatsappConnection) => {
@@ -358,7 +382,7 @@ export default function ConexoesPage() {
                       ) : conn.status === 'pending' || conn.status === 'qr_code_ready' ? (
                         <button 
                           className="btn btn-primary btn-sm"
-                          onClick={() => fetchQrCode(conn.id, conn.name)}
+                          onClick={() => fetchQrCode(conn.id)}
                           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                         >
                           <MessageSquare size={16} /> Gerar QR Code
@@ -405,6 +429,15 @@ export default function ConexoesPage() {
                         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', height: '36px', fontSize: '0.875rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}
                       >
                         <Zap size={16} /> Testar Envio
+                      </button>
+                    {conn.status === 'connected' && (
+                      <button 
+                        onClick={() => handleDisconnect(conn)}
+                        className="btn btn-outline" 
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', height: '36px', fontSize: '0.875rem', borderColor: '#ef4444', color: '#ef4444' }}
+                        title="Desconectar"
+                      >
+                        <LogOut size={16} /> Sair
                       </button>
                     )}
                     <button 

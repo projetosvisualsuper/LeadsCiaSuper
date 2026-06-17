@@ -106,3 +106,42 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const instanceName = searchParams.get('instanceName');
+    const connectionId = searchParams.get('connectionId');
+
+    if (!instanceName) {
+      return NextResponse.json({ error: 'Nome da instância obrigatório' }, { status: 400 });
+    }
+
+    const settings = await api.getSettings();
+    const apiUrl = settings.omnichannel?.evolutionApiUrl?.replace(/\/$/, '');
+    const apiKey = settings.omnichannel?.evolutionApiKey;
+
+    if (!apiUrl || !apiKey) {
+      return NextResponse.json({ error: 'Configurações Evolution não encontradas' }, { status: 500 });
+    }
+
+    // Fazer logout no Evolution
+    const logoutRes = await fetch(`${apiUrl}/instance/logout/${instanceName}`, {
+      method: 'DELETE',
+      headers: { 'apikey': apiKey }
+    });
+
+    if (connectionId) {
+      try {
+        await api.updateWhatsappConnection(connectionId, { status: 'disconnected' });
+      } catch (e) {
+        console.error('Erro ao atualizar DB:', e);
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('[Evolution Logout] Erro:', error);
+    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
+  }
+}
