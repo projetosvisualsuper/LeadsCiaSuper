@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   Zap,
   MoreVertical,
-  Pencil
+  Pencil,
+  LogOut
 } from 'lucide-react';
 
 export default function ConexoesPage() {
