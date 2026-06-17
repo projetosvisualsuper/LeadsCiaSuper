@@ -843,7 +843,7 @@ export const d1Api = {
     if (finalChatId) {
       const sqlUpdateChat = `
         UPDATE chats 
-        SET lastMessage = ?, lastTimestamp = ?, unreadCount = 0 
+        SET lastMessage = ?, lastTimestamp = ? ${message.isIncoming ? '' : ', unreadCount = 0'} 
         WHERE id = ?
       `;
       const resultUpdate = await executeRun(sqlUpdateChat, [message.content, new Date().toISOString(), finalChatId]);
