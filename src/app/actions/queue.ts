@@ -75,7 +75,9 @@ export async function processQueueServerAction() {
           let message = (campaign.textoSimples || campaign.assunto || '').replace(/\{\{nome\}\}/g, lead.nome);
           
           if (campaign.botaoTexto && campaign.botaoLink) {
-            message += `\n\n👉 *${campaign.botaoTexto}*\n${campaign.botaoLink}`;
+            let systemUrl = settings.appUrl || 'https://mkt.ciasuper.com.br';
+            const trackingLink = `${systemUrl}/api/track?type=click&campaignId=${campaign.id}&url=${encodeURIComponent(campaign.botaoLink)}`;
+            message += `\n\n👉 *${campaign.botaoTexto}*\n${trackingLink}`;
           }
 
           const result = await sendOmnichannelMessageAction(

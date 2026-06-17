@@ -472,6 +472,14 @@ export const d1Api = {
     await executeRun(sql, params);
   },
 
+  incrementCampaignOpen: async (id: string): Promise<void> => {
+    await executeRun(`UPDATE campaigns SET totalAbertos = totalAbertos + 1 WHERE id = ?`, [id]);
+  },
+
+  incrementCampaignClick: async (id: string): Promise<void> => {
+    await executeRun(`UPDATE campaigns SET totalCliques = totalCliques + 1 WHERE id = ?`, [id]);
+  },
+
   // Settings
   getSettings: async (): Promise<Settings> => {
     try {

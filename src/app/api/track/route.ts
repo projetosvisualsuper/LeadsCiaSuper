@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment } from 'firebase/firestore';
+import { d1Api } from '@/services/d1';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +21,10 @@ export async function GET(request: Request) {
     const campaignRef = doc(db, 'campaigns', campaignId);
     
     if (type === 'open') {
-      // Incrementa a contagem de aberturas no Firestore
-      await updateDoc(campaignRef, { totalAbertos: increment(1) }).catch(console.error);
+      // Incrementa a contagem de aberturas no Firebase
+      await updateDoc(campaignRef, { totalAbertos: increment(1) }).catch(() => {});
+      // Incrementa a contagem de aberturas no D1
+      await d1Api.incrementCampaignOpen(campaignId).catch(() => {});
       
       // Retorna um GIF 1x1 transparente para o rastreador
       const buffer = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
@@ -34,8 +37,15 @@ export async function GET(request: Request) {
     }
     
     if (type === 'click' && url) {
-      // Incrementa a contagem de cliques no Firestore
-      await updateDoc(campaignRef, { totalCliques: increment(1) }).catch(console.error);
+      // Incrementa a contagem de cliques e aberturas no Firebase
+      await updateDoc(campaignRef, { 
+        totalCliques: increment(1),
+        totalAbertos: increment(1) // Em WhatsApp, clique conta como abertura também
+      }).catch(() => {});
+      
+      // Incrementa no D1
+      await d1Api.incrementCampaignClick(campaignId).catch(() => {});
+      await d1Api.incrementCampaignOpen(campaignId).catch(() => {}); // O clique garante que a msg foi lida
       
       // Redireciona para o link original
       return NextResponse.redirect(url);
