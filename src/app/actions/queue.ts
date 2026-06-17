@@ -72,13 +72,19 @@ export async function processQueueServerAction() {
         if (!targetPhone) {
           sendResult = { success: false, message: 'Lead sem telefone cadastrado.' };
         } else {
-          const message = (campaign.textoSimples || campaign.assunto || '').replace(/\{\{nome\}\}/g, lead.nome);
+          let message = (campaign.textoSimples || campaign.assunto || '').replace(/\{\{nome\}\}/g, lead.nome);
+          
+          if (campaign.botaoTexto && campaign.botaoLink) {
+            message += `\n\n👉 *${campaign.botaoTexto}*\n${campaign.botaoLink}`;
+          }
+
           const result = await sendOmnichannelMessageAction(
             targetPhone, 
             'whatsapp', 
             message,
             item.whatsappConnectionId || campaign.whatsappConnectionId,
-            item.templateData
+            item.templateData,
+            campaign.bannerImg
           );
           sendResult = { success: result.success, message: result.error };
         }

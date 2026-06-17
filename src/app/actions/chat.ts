@@ -7,7 +7,8 @@ export async function sendOmnichannelMessageAction(
   channel: string, 
   text: string, 
   connectionId?: string,
-  templateData?: { name: string, language: string, components?: any[] }
+  templateData?: { name: string, language: string, components?: any[] },
+  mediaUrl?: string
 ) {
   try {
     // 1. Lógica para INSTAGRAM e FACEBOOK
@@ -118,8 +119,6 @@ export async function sendOmnichannelMessageAction(
           return { success: true, mock: true, message: 'Mensagem simulada com sucesso.' };
         }
 
-        const evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
-        
         const isLid = recipientIdOrPhone.includes('@lid') || (recipientIdOrPhone.length > 13 && !recipientIdOrPhone.startsWith('55'));
         let cleanNumber = recipientIdOrPhone.replace(/[^\d@lid]/g, '');
         
@@ -128,8 +127,35 @@ export async function sendOmnichannelMessageAction(
         } else if (!isLid && (cleanNumber.length === 10 || cleanNumber.length === 11)) {
           cleanNumber = '55' + cleanNumber;
         }
+
+        let evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
+        let payload: any = {
+          number: cleanNumber,
+          text: text,
+          options: {
+            delay: 1200,
+            presence: "composing",
+            linkPreview: false
+          }
+        };
+
+        if (mediaUrl) {
+          evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
+          payload = {
+            number: cleanNumber,
+            mediatype: "image", // Assume imagem para campanhas de banner
+            mimetype: "image/jpeg",
+            caption: text,
+            media: mediaUrl,
+            options: {
+              delay: 1200,
+              presence: "composing",
+              linkPreview: false
+            }
+          };
+        }
         
-        console.log(`>>> Enviando para Evolution: ${cleanNumber} (LID: ${isLid})`);
+        console.log(`>>> Enviando para Evolution: ${cleanNumber} (LID: ${isLid}, Media: ${!!mediaUrl})`);
 
         const response = await fetch(evolutionReqUrl, {
           method: 'POST',
@@ -137,15 +163,7 @@ export async function sendOmnichannelMessageAction(
             'apikey': globalApiKey,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            number: cleanNumber,
-            text: text,
-            options: {
-              delay: 1200,
-              presence: "composing",
-              linkPreview: false
-            }
-          })
+          body: JSON.stringify(payload)
         });
 
         const data = await response.json();
