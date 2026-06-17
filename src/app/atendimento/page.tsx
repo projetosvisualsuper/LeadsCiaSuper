@@ -240,6 +240,13 @@ function AtendimentoContent() {
 
         if (!result.success) {
           console.error(`Erro ao enviar para ${chat.channel}:`, result.error);
+          alert(`Falha ao enviar mensagem: ${result.error}`);
+          // Reverter status da mensagem
+          await fetch('/api/chats', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: msg.id, status: 'failed' })
+          });
         } else if (result.mock) {
           console.log('Mensagem processada em modo simulação.');
         }

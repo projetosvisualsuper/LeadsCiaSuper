@@ -110,7 +110,7 @@ export async function sendOmnichannelMessageAction(
       if (conn.type === 'evolution_api') {
         const apiUrl = settings.omnichannel?.evolutionApiUrl;
         const globalApiKey = settings.omnichannel?.evolutionApiKey;
-        const instanceName = conn.evolutionInstanceName;
+        const instanceName = conn.evolutionInstanceName?.trim();
 
         // Validação p/ Modo Simulação
         if (!apiUrl || !globalApiKey) {
