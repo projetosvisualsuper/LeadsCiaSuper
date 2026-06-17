@@ -46,6 +46,13 @@ export async function GET(req: NextRequest) {
 
     const statusData = await statusRes.json();
     if (statusData.instance?.state === 'open') {
+      if (connectionId) {
+        try {
+          await api.updateWhatsappConnection(connectionId, { status: 'connected' });
+        } catch (updateErr) {
+          console.error('[Evolution] Erro ao forçar atualização de status:', updateErr);
+        }
+      }
       return NextResponse.json({ connected: true });
     }
 

@@ -69,7 +69,9 @@ export default function ConexoesPage() {
       if (data.connected) {
         setShowQrModal(false);
         showToast('WhatsApp já está conectado!', 'success');
-        loadConnections();
+        setConnections(prev => prev.map(c => c.id === connectionId ? { ...c, status: 'connected' } : c));
+        // Force update in DB just in case
+        api.updateWhatsappConnection(connectionId, { status: 'connected' }).catch(console.error);
         return;
       }
 
@@ -159,14 +161,16 @@ export default function ConexoesPage() {
     try {
       if (formData.name && formData.type) {
         
-        // Remove undefined values para evitar erro no Firebase addDoc
         const payload: any = {
           name: formData.name,
           type: formData.type as WhatsappConnectionType,
-          status: formData.type === 'meta_official' ? 'connected' : 'pending',
           isDefault: formData.isDefault || false,
           dataCriacao: new Date().toISOString()
         };
+
+        if (!editingId) {
+          payload.status = formData.type === 'meta_official' ? 'connected' : 'pending';
+        }
 
         if (formData.evolutionInstanceName) payload.evolutionInstanceName = formData.evolutionInstanceName;
         if (formData.metaPhoneNumberId) payload.metaPhoneNumberId = formData.metaPhoneNumberId;

@@ -328,6 +328,25 @@ export async function POST(req: NextRequest) {
       return new NextResponse('Webhook processed successfully', { status: 200 });
     }
 
+    if (body.event === 'connection.update') {
+      const instanceName = body.instance;
+      const state = body.data?.state;
+      
+      const connections = await d1Api.getWhatsappConnections();
+      const connection = connections.find(c => c.evolutionInstanceName === instanceName);
+      
+      if (connection && state) {
+        let newStatus = connection.status;
+        if (state === 'open') newStatus = 'connected';
+        else if (state === 'close' || state === 'connecting') newStatus = 'pending';
+        
+        if (newStatus !== connection.status) {
+          await d1Api.updateWhatsappConnection(connection.id, { status: newStatus });
+        }
+      }
+      return new NextResponse('Connection update processed', { status: 200 });
+    }
+
     // Se for outro evento de webhook da Evolution (QR Code, etc), apenas retorna 200
     return new NextResponse('Event ignored', { status: 200 });
   } catch (error) {
