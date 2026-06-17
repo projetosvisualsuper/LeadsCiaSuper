@@ -59,7 +59,11 @@ export async function GET() {
       await db.prepare(`ALTER TABLE internal_messages ADD COLUMN isDeleted INTEGER DEFAULT 0`).run();
     } catch (e) { console.log('Coluna isDeleted já existe ou erro:', e); }
 
-    return NextResponse.json({ success: true, message: 'Tabelas internal_chats e internal_messages criadas, e colunas da Mercos e Chat avançado adicionadas com sucesso no D1!' });
+    try {
+      await db.prepare(`ALTER TABLE users ADD COLUMN avatarUrl TEXT`).run();
+    } catch (e) { console.log('Coluna avatarUrl em users já existe ou erro:', e); }
+
+    return NextResponse.json({ success: true, message: 'Tabelas e colunas (incluindo avatarUrl de usuarios) adicionadas com sucesso no D1!' });
   } catch (err: any) {
     return NextResponse.json({ error: err.message, success: false });
   }
