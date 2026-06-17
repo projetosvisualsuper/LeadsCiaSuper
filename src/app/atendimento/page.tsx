@@ -544,14 +544,44 @@ function AtendimentoContent() {
             </div>
           </div>
           <div style={{ position: 'relative' }}>
-            <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+            {searchQuery ? (
+              <button 
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedChatId(null);
+                  window.history.replaceState({}, '', '/atendimento');
+                }}
+                style={{ position: 'absolute', left: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
+                title="Voltar para todas as conversas"
+              >
+                <ChevronLeft size={20} />
+              </button>
+            ) : (
+              <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+            )}
             <input 
               type="text" 
               placeholder="Buscar conversas..." 
-              style={{ width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+              style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 2.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                if (e.target.value === '') {
+                  window.history.replaceState({}, '', '/atendimento');
+                }
+              }}
             />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  window.history.replaceState({}, '', '/atendimento');
+                }}
+                style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: '#e2e8f0', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.8 }}
+              >
+                <X size={12} color="#475569" />
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
