@@ -141,32 +141,40 @@ export async function sendOmnichannelMessageAction(
         };
 
         if (mediaUrl) {
-          evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
-          
           let mt = "document";
           if (mediaMimeType?.startsWith('image/')) mt = 'image';
           else if (mediaMimeType?.startsWith('video/')) mt = 'video';
           else if (mediaMimeType?.startsWith('audio/')) mt = 'audio';
 
-          // Evolution expects a full URL (if reachable from the internet) or base64. 
-          // Se o mediaUrl for relativo (/api/media...), precisaremos transformar numa URL absoluta do sistema se a Evolution estiver externa.
+          // Se o mediaUrl for relativo (/api/media...), precisaremos transformar numa URL absoluta
           let finalMediaUrl = mediaUrl;
           if (mediaUrl.startsWith('/api/')) {
              finalMediaUrl = `https://leads.ciasuper.com.br${mediaUrl}`; // Fallback para URL absoluta
           }
 
-          payload = {
-            number: cleanNumber,
-            mediatype: mt,
-            mimetype: mediaMimeType || "application/octet-stream",
-            caption: text !== 'Arquivo enviado' && !text.startsWith('Arquivo enviado:') ? text : '',
-            media: finalMediaUrl,
-            options: {
+          if (mt === 'audio') {
+            evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendWhatsAppAudio/${instanceName}`;
+            payload = {
+              number: cleanNumber,
+              audio: finalMediaUrl,
               delay: 1200,
-              presence: "composing",
-              linkPreview: false
-            }
-          };
+              encoding: true
+            };
+          } else {
+            evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
+            payload = {
+              number: cleanNumber,
+              mediatype: mt,
+              mimetype: mediaMimeType || "application/octet-stream",
+              caption: text !== 'Arquivo enviado' && !text.startsWith('Arquivo enviado:') ? text : '',
+              media: finalMediaUrl,
+              options: {
+                delay: 1200,
+                presence: "composing",
+                linkPreview: false
+              }
+            };
+          }
         }
         
         console.log(`>>> Enviando para Evolution: ${cleanNumber} (LID: ${isLid}, Media: ${!!mediaUrl})`);
