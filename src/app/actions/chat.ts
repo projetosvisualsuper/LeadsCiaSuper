@@ -150,10 +150,9 @@ export async function sendOmnichannelMessageAction(
 
           // Evolution expects a full URL (if reachable from the internet) or base64. 
           // Se o mediaUrl for relativo (/api/media...), precisaremos transformar numa URL absoluta do sistema se a Evolution estiver externa.
-          // Como o Cia Super Leads pode rodar em Cloudflare Pages, precisamos passar o link completo.
           let finalMediaUrl = mediaUrl;
           if (mediaUrl.startsWith('/api/')) {
-             finalMediaUrl = `https://app.ciasuperleads.com${mediaUrl}`; // Fallback para URL absoluta
+             finalMediaUrl = `https://leads.ciasuper.com.br${mediaUrl}`; // Fallback para URL absoluta
           }
 
           payload = {
