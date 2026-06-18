@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
           messageType = 'file';
           messageText = msg.documentMessage.fileName || '📄 Documento';
         } else if (msg.audioMessage) {
-          messageType = 'file';
+          messageType = 'audio';
           messageText = '🎵 Áudio';
         } else if (typeof msg === 'string') {
           messageText = msg;
