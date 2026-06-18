@@ -106,7 +106,7 @@ export default function WhatsappWidgetStandalone() {
         flexDirection: 'column',
         alignItems: config.posicao === 'left' ? 'flex-start' : 'flex-end',
         justifyContent: 'flex-end',
-        padding: '1rem'
+        padding: '10px'
       }}
     >
        {/* Janela Pop-up */}
@@ -194,6 +194,7 @@ export default function WhatsappWidgetStandalone() {
        <style>{`
          @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
          html, body { 
+           color-scheme: light;
            background: none !important; 
            background-color: transparent !important;
            margin: 0 !important; 
@@ -202,6 +203,9 @@ export default function WhatsappWidgetStandalone() {
            width: 100%;
            height: 100%;
            pointer-events: none;
+         }
+         html::-webkit-scrollbar, body::-webkit-scrollbar {
+           display: none;
          }
          #widget-container {
            pointer-events: none;
