@@ -54,6 +54,40 @@ const META_TEMPLATES = [
   "Lembrete: Sua oferta especial expira em breve! Gostaria de aproveitar?"
 ];
 
+const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [speed, setSpeed] = useState(1);
+
+  const toggleSpeed = () => {
+    if (!audioRef.current) return;
+    let newSpeed = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1;
+    audioRef.current.playbackRate = newSpeed;
+    setSpeed(newSpeed);
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: isIncoming ? '#f8fafc' : 'rgba(255,255,255,0.1)', padding: '0.25rem', borderRadius: '8px' }}>
+      <audio ref={audioRef} src={src} controls style={{ height: '36px', maxWidth: '220px' }} />
+      <button 
+        onClick={toggleSpeed} 
+        style={{ 
+          background: isIncoming ? '#e2e8f0' : 'rgba(255,255,255,0.2)', 
+          border: 'none', 
+          borderRadius: '12px', 
+          padding: '2px 8px', 
+          fontSize: '0.75rem', 
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          color: isIncoming ? '#475569' : 'white'
+        }}
+        title="Velocidade do Áudio"
+      >
+        {speed}x
+      </button>
+    </div>
+  );
+};
+
 function AtendimentoContent() {
   const searchParams = useSearchParams();
   const [chats, setChats] = useState<ChatSession[]>([]);
@@ -1161,11 +1195,7 @@ function AtendimentoContent() {
                             />
                           )}
                           {msg.type === 'audio' && (
-                            <audio 
-                              src={msg.mediaUrl} 
-                              controls 
-                              style={{ maxWidth: '100%', display: 'block' }} 
-                            />
+                            <AudioPlayer src={msg.mediaUrl} isIncoming={msg.isIncoming} />
                           )}
                           {msg.type === 'file' && (
                             <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(0,0,0,0.05)', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
