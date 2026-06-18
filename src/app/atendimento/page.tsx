@@ -25,7 +25,9 @@ import {
   Forward,
   Sparkles,
   Link,
-  ChevronDown
+  ChevronDown,
+  Mic,
+  Square
 } from 'lucide-react';
 
 const renderSocialIcon = (platform: string, size: number = 24, color?: string) => {
@@ -73,6 +75,12 @@ function AtendimentoContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatMenuRef = useRef<HTMLDivElement>(null);
   
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const [syncingYoutube, setSyncingYoutube] = useState(false);
   const [syncingTiktok, setSyncingTiktok] = useState(false);
   
@@ -391,6 +399,67 @@ function AtendimentoContent() {
         .catch(err => console.error('Erro ao copiar:', err));
     }
     setActiveMessageMenu(null);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+        
+        // Simular o envio de arquivo chamando o handleFileUpload
+        const dt = new DataTransfer();
+        dt.items.add(audioFile);
+        const dummyEvent = { target: { files: dt.files } } as React.ChangeEvent<HTMLInputElement>;
+        await handleFileUpload(dummyEvent);
+        
+        // Limpar recursos
+        stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        setRecordingTime(0);
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      timerIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Erro ao acessar microfone:', err);
+      alert('Não foi possível acessar o microfone. Verifique as permissões.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.onstop = null; // Prevent upload
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+      setRecordingTime(0);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    }
   };
 
   const handleArchiveChat = async () => {
@@ -1253,32 +1322,69 @@ function AtendimentoContent() {
                     </div>
                   )}
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="Escreva sua mensagem..." 
-                  style={{ flex: 1, padding: '0.8rem 1.2rem', borderRadius: '30px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.95rem' }}
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                />
-                <button 
-                  type="submit" 
-                  disabled={!newMessage.trim()}
-                  style={{ 
-                    width: '48px', 
-                    height: '48px', 
-                    borderRadius: '50%', 
-                    background: newMessage.trim() ? 'var(--primary)' : '#e2e8f0', 
-                    color: 'white', 
-                    border: 'none', 
-                    cursor: newMessage.trim() ? 'pointer' : 'default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Send size={20} style={{ marginLeft: '3px' }} />
-                </button>
+                
+                {isRecording ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.8rem 1.2rem', borderRadius: '30px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1.5s infinite' }} />
+                      <span style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '1.1rem' }}>
+                        {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={cancelRecording}
+                      style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem' }}
+                    >
+                      <Trash2 size={16} /> Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <input 
+                    type="text" 
+                    placeholder="Escreva sua mensagem..." 
+                    style={{ flex: 1, padding: '0.8rem 1.2rem', borderRadius: '30px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.95rem' }}
+                    value={newMessage}
+                    onChange={e => setNewMessage(e.target.value)}
+                  />
+                )}
+                
+                {isRecording ? (
+                  <button 
+                    type="button"
+                    onClick={stopRecording}
+                    style={{ 
+                      width: '48px', height: '48px', borderRadius: '50%', 
+                      background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                    }}
+                  >
+                    <Send size={20} style={{ marginLeft: '3px' }} />
+                  </button>
+                ) : newMessage.trim() ? (
+                  <button 
+                    type="submit" 
+                    style={{ 
+                      width: '48px', height: '48px', borderRadius: '50%', 
+                      background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                    }}
+                  >
+                    <Send size={20} style={{ marginLeft: '3px' }} />
+                  </button>
+                ) : (
+                  <button 
+                    type="button" 
+                    onClick={startRecording}
+                    style={{ 
+                      width: '48px', height: '48px', borderRadius: '50%', 
+                      background: '#10b981', color: 'white', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                    }}
+                  >
+                    <Mic size={20} />
+                  </button>
+                )}
               </form>
             </footer>
           </>
@@ -1387,6 +1493,11 @@ function AtendimentoContent() {
         @keyframes slideInRight {
           from { transform: translateX(100%); }
           to { transform: translateX(0); }
+        }
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.3; }
+          100% { opacity: 1; }
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
