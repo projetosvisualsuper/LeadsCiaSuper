@@ -339,8 +339,10 @@ function AtendimentoContent() {
             action: 'sendOmnichannel',
             recipient,
             channel: chat.channel,
-            message: `Arquivo enviado: ${url}`,
-            connectionId: chat.connectionId
+            message: `Arquivo enviado: ${file.name}`,
+            connectionId: chat.connectionId,
+            mediaUrl: url,
+            mediaMimeType: mimeType || file.type
           })
         });
       }

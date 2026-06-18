@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
-export async function GET(req: NextRequest, { params }: { params: { key: string[] } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ key: string[] }> }) {
   try {
     let bucket = process.env.BUCKET || (globalThis as any).BUCKET;
 
@@ -10,7 +10,8 @@ export async function GET(req: NextRequest, { params }: { params: { key: string[
       return new NextResponse('Bucket R2 não configurado', { status: 500 });
     }
 
-    const fileKey = params.key.join('/');
+    const resolvedParams = await params;
+    const fileKey = resolvedParams.key.join('/');
     
     // Obter o objeto do R2
     const object = await bucket.get(fileKey);
