@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
         body.connectionId,
         undefined, // templateData
         body.mediaUrl,
-        body.mediaMimeType
+        body.mediaMimeType,
+        body.quotedMessageId
       );
       return NextResponse.json(result);
     }
