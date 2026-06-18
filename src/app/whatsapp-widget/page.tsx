@@ -37,8 +37,34 @@ export default function WhatsappWidgetStandalone() {
     }
   }, [open]);
 
+  const globalStyles = (
+    <style>{`
+      @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      html, body { 
+        color-scheme: light;
+        background: none !important; 
+        background-color: transparent !important;
+        margin: 0 !important; 
+        padding: 0 !important; 
+        overflow: hidden !important;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      html::-webkit-scrollbar, body::-webkit-scrollbar {
+        display: none;
+      }
+      #widget-container {
+        pointer-events: none;
+      }
+      #widget-container > * {
+        pointer-events: auto;
+      }
+    `}</style>
+  );
+
   if (!settings?.whatsappWidget?.enabled || !settings.whatsappWidget.atendentes.length) {
-    return null;
+    return globalStyles;
   }
 
   const config = settings.whatsappWidget;
@@ -191,29 +217,7 @@ export default function WhatsappWidgetStandalone() {
          {open ? <X size={28} /> : renderOfficialWhatsappIcon(32, "white")}
        </button>
 
-       <style>{`
-         @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-         html, body { 
-           color-scheme: light;
-           background: none !important; 
-           background-color: transparent !important;
-           margin: 0 !important; 
-           padding: 0 !important; 
-           overflow: hidden !important;
-           width: 100%;
-           height: 100%;
-           pointer-events: none;
-         }
-         html::-webkit-scrollbar, body::-webkit-scrollbar {
-           display: none;
-         }
-         #widget-container {
-           pointer-events: none;
-         }
-         #widget-container > * {
-           pointer-events: auto;
-         }
-       `}</style>
+       {globalStyles}
     </div>
   );
 }
