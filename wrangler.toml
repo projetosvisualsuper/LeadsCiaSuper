@@ -11,3 +11,7 @@ DB_PROVIDER = "d1"
 binding = "DB"
 database_name = "gerency-leads-db"
 database_id = "42dea477-ca55-4e50-9731-3a56cef4d54c" # Substitua com o ID do banco gerado pelo comando wrangler d1 create
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "leadsciasuper-media"
