@@ -4,12 +4,13 @@ import { d1Api } from '@/services/d1';
 
 export async function sendOmnichannelMessageAction(
   recipientIdOrPhone: string, 
-  channel: string, 
+  channel: 'whatsapp' | 'instagram' | 'facebook' | 'tiktok' | 'youtube' | 'system', 
   text: string, 
   connectionId?: string,
   templateData?: { name: string, language: string, components?: any[] },
   mediaUrl?: string,
-  mediaMimeType?: string
+  mediaMimeType?: string,
+  quotedMessageId?: string
 ) {
   try {
     // 1. Lógica para INSTAGRAM e FACEBOOK
@@ -129,15 +130,22 @@ export async function sendOmnichannelMessageAction(
           cleanNumber = '55' + cleanNumber;
         }
 
+        const defaultOptions: any = {
+          delay: 1200,
+          presence: "composing",
+          linkPreview: false
+        };
+        if (quotedMessageId) {
+          defaultOptions.quoted = {
+            key: { id: quotedMessageId }
+          };
+        }
+
         let evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
         let payload: any = {
           number: cleanNumber,
           text: text,
-          options: {
-            delay: 1200,
-            presence: "composing",
-            linkPreview: false
-          }
+          options: defaultOptions
         };
 
         if (mediaUrl) {
@@ -157,7 +165,7 @@ export async function sendOmnichannelMessageAction(
             payload = {
               number: cleanNumber,
               audio: finalMediaUrl,
-              delay: 1200,
+              options: defaultOptions,
               encoding: true
             };
           } else {
@@ -168,11 +176,7 @@ export async function sendOmnichannelMessageAction(
               mimetype: mediaMimeType || "application/octet-stream",
               caption: text !== 'Arquivo enviado' && !text.startsWith('Arquivo enviado:') ? text : '',
               media: finalMediaUrl,
-              options: {
-                delay: 1200,
-                presence: "composing",
-                linkPreview: false
-              }
+              options: defaultOptions
             };
           }
         }

@@ -168,7 +168,10 @@ CREATE TABLE IF NOT EXISTS messages (
   status TEXT NOT NULL,
   isIncoming INTEGER DEFAULT 0,
   mediaUrl TEXT,
-  mediaMimeType TEXT
+  mediaMimeType TEXT,
+  quotedMessageId TEXT,
+  quotedMessageSender TEXT,
+  quotedMessageContent TEXT
 );
 
 CREATE TABLE IF NOT EXISTS whatsapp_connections (

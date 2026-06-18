@@ -103,6 +103,9 @@ function AtendimentoContent() {
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [replyingToMessage, setReplyingToMessage] = useState<ChatMessage | null>(null);
+  const [forwardMessage, setForwardMessage] = useState<ChatMessage | null>(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [connections, setConnections] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -256,7 +259,7 @@ function AtendimentoContent() {
     const chat = chats.find(c => c.id === selectedChatId);
     if (!chat) return;
 
-    const msg = {
+    const msg: any = {
       id: Math.random().toString(36).substr(2, 9),
       chatId: chat.id,
       content: newMessage,
@@ -267,11 +270,16 @@ function AtendimentoContent() {
       status: 'sent',
       isIncoming: false,
       channel: chat.channel,
-      leadId: chat.leadId
+      leadId: chat.leadId,
+      quotedMessageId: replyingToMessage?.id,
+      quotedMessageSender: replyingToMessage?.senderName,
+      quotedMessageContent: replyingToMessage?.content || replyingToMessage?.mediaUrl
     };
 
     const messageToSend = newMessage;
     setNewMessage('');
+    const currentReplyTo = replyingToMessage;
+    setReplyingToMessage(null);
     
     try {
       await fetch('/api/chats', {
@@ -309,7 +317,8 @@ function AtendimentoContent() {
             recipient,
             channel: chat.channel,
             message: messageToSend,
-            connectionId: chat.connectionId
+            connectionId: chat.connectionId,
+            quotedMessageId: currentReplyTo?.id
           })
         });
         const result = await response.json();
@@ -361,7 +370,7 @@ function AtendimentoContent() {
       else if (file.type.startsWith('video/')) msgType = 'video';
       else if (file.type.startsWith('audio/')) msgType = 'audio';
 
-      const msg: ChatMessage = {
+      const msg: any = {
         id: Math.random().toString(36).substr(2, 9),
         chatId: selectedChatId,
         senderId: 'atendente_admin',
@@ -372,8 +381,14 @@ function AtendimentoContent() {
         status: 'sent',
         isIncoming: false,
         mediaUrl: url,
-        mediaMimeType: mimeType || file.type
+        mediaMimeType: mimeType || file.type,
+        quotedMessageId: replyingToMessage?.id,
+        quotedMessageSender: replyingToMessage?.senderName,
+        quotedMessageContent: replyingToMessage?.content || replyingToMessage?.mediaUrl
       };
+
+      const currentReplyTo = replyingToMessage;
+      setReplyingToMessage(null);
 
       await fetch('/api/chats', {
         method: 'POST',
@@ -396,7 +411,8 @@ function AtendimentoContent() {
             message: `Arquivo enviado: ${file.name}`,
             connectionId: chat.connectionId,
             mediaUrl: url,
-            mediaMimeType: mimeType || file.type
+            mediaMimeType: mimeType || file.type,
+            quotedMessageId: currentReplyTo?.id
           })
         });
       }
@@ -493,6 +509,68 @@ function AtendimentoContent() {
       setIsRecording(false);
       setRecordingTime(0);
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    }
+  };
+
+  const handleForwardMessage = async (targetChatId: string) => {
+    if (!forwardMessage) return;
+    const targetChat = chats.find(c => c.id === targetChatId);
+    if (!targetChat) return;
+
+    try {
+      const msg: any = {
+        id: Math.random().toString(36).substr(2, 9),
+        chatId: targetChat.id,
+        content: forwardMessage.content,
+        senderId: 'atendente_admin',
+        senderName: 'Atendente',
+        timestamp: new Date().toISOString(),
+        type: forwardMessage.type,
+        status: 'sent',
+        isIncoming: false,
+        channel: targetChat.channel,
+        leadId: targetChat.leadId,
+        mediaUrl: forwardMessage.mediaUrl,
+        mediaMimeType: forwardMessage.mediaMimeType
+      };
+
+      await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(msg)
+      });
+
+      let recipient = targetChat.leadId;
+      if (targetChat.channel === 'whatsapp') {
+        recipient = targetChat.leadId.split('@')[0];
+      }
+
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sendOmnichannel',
+          recipient,
+          channel: targetChat.channel,
+          message: forwardMessage.content,
+          connectionId: targetChat.connectionId,
+          mediaUrl: forwardMessage.mediaUrl,
+          mediaMimeType: forwardMessage.mediaMimeType
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        alert('Erro ao encaminhar mensagem: ' + result.error);
+      } else {
+        alert('Mensagem encaminhada com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao encaminhar:', error);
+      alert('Erro ao encaminhar mensagem.');
+    } finally {
+      setShowForwardModal(false);
+      setForwardMessage(null);
     }
   };
 
@@ -1158,13 +1236,29 @@ function AtendimentoContent() {
                             color: '#1e293b'
                           }}
                         >
-                          <button onClick={() => { setNewMessage(`> ${msg.content?.substring(0, 50)}...\n\n`); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                          <button onClick={() => { setReplyingToMessage(msg); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
                             <Reply size={14} /> Responder
                           </button>
-                          <button onClick={() => { alert('Em breve'); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                          <button onClick={() => { setForwardMessage(msg); setShowForwardModal(true); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
                             <Forward size={14} /> Encaminhar
                           </button>
-                          <button onClick={() => { alert('Em breve'); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                          <button 
+                            onClick={async () => { 
+                              setActiveMessageMenu(null); 
+                              const res = await fetch('/api/chats/suggest', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ messageContent: msg.content })
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                setNewMessage(data.suggestion);
+                              } else {
+                                alert('Erro ao sugerir: ' + data.error);
+                              }
+                            }} 
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                          >
                             <Sparkles size={14} /> Sugerir resposta
                           </button>
                           <button onClick={() => handleCopyMessage(msg.content, msg.mediaUrl)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -1174,6 +1268,26 @@ function AtendimentoContent() {
                           <button onClick={() => handleDeleteMessage(msg.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ef4444' }}>
                             <Trash2 size={14} /> Excluir
                           </button>
+                        </div>
+                      )}
+                      {msg.quotedMessageId && (
+                        <div style={{
+                          background: msg.isIncoming ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.15)',
+                          borderLeft: `4px solid ${msg.isIncoming ? 'var(--primary)' : 'rgba(255,255,255,0.8)'}`,
+                          padding: '6px 10px',
+                          borderRadius: '4px',
+                          marginBottom: '6px',
+                          fontSize: '0.85rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px'
+                        }}>
+                          <span style={{ fontWeight: 600, color: msg.isIncoming ? 'var(--primary)' : 'white' }}>
+                            {msg.quotedMessageSender || 'Usuário'}
+                          </span>
+                          <span style={{ opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                            {msg.quotedMessageContent || 'Mensagem anexa'}
+                          </span>
                         </div>
                       )}
 
@@ -1235,8 +1349,36 @@ function AtendimentoContent() {
             </div>
 
             {/* Input de Mensagem */}
-            <footer style={{ padding: '1.5rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
-              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <footer style={{ padding: '0 1.5rem 1.5rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+              {replyingToMessage && (
+                <div style={{
+                  padding: '10px 15px',
+                  background: '#f1f5f9',
+                  borderLeft: '4px solid var(--primary)',
+                  borderRadius: '8px 8px 0 0',
+                  marginTop: '1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)' }}>
+                      {replyingToMessage.senderName}
+                    </span>
+                    <span style={{ fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {replyingToMessage.type === 'audio' ? '🎵 Áudio' : 
+                       replyingToMessage.type === 'image' ? '📷 Imagem' : 
+                       replyingToMessage.type === 'video' ? '🎥 Vídeo' : 
+                       replyingToMessage.content}
+                    </span>
+                  </div>
+                  <button type="button" onClick={() => setReplyingToMessage(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}>
+                    X
+                  </button>
+                </div>
+              )}
+              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '1rem', alignItems: 'center', paddingTop: replyingToMessage ? '1rem' : '1.5rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
                   <button 
                     type="button" 
@@ -1519,6 +1661,46 @@ function AtendimentoContent() {
         </div>
       )}
       
+      {showForwardModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '12px', padding: '1.5rem',
+            width: '90%', maxWidth: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              Encaminhar mensagem
+              <button onClick={() => { setShowForwardModal(false); setForwardMessage(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#64748b' }}>×</button>
+            </h3>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {chats.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => handleForwardMessage(c.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem',
+                    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
+                    cursor: 'pointer', textAlign: 'left'
+                  }}
+                  className="hover-bg"
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <User size={18} color="#64748b" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1e293b' }}>{c.leadName}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.channel} - {c.connectionName}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         @keyframes slideInRight {
           from { transform: translateX(100%); }

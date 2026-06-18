@@ -358,6 +358,9 @@ export interface ChatMessage {
   isIncoming: boolean; // True se veio do lead, False se enviado pelo atendente
   mediaUrl?: string; // URL do arquivo no R2
   mediaMimeType?: string; // MimeType do arquivo
+  quotedMessageId?: string;
+  quotedMessageSender?: string;
+  quotedMessageContent?: string;
 }
 
 export interface ChatSession {
