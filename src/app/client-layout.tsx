@@ -324,6 +324,26 @@ export default function ClientLayout({
     checkPendingUsers();
   }, [userProfile?.role]);
 
+  if (pathname === '/whatsapp-widget') {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: `
+          html, body {
+            background: transparent !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            color-scheme: light !important;
+          }
+          html::-webkit-scrollbar, body::-webkit-scrollbar {
+            display: none !important;
+          }
+        `}} />
+        {children}
+      </>
+    );
+  }
+
   if (isCapturePage) {
     return (
       <div style={{ background: 'transparent', minHeight: '100vh' }}>
