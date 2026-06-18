@@ -185,7 +185,6 @@ export async function sendOmnichannelMessageAction(
             };
             if (quotedObj) payload.quoted = quotedObj;
           }
-          }
         }
         
         console.log(`>>> Enviando para Evolution: ${cleanNumber} (LID: ${isLid}, Media: ${!!mediaUrl})`);
