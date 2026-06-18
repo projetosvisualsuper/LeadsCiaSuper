@@ -102,8 +102,19 @@ function AtendimentoContent() {
     };
 
     fetchChats();
-    const interval = setInterval(fetchChats, 4000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchChats();
+    }, 10000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) fetchChats();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Carregar conexões disponíveis
@@ -154,8 +165,19 @@ function AtendimentoContent() {
     }
 
     fetchMessagesAndLead();
-    const interval = setInterval(fetchMessagesAndLead, 3000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchMessagesAndLead();
+    }, 5000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) fetchMessagesAndLead();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [selectedChatId, chats.length]);
 
   useEffect(() => {

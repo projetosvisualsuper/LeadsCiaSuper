@@ -135,11 +135,25 @@ export default function ClientLayout({
 
       fetchPending();
       const interval = setInterval(() => {
+        if (document.hidden) return;
         fetchPending();
         fetchUnreadChats();
         fetchWhatsappUnread();
-      }, 10000); // Check a cada 10s
-      return () => clearInterval(interval);
+      }, 30000); // Check a cada 30s
+
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          fetchPending();
+          fetchUnreadChats();
+          fetchWhatsappUnread();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [userProfile]);
 
@@ -285,7 +299,9 @@ export default function ClientLayout({
     };
 
     checkNewLeads();
-    intervalId = setInterval(checkNewLeads, 15000); // Polling a cada 15 segundos
+    intervalId = setInterval(() => {
+      if (!document.hidden) checkNewLeads();
+    }, 60000); // Polling a cada 60 segundos
 
     return () => {
       if (intervalId) clearInterval(intervalId);

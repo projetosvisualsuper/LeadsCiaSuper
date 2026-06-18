@@ -80,16 +80,38 @@ export default function ChatInternoPage() {
   useEffect(() => {
     if (me) {
       loadData();
-      const interval = setInterval(loadData, 10000); // Polling 10s
-      return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        if (!document.hidden) loadData();
+      }, 15000); // Polling 15s
+
+      const handleVisibilityChange = () => {
+        if (!document.hidden) loadData();
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [me]);
 
   useEffect(() => {
     if (selectedChat) {
       loadMessages(selectedChat.id);
-      const interval = setInterval(() => loadMessages(selectedChat.id), 5000); // Polling 5s messages
-      return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        if (!document.hidden) loadMessages(selectedChat.id);
+      }, 8000); // Polling 8s messages
+
+      const handleVisibilityChange = () => {
+        if (!document.hidden) loadMessages(selectedChat.id);
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [selectedChat]);
 
