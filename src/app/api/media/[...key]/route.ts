@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRequestContext } from '@cloudflare/next-on-pages';
 
 export const runtime = 'edge';
 
 export async function GET(req: NextRequest, { params }: { params: { key: string[] } }) {
   try {
-    let bucket = null;
-    try {
-      bucket = getRequestContext().env.BUCKET;
-    } catch (e) {
-      bucket = process.env.BUCKET || (globalThis as any).BUCKET;
-    }
+    let bucket = process.env.BUCKET || (globalThis as any).BUCKET;
 
     if (!bucket) {
       return new NextResponse('Bucket R2 não configurado', { status: 500 });

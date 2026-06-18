@@ -12,13 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Arquivo ausente.' }, { status: 400 });
     }
 
-    const { getRequestContext } = require('@cloudflare/next-on-pages');
-    let bucket = null;
-    try {
-      bucket = getRequestContext().env.BUCKET;
-    } catch (e) {
-      bucket = process.env.BUCKET || (globalThis as any).BUCKET;
-    }
+    let bucket = process.env.BUCKET || (globalThis as any).BUCKET;
 
     if (!bucket) {
       return NextResponse.json({ error: 'Bucket R2 não configurado' }, { status: 500 });

@@ -245,13 +245,7 @@ export async function POST(req: NextRequest) {
 
         if (base64Data) {
           try {
-            const { getRequestContext } = require('@cloudflare/next-on-pages');
-            let bucket = null;
-            try {
-              bucket = getRequestContext().env.BUCKET;
-            } catch (e) {
-              bucket = process.env.BUCKET || (globalThis as any).BUCKET;
-            }
+            let bucket = process.env.BUCKET || (globalThis as any).BUCKET;
 
             if (bucket) {
               const binaryString = atob(base64Data);
