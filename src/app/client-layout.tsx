@@ -82,6 +82,11 @@ export default function ClientLayout({
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (isCapturePage) {
+      setLoading(false);
+      return;
+    }
+
     fetch('/api/auth/me')
       .then(res => res.json())
       .then(data => {
@@ -92,7 +97,7 @@ export default function ClientLayout({
         }
         setLoading(false);
       });
-  }, [router]);
+  }, [router, isCapturePage]);
 
   useEffect(() => {
     if (userProfile?.uid) {
