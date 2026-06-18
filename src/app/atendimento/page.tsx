@@ -20,7 +20,12 @@ import {
   X,
   MessageSquare,
   Trash2,
-  Loader2
+  Loader2,
+  Reply,
+  Forward,
+  Sparkles,
+  Link,
+  ChevronDown
 } from 'lucide-react';
 
 const renderSocialIcon = (platform: string, size: number = 24, color?: string) => {
@@ -60,6 +65,8 @@ function AtendimentoContent() {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showLeadDetails, setShowLeadDetails] = useState(true);
   const [showChatMenu, setShowChatMenu] = useState(false);
+  const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [connections, setConnections] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -186,9 +193,14 @@ function AtendimentoContent() {
 
   // Fechar menus ao clicar fora
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (chatMenuRef.current && !chatMenuRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(e.target as Node)) {
         setShowChatMenu(false);
+      }
+      
+      const target = e.target as Element;
+      if (!target.closest('.message-menu-container') && !target.closest('.message-menu-trigger')) {
+        setActiveMessageMenu(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -353,6 +365,32 @@ function AtendimentoContent() {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleDeleteMessage = async (msgId: string) => {
+    if (!confirm('Deseja realmente excluir esta mensagem? Ela será apagada apenas do painel CRM.')) return;
+    try {
+      const response = await fetch(`/api/chats?messageId=${msgId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Falha ao excluir mensagem');
+      
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+      setActiveMessageMenu(null);
+    } catch (error) {
+      console.error('Erro ao excluir mensagem:', error);
+      alert('Erro ao excluir mensagem');
+    }
+  };
+
+  const handleCopyMessage = (content: string, mediaUrl?: string) => {
+    const textToCopy = mediaUrl || content;
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => alert('Conteúdo copiado!'))
+        .catch(err => console.error('Erro ao copiar:', err));
+    }
+    setActiveMessageMenu(null);
   };
 
   const handleArchiveChat = async () => {
@@ -963,6 +1001,8 @@ function AtendimentoContent() {
                         </span>
                       )}
                     <div 
+                      onMouseEnter={() => setHoveredMessageId(msg.id)}
+                      onMouseLeave={() => setHoveredMessageId(null)}
                       style={{ 
                         padding: msg.type === 'image' ? '4px' : '0.75rem 1rem', 
                         borderRadius: msg.isIncoming ? '18px 18px 18px 4px' : '18px 18px 4px 18px',
@@ -972,9 +1012,70 @@ function AtendimentoContent() {
                         fontSize: '0.9rem',
                         lineHeight: 1.5,
                         position: 'relative',
-                        overflow: 'hidden'
                       }}
                     >
+                      {/* Botão de Menu */}
+                      {(hoveredMessageId === msg.id || activeMessageMenu === msg.id) && (
+                        <button
+                          className="message-menu-trigger"
+                          onClick={() => setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id)}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: msg.isIncoming ? '-30px' : 'auto',
+                            left: !msg.isIncoming ? '-30px' : 'auto',
+                            background: 'rgba(255,255,255,0.9)',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '50%',
+                            padding: '4px',
+                            cursor: 'pointer',
+                            color: '#64748b',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                            zIndex: 10
+                          }}
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+                      )}
+
+                      {/* Dropdown Menu */}
+                      {activeMessageMenu === msg.id && (
+                        <div
+                          className="message-menu-container"
+                          style={{
+                            position: 'absolute',
+                            top: '30px',
+                            right: msg.isIncoming ? '-180px' : 'auto',
+                            left: !msg.isIncoming ? '-180px' : 'auto',
+                            background: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            padding: '4px 0',
+                            minWidth: '160px',
+                            zIndex: 20,
+                            color: '#1e293b'
+                          }}
+                        >
+                          <button onClick={() => { setNewMessage(`> ${msg.content?.substring(0, 50)}...\n\n`); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            <Reply size={14} /> Responder
+                          </button>
+                          <button onClick={() => { alert('Em breve'); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            <Forward size={14} /> Encaminhar
+                          </button>
+                          <button onClick={() => { alert('Em breve'); setActiveMessageMenu(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            <Sparkles size={14} /> Sugerir resposta
+                          </button>
+                          <button onClick={() => handleCopyMessage(msg.content, msg.mediaUrl)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            <Link size={14} /> Copiar link/texto
+                          </button>
+                          <div style={{ borderTop: '1px solid #e2e8f0', margin: '4px 0' }} />
+                          <button onClick={() => handleDeleteMessage(msg.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ef4444' }}>
+                            <Trash2 size={14} /> Excluir
+                          </button>
+                        </div>
+                      )}
+
                       {msg.mediaUrl ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {msg.type === 'image' && (

@@ -130,8 +130,15 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
+    const messageId = searchParams.get('messageId');
+
+    if (messageId) {
+      await d1Api.executeRun(`DELETE FROM messages WHERE id = ?`, [messageId]);
+      return NextResponse.json({ success: true });
+    }
+
     if (!chatId) {
-      return NextResponse.json({ error: 'Chat ID required' }, { status: 400 });
+      return NextResponse.json({ error: 'Chat ID or Message ID required' }, { status: 400 });
     }
     
     await d1Api.executeRun(`DELETE FROM chats WHERE id = ?`, [chatId]);
