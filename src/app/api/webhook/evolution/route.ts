@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
               const fetchBase64Res = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/getBase64FromMediaMessage/${instanceName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                body: JSON.stringify({ message: messageObj })
+                body: JSON.stringify({ message: data })
               });
               
               if (fetchBase64Res.ok) {
@@ -236,6 +236,8 @@ export async function POST(req: NextRequest) {
                   base64Data = base64Json.base64;
                   if (base64Json.mimetype) mimetype = base64Json.mimetype;
                 }
+              } else {
+                console.error("Erro na API da Evolution ao buscar base64:", await fetchBase64Res.text());
               }
             }
           } catch(e) {
@@ -248,7 +250,13 @@ export async function POST(req: NextRequest) {
             let bucket = process.env.BUCKET || (globalThis as any).BUCKET;
 
             if (bucket) {
-              const binaryString = atob(base64Data);
+              // Limpar o prefixo data:image/png;base64, se existir
+              let cleanBase64 = base64Data;
+              if (cleanBase64.includes(',')) {
+                cleanBase64 = cleanBase64.split(',')[1];
+              }
+
+              const binaryString = atob(cleanBase64);
               const bytes = new Uint8Array(binaryString.length);
               for (let i = 0; i < binaryString.length; i++) {
                   bytes[i] = binaryString.charCodeAt(i);
