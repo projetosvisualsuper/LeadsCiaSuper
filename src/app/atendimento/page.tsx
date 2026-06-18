@@ -1014,29 +1014,27 @@ function AtendimentoContent() {
                         position: 'relative',
                       }}
                     >
-                      {/* Botão de Menu */}
-                      {(hoveredMessageId === msg.id || activeMessageMenu === msg.id) && (
-                        <button
-                          className="message-menu-trigger"
-                          onClick={() => setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id)}
-                          style={{
-                            position: 'absolute',
-                            top: '4px',
-                            right: msg.isIncoming ? '-30px' : 'auto',
-                            left: !msg.isIncoming ? '-30px' : 'auto',
-                            background: 'rgba(255,255,255,0.9)',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '50%',
-                            padding: '4px',
-                            cursor: 'pointer',
-                            color: '#64748b',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                            zIndex: 10
-                          }}
-                        >
-                          <ChevronDown size={16} />
-                        </button>
-                      )}
+                      {/* Botão de Menu (Sempre Visível) */}
+                      <button
+                        className="message-menu-trigger"
+                        onClick={() => setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id)}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: msg.isIncoming ? '-30px' : 'auto',
+                          left: !msg.isIncoming ? '-30px' : 'auto',
+                          background: 'rgba(255,255,255,0.9)',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '50%',
+                          padding: '4px',
+                          cursor: 'pointer',
+                          color: '#64748b',
+                          boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                          zIndex: 10
+                        }}
+                      >
+                        <ChevronDown size={16} />
+                      </button>
 
                       {/* Dropdown Menu */}
                       {activeMessageMenu === msg.id && (
