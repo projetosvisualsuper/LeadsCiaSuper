@@ -839,14 +839,30 @@ function AtendimentoContent() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#10b981' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
                     Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}
-                    {chats.find(c => c.id === selectedChatId)?.connectionName && (
-                      <span style={{ background: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.5rem', fontWeight: 600 }}>
-                        {chats.find(c => c.id === selectedChatId)?.connectionName}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
+
+              {chats.find(c => c.id === selectedChatId)?.connectionName && (
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                  <div style={{ 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    padding: '0.4rem 1rem', 
+                    borderRadius: '20px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    color: '#475569',
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                  }}>
+                    <MessageCircle size={14} color="#10b981" />
+                    Conexão: <span style={{ color: '#0f172a' }}>{chats.find(c => c.id === selectedChatId)?.connectionName}</span>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button 
                   onClick={() => setShowLeadDetails(!showLeadDetails)}
