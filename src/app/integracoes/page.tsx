@@ -27,14 +27,14 @@ export default function IntegracoesPage() {
   (function() {
     var frame = document.createElement('iframe');
     frame.src = "${typeof window !== 'undefined' ? window.location.origin : ''}/whatsapp-widget";
-    frame.style.cssText = "position:fixed;bottom:0;right:0;width:80px;height:80px;border:none;z-index:999999;background:transparent;transition:all 0.3s ease;";
+    frame.style.cssText = "position:fixed;bottom:15px;right:15px;width:90px;height:90px;border:none;z-index:999999;background:transparent;transition:all 0.3s ease;color-scheme:light;";
     frame.setAttribute('allowTransparency', 'true');
     document.body.appendChild(frame);
 
     window.addEventListener('message', function(e) {
       if (e.data.type === 'wa-widget-state') {
-        frame.style.width = e.data.open ? '350px' : '80px';
-        frame.style.height = e.data.open ? '650px' : '80px';
+        frame.style.width = e.data.open ? '350px' : '90px';
+        frame.style.height = e.data.open ? '650px' : '90px';
       }
     });
   })();
