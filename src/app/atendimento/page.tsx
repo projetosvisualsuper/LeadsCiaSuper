@@ -1182,6 +1182,7 @@ function AtendimentoContent() {
                         </span>
                       )}
                     <div 
+                      id={`message-${msg.id}`}
                       onMouseEnter={() => setHoveredMessageId(msg.id)}
                       onMouseLeave={() => setHoveredMessageId(null)}
                       style={{ 
@@ -1193,6 +1194,7 @@ function AtendimentoContent() {
                         fontSize: '0.9rem',
                         lineHeight: 1.5,
                         position: 'relative',
+                        transition: 'background-color 0.5s ease'
                       }}
                     >
                       {/* Botão de Menu (Sempre Visível) */}
@@ -1271,17 +1273,31 @@ function AtendimentoContent() {
                         </div>
                       )}
                       {msg.quotedMessageId && (
-                        <div style={{
-                          background: msg.isIncoming ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.15)',
-                          borderLeft: `4px solid ${msg.isIncoming ? 'var(--primary)' : 'rgba(255,255,255,0.8)'}`,
-                          padding: '6px 10px',
-                          borderRadius: '4px',
-                          marginBottom: '6px',
-                          fontSize: '0.85rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px'
-                        }}>
+                        <div 
+                          onClick={() => {
+                            const target = document.getElementById(`message-${msg.quotedMessageId}`);
+                            if (target) {
+                              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              const originalBg = target.style.backgroundColor;
+                              target.style.backgroundColor = 'rgba(59, 130, 246, 0.3)';
+                              setTimeout(() => {
+                                target.style.backgroundColor = originalBg;
+                              }, 1500);
+                            }
+                          }}
+                          style={{
+                            background: msg.isIncoming ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.15)',
+                            borderLeft: `4px solid ${msg.isIncoming ? 'var(--primary)' : 'rgba(255,255,255,0.8)'}`,
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            marginBottom: '6px',
+                            fontSize: '0.85rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                            cursor: 'pointer'
+                          }}
+                        >
                           <span style={{ fontWeight: 600, color: msg.isIncoming ? 'var(--primary)' : 'white' }}>
                             {msg.quotedMessageSender || 'Usuário'}
                           </span>

@@ -135,10 +135,13 @@ export async function sendOmnichannelMessageAction(
           presence: "composing",
           linkPreview: false
         };
+        let quotedObj: any = undefined;
         if (quotedMessageId) {
-          defaultOptions.quoted = {
-            key: { id: quotedMessageId }
+          quotedObj = {
+            key: { id: quotedMessageId },
+            message: { conversation: "Citação" }
           };
+          defaultOptions.quoted = quotedObj;
         }
 
         let evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
@@ -147,6 +150,7 @@ export async function sendOmnichannelMessageAction(
           text: text,
           options: defaultOptions
         };
+        if (quotedObj) payload.quoted = quotedObj;
 
         if (mediaUrl) {
           let mt = "document";
@@ -168,6 +172,7 @@ export async function sendOmnichannelMessageAction(
               options: defaultOptions,
               encoding: true
             };
+            if (quotedObj) payload.quoted = quotedObj;
           } else {
             evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
             payload = {
@@ -178,6 +183,8 @@ export async function sendOmnichannelMessageAction(
               media: finalMediaUrl,
               options: defaultOptions
             };
+            if (quotedObj) payload.quoted = quotedObj;
+          }
           }
         }
         
