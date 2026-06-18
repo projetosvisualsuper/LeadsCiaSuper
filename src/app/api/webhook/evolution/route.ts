@@ -209,6 +209,77 @@ export async function POST(req: NextRequest) {
         return new NextResponse('OK', { status: 200 });
       }
 
+      // --- UPLOAD PARA O R2 ---
+      let mediaUrl = '';
+      let mediaMimeType = '';
+
+      if (messageType !== 'text') {
+        let base64Data = messageObj.base64;
+        let mimetype = messageObj.mimetype || 'application/octet-stream';
+
+        if (!base64Data) {
+          try {
+            const settings = await d1Api.getSettings();
+            const apiUrl = settings?.omnichannel?.evolutionApiUrl || 'http://localhost:8080';
+            const apiKey = settings?.omnichannel?.evolutionApiKey || '';
+            
+            if (apiUrl && apiKey) {
+              const fetchBase64Res = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/getBase64FromMediaMessage/${instanceName}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                body: JSON.stringify({ message: messageObj })
+              });
+              
+              if (fetchBase64Res.ok) {
+                const base64Json = await fetchBase64Res.json();
+                if (base64Json && base64Json.base64) {
+                  base64Data = base64Json.base64;
+                  if (base64Json.mimetype) mimetype = base64Json.mimetype;
+                }
+              }
+            }
+          } catch(e) {
+             console.error("Erro ao buscar base64 da mídia na Evolution:", e);
+          }
+        }
+
+        if (base64Data) {
+          try {
+            const { getRequestContext } = require('@cloudflare/next-on-pages');
+            let bucket = null;
+            try {
+              bucket = getRequestContext().env.BUCKET;
+            } catch (e) {
+              bucket = process.env.BUCKET || (globalThis as any).BUCKET;
+            }
+
+            if (bucket) {
+              const binaryString = atob(base64Data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+              }
+              
+              const fileExt = mimetype.split('/')[1]?.split(';')[0] || 'bin';
+              const messageId = data.key.id;
+              const fileName = `chat_${phoneNumber}/${messageId}.${fileExt}`;
+              
+              await bucket.put(fileName, bytes.buffer, {
+                httpMetadata: { contentType: mimetype }
+              });
+              
+              mediaUrl = `/api/media/${fileName.split('/').map(s => encodeURIComponent(s)).join('/')}`;
+              mediaMimeType = mimetype;
+              console.log(`✅ Upload de mídia para o R2 com sucesso: ${fileName}`);
+            } else {
+               console.error("Bucket R2 não configurado no webhook");
+            }
+          } catch (err) {
+            console.error("Erro ao fazer upload pro R2:", err);
+          }
+        }
+      }
+
       // 1. Buscar a conexão que recebeu essa mensagem
       const connections = await d1Api.getWhatsappConnections();
       const connection = connections.find(c => c.evolutionInstanceName === instanceName);
@@ -354,7 +425,9 @@ export async function POST(req: NextRequest) {
         isIncoming: !isFromMe,
         channel: 'whatsapp',
         leadId,
-        leadName
+        leadName,
+        mediaUrl,
+        mediaMimeType
       });
 
       // 6. Autoresponder (Apenas se for uma nova sessão e a mensagem for recebida)

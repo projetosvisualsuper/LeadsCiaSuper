@@ -85,7 +85,10 @@ export async function POST(req: NextRequest) {
         body.recipient,
         body.channel,
         body.message,
-        body.connectionId
+        body.connectionId,
+        undefined, // templateData
+        body.mediaUrl,
+        body.mediaMimeType
       );
       return NextResponse.json(result);
     }

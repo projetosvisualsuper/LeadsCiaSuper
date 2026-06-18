@@ -300,18 +300,25 @@ function AtendimentoContent() {
         throw new Error(errData.message || 'Falha no upload do servidor.');
       }
 
-      const { url } = await response.json();
+      const { url, mimeType } = await response.json();
+
+      let msgType: 'image' | 'video' | 'audio' | 'file' | 'text' = 'file';
+      if (file.type.startsWith('image/')) msgType = 'image';
+      else if (file.type.startsWith('video/')) msgType = 'video';
+      else if (file.type.startsWith('audio/')) msgType = 'audio';
 
       const msg: ChatMessage = {
         id: Math.random().toString(36).substr(2, 9),
         chatId: selectedChatId,
         senderId: 'atendente_admin',
         senderName: 'Atendente',
-        content: url,
+        content: file.name,
         timestamp: new Date().toISOString(),
-        type: file.type.startsWith('image/') ? 'image' : 'file',
+        type: msgType,
         status: 'sent',
-        isIncoming: false
+        isIncoming: false,
+        mediaUrl: url,
+        mediaMimeType: mimeType || file.type
       };
 
       await fetch('/api/chats', {
@@ -966,19 +973,53 @@ function AtendimentoContent() {
                         overflow: 'hidden'
                       }}
                     >
-                      {msg.type === 'image' ? (
+                      {msg.mediaUrl ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {msg.type === 'image' && (
+                            <img 
+                              src={msg.mediaUrl} 
+                              alt="Imagem" 
+                              style={{ maxWidth: '100%', maxHeight: '250px', display: 'block', borderRadius: '8px', cursor: 'pointer' }} 
+                              onClick={() => window.open(msg.mediaUrl, '_blank')}
+                            />
+                          )}
+                          {msg.type === 'video' && (
+                            <video 
+                              src={msg.mediaUrl} 
+                              controls 
+                              style={{ maxWidth: '100%', maxHeight: '250px', display: 'block', borderRadius: '8px' }} 
+                            />
+                          )}
+                          {msg.type === 'audio' && (
+                            <audio 
+                              src={msg.mediaUrl} 
+                              controls 
+                              style={{ maxWidth: '100%', display: 'block' }} 
+                            />
+                          )}
+                          {msg.type === 'file' && (
+                            <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(0,0,0,0.05)', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                              <Paperclip size={16} /> <span>Abrir Documento</span>
+                            </a>
+                          )}
+                          {/* Renderiza a legenda (se houver) e não for os textos padrão */}
+                          {msg.content && !['📷 Imagem', '🎥 Vídeo', '🎵 Áudio', '📄 Documento'].includes(msg.content) && (
+                            <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
+                          )}
+                        </div>
+                      ) : msg.type === 'image' && msg.content.startsWith('http') ? (
                         <img 
                           src={msg.content} 
                           alt="Attachment" 
-                          style={{ maxWidth: '100%', maxHeight: '300px', display: 'block', borderRadius: '12px', cursor: 'pointer' }} 
+                          style={{ maxWidth: '100%', maxHeight: '250px', display: 'block', borderRadius: '8px', cursor: 'pointer' }} 
                           onClick={() => window.open(msg.content, '_blank')}
                         />
-                      ) : msg.type === 'file' ? (
-                        <a href={msg.content} target="_blank" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+                      ) : msg.type === 'file' && msg.content.startsWith('http') ? (
+                        <a href={msg.content} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
                           <Paperclip size={16} /> <span>Documento</span>
                         </a>
                       ) : (
-                        msg.content
+                        <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
                       )}
                       {!msg.isIncoming && (
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2px', paddingRight: msg.type === 'image' ? '8px' : 0 }}>

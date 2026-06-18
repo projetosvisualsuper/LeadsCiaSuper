@@ -823,8 +823,8 @@ export const d1Api = {
 
     const messageId = message.id || Math.random().toString(36).substr(2, 9);
     const sqlMsg = `
-      INSERT INTO messages (id, chatId, senderId, senderName, content, timestamp, type, status, isIncoming)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (id, chatId, senderId, senderName, content, timestamp, type, status, isIncoming, mediaUrl, mediaMimeType)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const paramsMsg = [
       messageId,
@@ -835,7 +835,9 @@ export const d1Api = {
       message.timestamp || new Date().toISOString(),
       message.type || 'text',
       message.status || 'sent',
-      message.isIncoming ? 1 : 0
+      message.isIncoming ? 1 : 0,
+      message.mediaUrl || null,
+      message.mediaMimeType || null
     ];
     await executeRun(sqlMsg, paramsMsg);
 

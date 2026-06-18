@@ -353,9 +353,11 @@ export interface ChatMessage {
   senderName: string;
   content: string;
   timestamp: string;
-  type: 'text' | 'image' | 'video' | 'file';
+  type: 'text' | 'image' | 'video' | 'file' | 'audio';
   status: 'sent' | 'delivered' | 'read' | 'failed';
   isIncoming: boolean; // True se veio do lead, False se enviado pelo atendente
+  mediaUrl?: string; // URL do arquivo no R2
+  mediaMimeType?: string; // MimeType do arquivo
 }
 
 export interface ChatSession {

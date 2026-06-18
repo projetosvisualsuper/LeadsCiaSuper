@@ -8,7 +8,8 @@ export async function sendOmnichannelMessageAction(
   text: string, 
   connectionId?: string,
   templateData?: { name: string, language: string, components?: any[] },
-  mediaUrl?: string
+  mediaUrl?: string,
+  mediaMimeType?: string
 ) {
   try {
     // 1. Lógica para INSTAGRAM e FACEBOOK
@@ -141,12 +142,26 @@ export async function sendOmnichannelMessageAction(
 
         if (mediaUrl) {
           evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
+          
+          let mt = "document";
+          if (mediaMimeType?.startsWith('image/')) mt = 'image';
+          else if (mediaMimeType?.startsWith('video/')) mt = 'video';
+          else if (mediaMimeType?.startsWith('audio/')) mt = 'audio';
+
+          // Evolution expects a full URL (if reachable from the internet) or base64. 
+          // Se o mediaUrl for relativo (/api/media...), precisaremos transformar numa URL absoluta do sistema se a Evolution estiver externa.
+          // Como o Cia Super Leads pode rodar em Cloudflare Pages, precisamos passar o link completo.
+          let finalMediaUrl = mediaUrl;
+          if (mediaUrl.startsWith('/api/')) {
+             finalMediaUrl = `https://app.ciasuperleads.com${mediaUrl}`; // Fallback para URL absoluta
+          }
+
           payload = {
             number: cleanNumber,
-            mediatype: "image", // Assume imagem para campanhas de banner
-            mimetype: "image/jpeg",
-            caption: text,
-            media: mediaUrl,
+            mediatype: mt,
+            mimetype: mediaMimeType || "application/octet-stream",
+            caption: text !== 'Arquivo enviado' && !text.startsWith('Arquivo enviado:') ? text : '',
+            media: finalMediaUrl,
             options: {
               delay: 1200,
               presence: "composing",
