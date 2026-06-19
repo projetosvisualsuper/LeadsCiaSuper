@@ -17,19 +17,19 @@ const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) 
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: isIncoming ? '#f8fafc' : 'rgba(255,255,255,0.1)', padding: '0.25rem', borderRadius: '8px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: isIncoming ? '#f8fafc' : 'rgba(0, 0, 0, 0.05)', padding: '0.25rem', borderRadius: '8px' }}>
       <audio ref={audioRef} src={src} controls style={{ height: '36px', maxWidth: '220px' }} />
       <button 
         onClick={toggleSpeed} 
         style={{ 
-          background: isIncoming ? '#e2e8f0' : 'rgba(255,255,255,0.2)', 
+          background: isIncoming ? '#e2e8f0' : 'rgba(0, 0, 0, 0.08)', 
           border: 'none', 
           borderRadius: '12px', 
           padding: '2px 8px', 
           fontSize: '0.75rem', 
           fontWeight: 'bold',
           cursor: 'pointer',
-          color: isIncoming ? '#475569' : 'white'
+          color: isIncoming ? '#475569' : '#1e293b'
         }}
         title="Velocidade do Áudio"
       >
