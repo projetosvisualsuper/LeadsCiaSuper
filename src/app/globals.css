@@ -391,6 +391,7 @@ tbody tr:hover {
     padding: 1.25rem 1rem !important;
     margin-bottom: 60px !important;
     min-height: calc(100vh - 60px);
+    min-height: calc(100dvh - 60px);
   }
   .main-content.no-padding {
     padding: 0 !important;

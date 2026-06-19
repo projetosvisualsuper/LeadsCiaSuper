@@ -427,11 +427,12 @@ export default function ClientLayout({
 
   return (
     <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
-        {isNoScrollPage && (
+         {isNoScrollPage && (
           <style dangerouslySetInnerHTML={{ __html: `
             html, body {
               overflow: hidden !important;
               height: 100vh !important;
+              height: 100dvh !important;
             }
           `}} />
         )}
@@ -518,7 +519,7 @@ export default function ClientLayout({
         </aside>
         
         <main className={`main-content ${isNoScrollPage ? 'no-padding' : ''}`} style={{
-          ...(isNoScrollPage ? { height: '100vh', overflow: 'hidden' } : {})
+          ...(isNoScrollPage ? { height: '100dvh', overflow: 'hidden' } : {})
         }}>
           {showMobileMenu ? (
             <div className="mobile-grid-menu">

@@ -131,6 +131,7 @@ function AtendimentoContent() {
   const [uploading, setUploading] = useState(false);
   const [connections, setConnections] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatMenuRef = useRef<HTMLDivElement>(null);
   
@@ -255,7 +256,9 @@ function AtendimentoContent() {
   }, [selectedChatId, chats.length]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   // Fechar menus ao clicar fora
@@ -1161,7 +1164,7 @@ function AtendimentoContent() {
             </header>
 
             {/* Mensagens */}
-            <div className="messages-container custom-scrollbar">
+            <div ref={messagesContainerRef} className="messages-container custom-scrollbar">
               {messages.length === 0 && (
                 <div style={{ textAlign: 'center', margin: '2rem 0', opacity: 0.4 }}>
                   <p style={{ fontSize: '0.875rem' }}>Início da conversa</p>
@@ -1861,6 +1864,7 @@ function AtendimentoContent() {
         @media (max-width: 768px) {
           .atendimento-container {
             height: calc(100vh - 60px) !important;
+            height: calc(100dvh - 60px) !important;
             margin: 0 !important;
             width: 100% !important;
           }
