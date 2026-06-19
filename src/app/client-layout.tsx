@@ -521,7 +521,7 @@ export default function ClientLayout({
           </div>
         </aside>
         
-        <main className="main-content" style={{
+        <main className={`main-content ${isNoScrollPage ? 'no-padding' : ''}`} style={{
           marginLeft: isSidebarCollapsed ? '80px' : '260px',
           width: `calc(100% - ${isSidebarCollapsed ? '80px' : '260px'})`,
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
