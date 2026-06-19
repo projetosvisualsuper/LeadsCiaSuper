@@ -1042,7 +1042,7 @@ function LeadsContent() {
 
       {isModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="card" style={{ width: '500px', position: 'relative' }}>
+          <div className="card" style={{ width: '500px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
              <button style={{ position: 'absolute', right: '1rem', top: '1rem', opacity: 0.5 }} onClick={closeModal}>
               <X size={20} />
             </button>
@@ -1142,7 +1142,7 @@ function LeadsContent() {
 
       {confirmModal.isOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
-          <div className="card" style={{ width: '400px', textAlign: 'center' }}>
+          <div className="card" style={{ width: '400px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', textAlign: 'center' }}>
             <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>
               <Trash2 size={48} style={{ margin: '0 auto' }} />
             </div>
@@ -1176,7 +1176,7 @@ function LeadsContent() {
       )}
       {isImportPreviewOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-          <div className="card" style={{ width: '500px', position: 'relative', padding: 0, overflow: 'hidden' }}>
+          <div className="card" style={{ width: '500px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', position: 'relative', padding: 0 }}>
             <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <FileSpreadsheet size={24} style={{ color: 'var(--primary)' }} />
