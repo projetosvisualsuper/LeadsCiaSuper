@@ -30,7 +30,9 @@ import {
   MessageSquare,
   Bot,
   User,
-  Camera
+  Camera,
+  Phone,
+  Mic
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
@@ -80,6 +82,331 @@ export default function ClientLayout({
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [whatsappUnreadCount, setWhatsappUnreadCount] = useState(0);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Estados para Ligações de Voz via WebRTC (Globais)
+  const [callState, setCallState] = useState<'idle' | 'calling' | 'ringing' | 'connected'>('idle');
+  const [peerInstance, setPeerInstance] = useState<any>(null);
+  const [activeCall, setActiveCall] = useState<any>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [incomingCallerName, setIncomingCallerName] = useState('');
+  const [outgoingReceiverName, setOutgoingReceiverName] = useState('');
+  const [systemUsers, setSystemUsers] = useState<UserProfile[]>([]);
+
+  // Sintetizador de áudio nativo para som de chamada (Web Audio API)
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const ringtoneIntervalRef = useRef<any>(null);
+
+  const startDialTone = () => {
+    try {
+      stopCallSounds();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      audioCtxRef.current = ctx;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.frequency.value = 350;
+      osc2.frequency.value = 440;
+      gain.gain.value = 0.05;
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+
+      let soundOn = true;
+      ringtoneIntervalRef.current = setInterval(() => {
+        if (soundOn) {
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+        } else {
+          gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        }
+        soundOn = !soundOn;
+      }, 1500);
+    } catch (e) {
+      console.error('Erro ao tocar som de chamada:', e);
+    }
+  };
+
+  const startRingtone = () => {
+    try {
+      stopCallSounds();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      audioCtxRef.current = ctx;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.frequency.value = 440;
+      osc2.frequency.value = 480;
+      gain.gain.value = 0.05;
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+
+      let soundOn = true;
+      ringtoneIntervalRef.current = setInterval(() => {
+        if (soundOn) {
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+        } else {
+          gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        }
+        soundOn = !soundOn;
+      }, 1000);
+    } catch (e) {
+      console.error('Erro ao tocar ringtone:', e);
+    }
+  };
+
+  const stopCallSounds = () => {
+    if (ringtoneIntervalRef.current) {
+      clearInterval(ringtoneIntervalRef.current);
+      ringtoneIntervalRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(console.error);
+      audioCtxRef.current = null;
+    }
+  };
+
+  const showNativeNotification = (title: string, body: string) => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(title, {
+        body,
+        icon: '/favicon.ico'
+      });
+      notification.onclick = () => {
+        window.focus();
+      };
+    }
+  };
+
+  // Pedir permissão de notificações nativas no carregamento do layout
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Carregar lista de usuários para resolver UIDs de chamadas
+  useEffect(() => {
+    if (userProfile) {
+      api.getAllUserProfiles()
+        .then(setSystemUsers)
+        .catch(console.error);
+    }
+  }, [userProfile]);
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+
+    let peer: any;
+    const initPeer = async () => {
+      try {
+        const PeerClass = (await import('peerjs')).default;
+        peer = new PeerClass(userProfile.uid, {
+          host: '0.peerjs.com',
+          secure: true,
+          port: 443,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' },
+              { urls: 'stun:stun3.l.google.com:19302' },
+              { urls: 'stun:stun4.l.google.com:19302' }
+            ]
+          }
+        });
+        setPeerInstance(peer);
+
+        peer.on('open', (id: string) => {
+          console.log('Conexão PeerJS Global aberta com ID:', id);
+        });
+
+        peer.on('error', (err: any) => {
+          console.error('Erro no PeerJS Global:', err);
+        });
+
+        peer.on('call', async (call: any) => {
+          console.log('Recebendo chamada global de:', call.peer);
+          
+          // Buscar nome do chamador de forma dinâmica
+          let caller = systemUsers.find(u => u.uid === call.peer);
+          if (!caller) {
+            try {
+              const allUsers = await api.getAllUserProfiles();
+              setSystemUsers(allUsers);
+              caller = allUsers.find(u => u.uid === call.peer);
+            } catch(e) {}
+          }
+          const callerName = caller?.name || caller?.email || 'Atendente';
+          
+          setIncomingCallerName(callerName);
+          setActiveCall(call);
+          setCallState('ringing');
+          startRingtone();
+
+          if (document.hidden) {
+            showNativeNotification('Chamada de Voz Recebida', `${callerName} está ligando para você...`);
+          }
+        });
+      } catch (err) {
+        console.error('Falha ao inicializar PeerJS:', err);
+      }
+    };
+
+    initPeer();
+
+    return () => {
+      stopCallSounds();
+      if (peer) {
+        peer.destroy();
+      }
+    };
+  }, [userProfile, systemUsers.length]);
+
+  useEffect(() => {
+    let interval: any;
+    if (callState === 'connected') {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      setCallDuration(0);
+    }
+    return () => clearInterval(interval);
+  }, [callState]);
+
+  const startVoiceCall = async (otherUserId: string) => {
+    if (!userProfile || !peerInstance) return;
+
+    let otherUser = systemUsers.find(u => u.uid === otherUserId);
+    setOutgoingReceiverName(otherUser?.name || otherUser?.email || 'Atendente');
+    setCallState('calling');
+    startDialTone();
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setLocalStream(stream);
+
+      const call = peerInstance.call(otherUserId, stream);
+      setActiveCall(call);
+
+      call.on('stream', (rStream: MediaStream) => {
+        stopCallSounds();
+        setRemoteStream(rStream);
+        setCallState('connected');
+      });
+
+      call.on('close', () => {
+        endVoiceCall();
+      });
+
+      call.on('error', (err: any) => {
+        console.error('Erro na ligação:', err);
+        endVoiceCall();
+      });
+    } catch (err: any) {
+      console.error('Erro ao iniciar ligação:', err);
+      alert('Não foi possível acessar o microfone. Verifique as permissões de gravação.');
+      setCallState('idle');
+      stopCallSounds();
+    }
+  };
+
+  const acceptVoiceCall = async () => {
+    if (!activeCall) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setLocalStream(stream);
+
+      activeCall.answer(stream);
+      setCallState('connected');
+      stopCallSounds();
+
+      activeCall.on('stream', (rStream: MediaStream) => {
+        setRemoteStream(rStream);
+      });
+
+      activeCall.on('close', () => {
+        endVoiceCall();
+      });
+
+      activeCall.on('error', (err: any) => {
+        console.error('Erro ao aceitar ligação:', err);
+        endVoiceCall();
+      });
+    } catch (err: any) {
+      console.error('Erro ao aceitar ligação:', err);
+      alert('Não foi possível acessar o microfone.');
+      declineVoiceCall();
+    }
+  };
+
+  const declineVoiceCall = () => {
+    stopCallSounds();
+    if (activeCall) {
+      activeCall.close();
+    }
+    setCallState('idle');
+    setActiveCall(null);
+    setIncomingCallerName('');
+  };
+
+  const endVoiceCall = () => {
+    stopCallSounds();
+    if (activeCall) {
+      activeCall.close();
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    setCallState('idle');
+    setActiveCall(null);
+    setLocalStream(null);
+    setRemoteStream(null);
+    setCallDuration(0);
+    setIsMuted(false);
+    setIncomingCallerName('');
+    setOutgoingReceiverName('');
+  };
+
+  const toggleMuteCall = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMuted(!audioTrack.enabled);
+      }
+    }
+  };
+
+  // Escutar eventos globais emitidos pelo chat interno para iniciar ligação
+  useEffect(() => {
+    const handleStartCallEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { otherUserId } = customEvent.detail;
+      startVoiceCall(otherUserId);
+    };
+    window.addEventListener('start-voice-call', handleStartCallEvent);
+    return () => window.removeEventListener('start-voice-call', handleStartCallEvent);
+  }, [peerInstance, systemUsers]);
 
   useEffect(() => {
     setShowMobileMenu(false);
@@ -715,6 +1042,103 @@ export default function ClientLayout({
                 >
                   <LogIn size={18} />
                   Sair da Conta
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Canal de Áudio da Chamada WebRTC */}
+        {remoteStream && (
+          <audio
+            ref={(el) => {
+              if (el) {
+                el.srcObject = remoteStream;
+                el.play().catch(err => console.error('Erro ao reproduzir áudio:', err));
+              }
+            }}
+            autoPlay
+          />
+        )}
+
+        {/* MODAIS DE LIGAÇÃO DE VOZ (HUD) */}
+        {/* 1. Chamada de Saída (Discando) */}
+        {callState === 'calling' && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '320px', background: 'white', padding: '2rem', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#f0fdf4', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Phone size={36} style={{ animation: 'pulse 2s infinite' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#0f172a' }}>{outgoingReceiverName}</h3>
+                <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>Discando...</p>
+              </div>
+              <button 
+                onClick={endVoiceCall}
+                style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#ef4444', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 15px -3px rgba(239,68,68,0.4)' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Chamada de Entrada (Recebendo) */}
+        {callState === 'ringing' && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '320px', background: 'white', padding: '2rem', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#f0fdf4', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Phone size={36} style={{ animation: 'pulse 1.5s infinite' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#0f172a' }}>{incomingCallerName}</h3>
+                <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>Chamada de voz...</p>
+              </div>
+              <div style={{ display: 'flex', gap: '1.5rem' }}>
+                <button 
+                  onClick={acceptVoiceCall}
+                  style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#10b981', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 15px -3px rgba(16,185,129,0.4)' }}
+                >
+                  <Phone size={24} />
+                </button>
+                <button 
+                  onClick={declineVoiceCall}
+                  style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#ef4444', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 15px -3px rgba(239,68,68,0.4)' }}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Chamada Conectada (Ativa) */}
+        {callState === 'connected' && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(6px)', zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '320px', background: 'white', padding: '2rem', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Phone size={36} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#0f172a' }}>{incomingCallerName || outgoingReceiverName}</h3>
+                <p style={{ fontSize: '1.1rem', fontFamily: 'monospace', fontWeight: 'bold', color: '#3b82f6', margin: 0 }}>
+                  {Math.floor(callDuration / 60).toString().padStart(2, '0')}:{(callDuration % 60).toString().padStart(2, '0')}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '1.5rem' }}>
+                <button 
+                  onClick={toggleMuteCall}
+                  style={{ width: '56px', height: '56px', borderRadius: '50%', background: isMuted ? '#64748b' : '#f1f5f9', border: 'none', color: isMuted ? 'white' : '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title={isMuted ? "Ativar som" : "Mutar microfone"}
+                >
+                  {isMuted ? <Mic size={24} style={{ opacity: 0.5 }} /> : <Mic size={24} />}
+                </button>
+                <button 
+                  onClick={endVoiceCall}
+                  style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#ef4444', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 15px -3px rgba(239,68,68,0.4)' }}
+                  title="Desligar"
+                >
+                  <X size={24} />
                 </button>
               </div>
             </div>
