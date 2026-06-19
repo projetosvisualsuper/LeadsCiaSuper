@@ -635,13 +635,7 @@ export default function ChatInternoPage() {
   const availableUsersToAdd = users.filter(u => !chatParticipants.includes(u.uid) && u.uid !== me?.uid);
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      height: isMobile ? 'calc(100vh - 60px)' : '100vh', 
-      margin: isMobile ? '0' : '-2rem', 
-      background: '#f8fafc', 
-      overflow: 'hidden' 
-    }}>
+    <div className="chat-interno-container">
       {/* Sidebar */}
       <div style={{ 
         width: isMobile ? '100%' : '320px', 
@@ -1329,6 +1323,23 @@ export default function ChatInternoPage() {
           </div>
         </div>
       )}
+      <style jsx>{`
+        .chat-interno-container {
+          display: flex;
+          height: 100vh;
+          margin: -2rem;
+          background: #f8fafc;
+          overflow: hidden;
+          width: calc(100% + 4rem);
+        }
+        @media (max-width: 768px) {
+          .chat-interno-container {
+            height: calc(100vh - 60px) !important;
+            margin: 0 !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

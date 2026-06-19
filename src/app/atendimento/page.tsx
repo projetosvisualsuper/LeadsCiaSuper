@@ -764,13 +764,7 @@ function AtendimentoContent() {
   };
 
   return (
-    <div style={{ 
-      height: isMobile ? 'calc(100vh - 60px)' : 'calc(100vh - 4rem)', 
-      margin: isMobile ? '0' : '-1.5rem', 
-      display: 'flex', 
-      overflow: 'hidden', 
-      background: '#f1f5f9'
-    }}>
+    <div className="atendimento-container">
       
       {/* SIDEBAR DE CONVERSAS */}
       <div style={{ 
@@ -1085,8 +1079,8 @@ function AtendimentoContent() {
         {selectedChatId ? (
           <>
             {/* Header do Chat */}
-            <header style={{ padding: '0.75rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <header style={{ padding: isMobile ? '0.5rem' : '0.75rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', minWidth: 0 }}>
                 {isMobile && (
                   <button 
                     onClick={() => setSelectedChatId(null)}
@@ -1095,20 +1089,20 @@ function AtendimentoContent() {
                     <ChevronLeft size={24} />
                   </button>
                 )}
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <User size={20} color="#94a3b8" />
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <User size={18} color="#94a3b8" />
                 </div>
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#10b981' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
-                    Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ fontSize: isMobile ? '0.9rem' : '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981', marginTop: '2px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}</span>
                   </div>
                 </div>
               </div>
 
               {chats.find(c => c.id === selectedChatId)?.connectionName && (
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                <div className="connection-badge-container">
                   <div style={{ 
                     background: '#f8fafc', 
                     border: '1px solid #e2e8f0', 
@@ -1127,7 +1121,7 @@ function AtendimentoContent() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: isMobile ? '0.4rem' : '0.75rem', flexShrink: 0 }}>
                 <button 
                   onClick={() => setShowLeadDetails(!showLeadDetails)}
                   style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: showLeadDetails ? 'var(--primary)' : 'inherit' }}
@@ -1174,15 +1168,7 @@ function AtendimentoContent() {
             </header>
 
             {/* Mensagens */}
-            <div style={{ 
-              flex: 1, 
-              overflowY: 'auto', 
-              padding: '2rem', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '1rem',
-              minHeight: 0 // Importante para o flex-grow com scroll
-            }} className="custom-scrollbar">
+            <div className="messages-container custom-scrollbar">
               {messages.length === 0 && (
                 <div style={{ textAlign: 'center', margin: '2rem 0', opacity: 0.4 }}>
                   <p style={{ fontSize: '0.875rem' }}>Início da conversa</p>
@@ -1204,12 +1190,9 @@ function AtendimentoContent() {
                       </div>
                     )}
                     <div 
+                      className="message-bubble-wrapper"
                       style={{ 
-                        maxWidth: '70%', 
-                        alignSelf: msg.isIncoming ? 'flex-start' : 'flex-end',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
+                        alignSelf: msg.isIncoming ? 'flex-start' : 'flex-end'
                       }}
                     >
                       {isFirstOfGroup && (
@@ -1766,6 +1749,33 @@ function AtendimentoContent() {
       )}
 
       <style jsx>{`
+        .atendimento-container {
+          height: calc(100vh - 4rem);
+          margin: -1.5rem;
+          display: flex;
+          overflow: hidden;
+          background: #f1f5f9;
+        }
+        .connection-badge-container {
+          flex: 1;
+          display: flex;
+          justify-content: center;
+        }
+        .messages-container {
+          flex: 1;
+          overflow-y: auto;
+          padding: 2rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          min-height: 0;
+        }
+        .message-bubble-wrapper {
+          max-width: 70%;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
         @keyframes slideInRight {
           from { transform: translateX(100%); }
           to { transform: translateX(0); }
@@ -1790,6 +1800,22 @@ function AtendimentoContent() {
         }
         .hover-bg:hover {
           background-color: #f1f5f9 !important;
+        }
+        @media (max-width: 768px) {
+          .atendimento-container {
+            height: calc(100vh - 60px) !important;
+            margin: 0 !important;
+            width: 100% !important;
+          }
+          .connection-badge-container {
+            display: none !important;
+          }
+          .messages-container {
+            padding: 1rem 0.75rem !important;
+          }
+          .message-bubble-wrapper {
+            max-width: 85% !important;
+          }
         }
       `}</style>
     </div>
