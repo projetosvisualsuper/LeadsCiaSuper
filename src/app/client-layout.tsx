@@ -401,8 +401,18 @@ export default function ClientLayout({
     );
   };
 
+  const isNoScrollPage = ['/atendimento', '/chat-interno'].includes(pathname);
+
   return (
     <div className="app-container">
+        {isNoScrollPage && (
+          <style dangerouslySetInnerHTML={{ __html: `
+            html, body {
+              overflow: hidden !important;
+              height: 100vh !important;
+            }
+          `}} />
+        )}
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`} style={{
           width: isSidebarCollapsed ? '80px' : '260px',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -492,7 +502,8 @@ export default function ClientLayout({
         <main className="main-content" style={{
           marginLeft: isSidebarCollapsed ? '80px' : '260px',
           width: `calc(100% - ${isSidebarCollapsed ? '80px' : '260px'})`,
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          ...(isNoScrollPage ? { height: '100vh', overflow: 'hidden' } : {})
         }}>
           {children}
         </main>
