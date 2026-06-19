@@ -137,9 +137,31 @@ export async function sendOmnichannelMessageAction(
         };
         let quotedObj: any = undefined;
         if (quotedMessageId) {
+          let fromMe = false;
+          let quotedText = 'Citação';
+          try {
+            const { results } = await d1Api.runQuery(
+              `SELECT isIncoming, content, type FROM messages WHERE id = ? LIMIT 1`,
+              [quotedMessageId]
+            );
+            if (results && results.length > 0) {
+              fromMe = results[0].isIncoming === 0;
+              quotedText = results[0].content || (results[0].type === 'image' ? '📷 Imagem' : results[0].type === 'video' ? '🎥 Vídeo' : results[0].type === 'audio' ? '🎵 Áudio' : '📄 Arquivo');
+            }
+          } catch (e) {
+            console.error('Erro ao buscar mensagem citada no D1:', e);
+          }
+
+          const remoteJid = isLid ? cleanNumber : `${cleanNumber}@s.whatsapp.net`;
           quotedObj = {
-            key: { id: quotedMessageId },
-            message: { conversation: "Citação" }
+            key: { 
+              id: quotedMessageId,
+              fromMe: fromMe,
+              remoteJid: remoteJid
+            },
+            message: { 
+              conversation: quotedText 
+            }
           };
           defaultOptions.quoted = quotedObj;
         }
