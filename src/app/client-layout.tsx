@@ -98,6 +98,7 @@ export default function ClientLayout({
   // Sintetizador de áudio nativo para som de chamada (Web Audio API)
   const audioCtxRef = useRef<AudioContext | null>(null);
   const ringtoneIntervalRef = useRef<any>(null);
+  const activeDataConnRef = useRef<any>(null);
 
   const startDialTone = () => {
     try {
@@ -242,6 +243,36 @@ export default function ClientLayout({
           console.error('Erro no PeerJS Global:', err);
         });
 
+        peer.on('connection', (conn: any) => {
+          activeDataConnRef.current = conn;
+          conn.on('data', (data: any) => {
+            console.log('Mensagem de sinalização recebida:', data);
+            if (data === 'cancel-call') {
+              stopCallSounds();
+              setCallState('idle');
+              setActiveCall(null);
+              setIncomingCallerName('');
+              if (localStream) {
+                try {
+                  localStream.getTracks().forEach(track => track.stop());
+                } catch(e){}
+                setLocalStream(null);
+              }
+            } else if (data === 'decline-call') {
+              stopCallSounds();
+              setCallState('idle');
+              setActiveCall(null);
+              setOutgoingReceiverName('');
+              if (localStream) {
+                try {
+                  localStream.getTracks().forEach(track => track.stop());
+                } catch(e){}
+                setLocalStream(null);
+              }
+            }
+          });
+        });
+
         peer.on('call', async (call: any) => {
           console.log('Recebendo chamada global de:', call.peer);
           
@@ -320,6 +351,15 @@ export default function ClientLayout({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setLocalStream(stream);
 
+      // Abrir canal de dados para sinalização confiável de encerramento
+      const conn = peerInstance.connect(otherUserId);
+      activeDataConnRef.current = conn;
+      conn.on('data', (data: any) => {
+        if (data === 'decline-call' || data === 'cancel-call') {
+          endVoiceCall();
+        }
+      });
+
       const call = peerInstance.call(otherUserId, stream);
       setActiveCall(call);
 
@@ -377,6 +417,16 @@ export default function ClientLayout({
 
   const declineVoiceCall = () => {
     stopCallSounds();
+    if (activeDataConnRef.current) {
+      try {
+        activeDataConnRef.current.send('decline-call');
+        const tempConn = activeDataConnRef.current;
+        setTimeout(() => {
+          try { tempConn.close(); } catch(e){}
+        }, 100);
+      } catch(e){}
+      activeDataConnRef.current = null;
+    }
     if (activeCall) {
       activeCall.close();
     }
@@ -387,11 +437,23 @@ export default function ClientLayout({
 
   const endVoiceCall = () => {
     stopCallSounds();
+    if (activeDataConnRef.current) {
+      try {
+        activeDataConnRef.current.send('cancel-call');
+        const tempConn = activeDataConnRef.current;
+        setTimeout(() => {
+          try { tempConn.close(); } catch(e){}
+        }, 100);
+      } catch(e){}
+      activeDataConnRef.current = null;
+    }
     if (activeCall) {
       activeCall.close();
     }
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+      try {
+        localStream.getTracks().forEach(track => track.stop());
+      } catch(e){}
     }
     setCallState('idle');
     setActiveCall(null);
