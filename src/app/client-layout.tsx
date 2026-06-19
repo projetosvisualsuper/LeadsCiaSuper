@@ -79,6 +79,12 @@ export default function ClientLayout({
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [whatsappUnreadCount, setWhatsappUnreadCount] = useState(0);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  useEffect(() => {
+    setShowMobileMenu(false);
+  }, [pathname]);
+
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -400,12 +406,6 @@ export default function ClientLayout({
       </Link>
     );
   };
-
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  useEffect(() => {
-    setShowMobileMenu(false);
-  }, [pathname]);
 
   const isNoScrollPage = ['/atendimento', '/chat-interno'].includes(pathname) && !showMobileMenu;
 
