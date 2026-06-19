@@ -92,6 +92,8 @@ const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) 
 function AtendimentoContent() {
   const searchParams = useSearchParams();
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [showLeadDetails, setShowLeadDetails] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
@@ -116,12 +118,10 @@ function AtendimentoContent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [showLeadDetails, setShowLeadDetails] = useState(true);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
