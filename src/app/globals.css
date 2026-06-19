@@ -571,3 +571,15 @@ tbody tr:hover {
     background-color: white !important;
   }
 }
+
+.config-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .config-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}

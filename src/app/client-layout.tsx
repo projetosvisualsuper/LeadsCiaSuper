@@ -556,6 +556,47 @@ export default function ClientLayout({
                     <h3 className="mobile-menu-card-title">{item.label}</h3>
                   </Link>
                 ))}
+
+              {/* Perfil do Usuário */}
+              <button
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  setShowProfileModal(true);
+                }}
+                className="mobile-menu-card"
+                style={{ width: '100%', background: 'white', border: '1px solid var(--border)', cursor: 'pointer' }}
+              >
+                <div className="mobile-menu-card-icon">
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#cbd5e1', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {userProfile?.avatarUrl ? (
+                      <img src={userProfile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <User size={14} color="#475569" />
+                    )}
+                  </div>
+                </div>
+                <h3 className="mobile-menu-card-title">Meu Perfil</h3>
+              </button>
+
+              {/* Botão Sair */}
+              <button
+                onClick={async () => {
+                  try {
+                    await fetch('/api/auth/logout', { method: 'POST' });
+                    setUserProfile(null);
+                    router.push('/login');
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }}
+                className="mobile-menu-card"
+                style={{ width: '100%', background: 'white', border: '1px solid var(--border)', cursor: 'pointer' }}
+              >
+                <div className="mobile-menu-card-icon" style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'var(--danger)' }}>
+                  <LogIn size={20} />
+                </div>
+                <h3 className="mobile-menu-card-title" style={{ color: 'var(--danger)' }}>Sair</h3>
+              </button>
             </div>
           ) : (
             children

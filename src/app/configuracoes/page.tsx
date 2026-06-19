@@ -446,7 +446,7 @@ export default function ConfigPage() {
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
                 Logotipo da Empresa (Aparecerá no Topo dos E-mails)
               </label>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input 
                   type="file" 
                   accept="image/*"
@@ -474,7 +474,7 @@ export default function ConfigPage() {
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
                 Logotipo de Compartilhamento (WhatsApp / Social Media)
               </label>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input 
                   type="file" 
                   accept="image/*"
@@ -505,7 +505,7 @@ export default function ConfigPage() {
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
                 Favicon (Ícone da Aba do Navegador)
               </label>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input 
                   type="file" 
                   accept="image/*"
@@ -544,7 +544,7 @@ export default function ConfigPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="config-grid-2">
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
                   Texto de Rodapé (Informação sobre uso de dados / LGPD)
@@ -573,7 +573,7 @@ export default function ConfigPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="config-grid-2">
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Nome do Remetente</label>
                 <input 
@@ -627,7 +627,7 @@ export default function ConfigPage() {
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>
                 <Share2 size={16} /> Redes Sociais (Links)
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="config-grid-2">
                 <input 
                   className="btn-outline text-sm" 
                   style={{ height: '38px', padding: '0 0.75rem' }} 
