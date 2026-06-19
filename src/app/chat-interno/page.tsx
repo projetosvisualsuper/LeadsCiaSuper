@@ -318,9 +318,15 @@ export default function ChatInternoPage() {
         console.error('Erro na ligação:', err);
         endVoiceCall();
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao iniciar ligação:', err);
-      showAlert('Não foi possível acessar seu microfone.', 'error');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        showAlert('Permissão de microfone negada. Clique no ícone de cadeado na barra de endereço do navegador e ative o microfone.', 'error');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        showAlert('Nenhum microfone detectado. Verifique se o dispositivo está conectado.', 'error');
+      } else {
+        showAlert('Não foi possível acessar o microfone. Verifique se ele está em uso por outro aplicativo ou aba.', 'error');
+      }
       setCallState('idle');
       stopCallSounds();
     }
@@ -349,9 +355,15 @@ export default function ChatInternoPage() {
         console.error('Erro ao aceitar ligação:', err);
         endVoiceCall();
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao aceitar ligação:', err);
-      showAlert('Não foi possível acessar seu microfone.', 'error');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        showAlert('Permissão de microfone negada. Ative o microfone clicando no cadeado ao lado da URL no navegador.', 'error');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        showAlert('Nenhum microfone detectado. Verifique a conexão do dispositivo.', 'error');
+      } else {
+        showAlert('Não foi possível acessar o microfone. Certifique-se de que ele não está ocupado em outra janela.', 'error');
+      }
       declineVoiceCall();
     }
   };
