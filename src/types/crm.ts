@@ -390,6 +390,7 @@ export interface InternalChat {
   lastMessage?: string;
   lastTimestamp?: string;
   dataCriacao: string;
+  unreadCount?: number; // Dinâmico da API
 }
 
 export interface InternalMessage {
@@ -404,4 +405,8 @@ export interface InternalMessage {
   attachmentName?: string;
   isEdited?: boolean; // NOVO
   isDeleted?: boolean; // NOVO
+  type?: string; // Dinâmico (text, image, audio, file, video)
+  quotedMessageId?: string | null;
+  quotedMessageSender?: string | null;
+  quotedMessageContent?: string | null;
 }
