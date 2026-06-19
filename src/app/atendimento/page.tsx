@@ -1380,7 +1380,7 @@ function AtendimentoContent() {
             </div>
 
             {/* Input de Mensagem */}
-            <footer style={{ padding: '0 1.5rem 1.5rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+            <footer className="chat-footer">
               {replyingToMessage && (
                 <div style={{
                   padding: '10px 15px',
@@ -1409,7 +1409,7 @@ function AtendimentoContent() {
                   </button>
                 </div>
               )}
-              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '1rem', alignItems: 'center', paddingTop: replyingToMessage ? '1rem' : '1.5rem' }}>
+              <form onSubmit={handleSendMessage} className="chat-form" style={{ paddingTop: replyingToMessage ? '0.75rem' : '' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
                   <button 
                     type="button" 
@@ -1546,7 +1546,7 @@ function AtendimentoContent() {
                   <input 
                     type="text" 
                     placeholder="Escreva sua mensagem..." 
-                    style={{ flex: 1, padding: '0.8rem 1.2rem', borderRadius: '30px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.95rem' }}
+                    style={{ flex: 1, minWidth: 0, padding: '0.8rem 1.2rem', borderRadius: '30px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.95rem' }}
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
                   />
@@ -1799,6 +1799,20 @@ function AtendimentoContent() {
           overflow: hidden;
           text-overflow: ellipsis;
         }
+        .chat-footer {
+          padding: 0 1.5rem 1.5rem;
+          background: white;
+          border-top: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+        }
+        .chat-form {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+          padding-top: 1.5rem;
+        }
         .connection-badge-container {
           flex: 1;
           display: flex;
@@ -1881,6 +1895,13 @@ function AtendimentoContent() {
           }
           .connection-badge-container {
             display: none !important;
+          }
+          .chat-footer {
+            padding: 0 0.75rem 0.75rem !important;
+          }
+          .chat-form {
+            gap: 0.5rem !important;
+            padding-top: 0.75rem !important;
           }
           .messages-container {
             padding: 1rem 0.75rem !important;
