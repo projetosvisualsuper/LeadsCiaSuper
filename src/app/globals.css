@@ -147,6 +147,14 @@ tbody tr:hover {
 .main-content {
   flex: 1;
   padding: 2rem;
+  margin-left: 260px;
+  width: calc(100% - 260px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-collapsed .main-content {
+  margin-left: 80px;
+  width: calc(100% - 80px);
 }
 
 .sidebar {
@@ -164,6 +172,11 @@ tbody tr:hover {
   z-index: 1000;
   overflow-y: auto;
   overflow-x: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed {
+  width: 80px;
 }
 
 /* Scrollbar styles for sidebar */

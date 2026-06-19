@@ -426,7 +426,7 @@ export default function ClientLayout({
   ];
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
         {isNoScrollPage && (
           <style dangerouslySetInnerHTML={{ __html: `
             html, body {
@@ -435,11 +435,7 @@ export default function ClientLayout({
             }
           `}} />
         )}
-        <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`} style={{
-          width: isSidebarCollapsed ? '80px' : '260px',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          overflowX: 'hidden'
-        }}>
+        <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
           <div style={{ 
             padding: '1.5rem 1rem', 
             marginBottom: '1rem', 
@@ -522,9 +518,6 @@ export default function ClientLayout({
         </aside>
         
         <main className={`main-content ${isNoScrollPage ? 'no-padding' : ''}`} style={{
-          marginLeft: isSidebarCollapsed ? '80px' : '260px',
-          width: `calc(100% - ${isSidebarCollapsed ? '80px' : '260px'})`,
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           ...(isNoScrollPage ? { height: '100vh', overflow: 'hidden' } : {})
         }}>
           {showMobileMenu ? (
