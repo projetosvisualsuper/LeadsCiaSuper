@@ -1,10 +1,43 @@
 'use client';
-
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { InternalChat, InternalMessage, UserProfile } from '@/types/crm';
-import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus } from 'lucide-react';
+import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward } from 'lucide-react';
 
 const EMOJIS = ['😀','😂','😍','😭','🙏','👍','🔥','❤️','🎉','😊','😎','🤔','😡','🥺','✨','💯','🙌','👏','👀','🚀'];
+
+const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [speed, setSpeed] = useState(1);
+
+  const toggleSpeed = () => {
+    if (!audioRef.current) return;
+    let newSpeed = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1;
+    audioRef.current.playbackRate = newSpeed;
+    setSpeed(newSpeed);
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: isIncoming ? '#f8fafc' : 'rgba(255,255,255,0.1)', padding: '0.25rem', borderRadius: '8px' }}>
+      <audio ref={audioRef} src={src} controls style={{ height: '36px', maxWidth: '220px' }} />
+      <button 
+        onClick={toggleSpeed} 
+        style={{ 
+          background: isIncoming ? '#e2e8f0' : 'rgba(255,255,255,0.2)', 
+          border: 'none', 
+          borderRadius: '12px', 
+          padding: '2px 8px', 
+          fontSize: '0.75rem', 
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          color: isIncoming ? '#475569' : 'white'
+        }}
+        title="Velocidade do Áudio"
+      >
+        {speed}x
+      </button>
+    </div>
+  );
+};
 
 export default function ChatInternoPage() {
   const [chats, setChats] = useState<InternalChat[]>([]);
@@ -25,6 +58,20 @@ export default function ChatInternoPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   
+  // Gravador de áudio
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Resposta/Citação
+  const [replyingToMessage, setReplyingToMessage] = useState<InternalMessage | null>(null);
+
+  // Encaminhamento
+  const [forwardMessage, setForwardMessage] = useState<InternalMessage | null>(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+
   // Novas funcionalidades
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -186,18 +233,36 @@ export default function ChatInternoPage() {
       return;
     }
 
+    let msgType = 'text';
+    if (attachmentUrl) {
+      if (attachmentUrl.startsWith('data:audio') || attachmentName?.endsWith('.webm') || attachmentUrl.match(/\.(webm|mp3|ogg|wav|m4a)$/i)) {
+        msgType = 'audio';
+      } else if (attachmentUrl.startsWith('data:image') || attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+        msgType = 'image';
+      } else if (attachmentUrl.startsWith('data:video') || attachmentUrl.match(/\.(mp4|avi|mov)$/i)) {
+        msgType = 'video';
+      } else {
+        msgType = 'file';
+      }
+    }
+
     const msg: any = {
       id: Math.random().toString(36).substr(2, 9),
       senderId: me.uid,
       senderName: me.name || me.email,
-      content: newMessage.trim() || (attachmentUrl ? '📁 Arquivo anexo' : ''),
+      content: newMessage.trim() || (attachmentUrl ? (msgType === 'audio' ? '🎵 Áudio' : msgType === 'image' ? '📷 Imagem' : msgType === 'video' ? '🎥 Vídeo' : '📁 Arquivo anexo') : ''),
       attachmentUrl,
-      attachmentName
+      attachmentName,
+      type: msgType,
+      quotedMessageId: replyingToMessage?.id || null,
+      quotedMessageSender: replyingToMessage?.senderName || null,
+      quotedMessageContent: replyingToMessage?.content || replyingToMessage?.attachmentUrl || null
     };
     
     setNewMessage('');
     setShowEmojiPicker(false);
     setShowMentions(false);
+    setReplyingToMessage(null);
 
     setMessages(prev => [...prev, { ...msg, chatId: selectedChat.id, timestamp: new Date().toISOString(), readByJson: '[]' }]);
     scrollToBottom();
@@ -211,6 +276,97 @@ export default function ChatInternoPage() {
       loadData();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+        
+        const dt = new DataTransfer();
+        dt.items.add(audioFile);
+        const dummyEvent = { target: { files: dt.files } } as React.ChangeEvent<HTMLInputElement>;
+        await handleFileUpload(dummyEvent);
+        
+        stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        setRecordingTime(0);
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      timerIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Erro ao acessar microfone:', err);
+      alert('Não foi possível acessar o microfone. Verifique as permissões.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+      setRecordingTime(0);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    }
+  };
+
+  const handleForwardMessage = async (targetChatId: string) => {
+    if (!forwardMessage || !me) return;
+    const targetChat = chats.find(c => c.id === targetChatId);
+    if (!targetChat) return;
+
+    try {
+      const msg: any = {
+        id: Math.random().toString(36).substr(2, 9),
+        senderId: me.uid,
+        senderName: me.name || me.email,
+        content: forwardMessage.content,
+        type: forwardMessage.type || 'text',
+        attachmentUrl: forwardMessage.attachmentUrl,
+        attachmentName: forwardMessage.attachmentName
+      };
+
+      await fetch(`/api/internal-chats/${targetChatId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(msg)
+      });
+
+      alert('Mensagem encaminhada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao encaminhar:', error);
+      alert('Erro ao encaminhar mensagem.');
+    } finally {
+      setShowForwardModal(false);
+      setForwardMessage(null);
     }
   };
 
@@ -634,21 +790,24 @@ export default function ChatInternoPage() {
                           </div>
                         )}
                       
-                      <div style={{
-                        position: 'relative',
-                        background: isMe ? '#dcf8c6' : 'white',
-                        color: msg.isDeleted ? '#94a3b8' : '#111b21',
-                        fontStyle: msg.isDeleted ? 'italic' : 'normal',
-                        padding: '0.4rem 0.5rem 0.4rem 0.6rem',
-                        borderRadius: '7.5px',
-                        borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
-                        borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
-                        maxWidth: '100%',
-                        width: 'fit-content',
-                        boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
-                        display: 'flex',
-                        flexDirection: 'column'
-                      }}>
+                      <div 
+                        id={`msg-${msg.id}`}
+                        style={{
+                          position: 'relative',
+                          background: isMe ? '#dcf8c6' : 'white',
+                          color: msg.isDeleted ? '#94a3b8' : '#111b21',
+                          fontStyle: msg.isDeleted ? 'italic' : 'normal',
+                          padding: '0.4rem 0.5rem 0.4rem 0.6rem',
+                          borderRadius: '7.5px',
+                          borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
+                          borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
+                          maxWidth: '100%',
+                          width: 'fit-content',
+                          boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                      >
                         {/* Tail SVG */}
                         {showTail && isMe && (
                           <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, right: '-8px', color: '#dcf8c6' }}>
@@ -663,10 +822,38 @@ export default function ChatInternoPage() {
                           </svg>
                         )}
 
+                        {/* Quoted Message Render */}
+                        {msg.quotedMessageId && !msg.isDeleted && (
+                          <div 
+                            style={{ 
+                              background: isMe ? 'rgba(0, 0, 0, 0.05)' : '#f0f2f5', 
+                              borderLeft: '4px solid #00a884', 
+                              padding: '0.35rem 0.5rem', 
+                              borderRadius: '4px', 
+                              marginBottom: '0.4rem',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                              const target = document.getElementById(`msg-${msg.quotedMessageId}`);
+                              if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                          >
+                            <div style={{ fontWeight: 'bold', color: '#00a884', fontSize: '0.75rem', marginBottom: '0.1rem' }}>
+                              {msg.quotedMessageSender}
+                            </div>
+                            <div style={{ color: '#4a4a4a', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '220px' }}>
+                              {msg.quotedMessageContent}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Attachment Render */}
                         {msg.attachmentUrl && !msg.isDeleted && (
                           <div style={{ marginBottom: '0.25rem' }}>
-                            {msg.attachmentUrl.startsWith('data:image') || msg.attachmentUrl.match(/\.(jpeg|jpg|gif|png)$/) ? (
+                            {msg.type === 'audio' ? (
+                              <AudioPlayer src={msg.attachmentUrl} isIncoming={!isMe} />
+                            ) : msg.attachmentUrl.startsWith('data:image') || msg.attachmentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
                               <img src={msg.attachmentUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.attachmentUrl, '_blank')} />
                             ) : (
                               <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit' }}>
@@ -691,14 +878,35 @@ export default function ChatInternoPage() {
 
                       </div>
                       {/* Hover Actions */}
-                      {isMe && !msg.isDeleted && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1" style={{ alignSelf: 'center' }}>
-                          <button onClick={() => { setEditingMessageId(msg.id); setNewMessage(msg.content); inputRef.current?.focus(); }} style={{ padding: '0.25rem', color: '#64748b', cursor: 'pointer', background: 'white', borderRadius: '50%' }}>
-                            <Pencil size={14} />
+                      {!msg.isDeleted && (
+                        <div 
+                          className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1" 
+                          style={{ alignSelf: 'center', margin: isMe ? '0 0.5rem 0 0' : '0 0 0 0.5rem' }}
+                        >
+                          <button 
+                            onClick={() => { setReplyingToMessage(msg); inputRef.current?.focus(); }} 
+                            style={{ padding: '0.25rem', color: '#64748b', cursor: 'pointer', background: 'white', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Responder"
+                          >
+                            <Reply size={14} />
                           </button>
-                          <button onClick={() => handleDeleteMessage(msg.id)} style={{ padding: '0.25rem', color: '#ef4444', cursor: 'pointer', background: 'white', borderRadius: '50%' }}>
-                            <Trash2 size={14} />
+                          <button 
+                            onClick={() => { setForwardMessage(msg); setShowForwardModal(true); }} 
+                            style={{ padding: '0.25rem', color: '#64748b', cursor: 'pointer', background: 'white', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Encaminhar"
+                          >
+                            <Forward size={14} />
                           </button>
+                          {isMe && (
+                            <>
+                              <button onClick={() => { setEditingMessageId(msg.id); setNewMessage(msg.content); inputRef.current?.focus(); }} style={{ padding: '0.25rem', color: '#64748b', cursor: 'pointer', background: 'white', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Editar">
+                                <Pencil size={14} />
+                              </button>
+                              <button onClick={() => handleDeleteMessage(msg.id)} style={{ padding: '0.25rem', color: '#ef4444', cursor: 'pointer', background: 'white', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Excluir">
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -747,42 +955,125 @@ export default function ChatInternoPage() {
             )}
 
             {/* Input Area */}
-            <div style={{ padding: '0.75rem 1rem', background: '#f0f2f5', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <button ref={emojiButtonRef} onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ padding: '0.5rem', color: '#54656f' }}>
-                <Smile size={24} />
-              </button>
+            <footer style={{ padding: '0 1rem 1rem', background: '#f0f2f5', display: 'flex', flexDirection: 'column' }}>
+              {replyingToMessage && (
+                <div style={{
+                  padding: '10px 15px',
+                  background: 'white',
+                  borderLeft: '4px solid var(--primary)',
+                  borderRadius: '8px 8px 0 0',
+                  marginTop: '1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid #e2e8f0',
+                  boxShadow: '0 -1px 2px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)' }}>
+                      {replyingToMessage.senderName}
+                    </span>
+                    <span style={{ fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {replyingToMessage.type === 'audio' ? '🎵 Áudio' : 
+                       replyingToMessage.type === 'image' ? '📷 Imagem' : 
+                       replyingToMessage.type === 'video' ? '🎥 Vídeo' : 
+                       replyingToMessage.content}
+                    </span>
+                  </div>
+                  <button type="button" onClick={() => setReplyingToMessage(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}>
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
               
-              <button onClick={() => fileInputRef.current?.click()} style={{ padding: '0.5rem', color: '#54656f' }} disabled={isUploading}>
-                <Paperclip size={24} />
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                style={{ display: 'none' }} 
-                onChange={handleFileUpload} 
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-              />
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', paddingTop: replyingToMessage ? '1rem' : '0.75rem' }}>
+                <button ref={emojiButtonRef} onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ padding: '0.5rem', color: '#54656f' }}>
+                  <Smile size={24} />
+                </button>
+                
+                <button onClick={() => fileInputRef.current?.click()} style={{ padding: '0.5rem', color: '#54656f' }} disabled={isUploading}>
+                  <Paperclip size={24} />
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  style={{ display: 'none' }} 
+                  onChange={handleFileUpload} 
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                />
 
-              <div style={{ flex: 1, background: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', padding: '0.5rem 1rem', boxShadow: '0 1px 1px rgba(0,0,0,0.05)' }}>
-                {isUploading ? (
-                  <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Enviando arquivo...</span>
+                {isRecording ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', height: '40px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1.5s infinite' }} />
+                      <span style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '1.1rem' }}>
+                        {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={cancelRecording}
+                      style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem' }}
+                    >
+                      <Trash2 size={16} /> Cancelar
+                    </button>
+                  </div>
                 ) : (
-                  <input 
-                    ref={inputRef}
-                    type="text" 
-                    style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.95rem' }} 
-                    placeholder="Mensagem"
-                    value={newMessage}
-                    onChange={handleInputChange}
-                    onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                  />
+                  <div style={{ flex: 1, background: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', padding: '0.5rem 1rem', boxShadow: '0 1px 1px rgba(0,0,0,0.05)', height: '40px' }}>
+                    {isUploading ? (
+                      <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Enviando arquivo...</span>
+                    ) : (
+                      <input 
+                        ref={inputRef}
+                        type="text" 
+                        style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.95rem' }} 
+                        placeholder="Mensagem"
+                        value={newMessage}
+                        onChange={handleInputChange}
+                        onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                      />
+                    )}
+                  </div>
+                )}
+                
+                {isRecording ? (
+                  <button 
+                    type="button"
+                    onClick={stopRecording}
+                    style={{ 
+                      width: '40px', height: '40px', borderRadius: '50%', 
+                      background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
+                    }}
+                  >
+                    <Send size={18} style={{ marginLeft: '2px' }} />
+                  </button>
+                ) : newMessage.trim() ? (
+                  <button 
+                    onClick={() => handleSendMessage()} 
+                    style={{ 
+                      width: '40px', height: '40px', borderRadius: '50%', 
+                      background: '#00a884', color: 'white', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
+                    }}
+                  >
+                    <Send size={18} style={{ marginLeft: '2px' }} />
+                  </button>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={startRecording}
+                    style={{ 
+                      width: '40px', height: '40px', borderRadius: '50%', 
+                      background: '#10b981', color: 'white', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
+                    }}
+                  >
+                    <Mic size={18} />
+                  </button>
                 )}
               </div>
-              
-              <button onClick={() => handleSendMessage()} style={{ padding: '0.5rem', color: newMessage.trim() ? '#00a884' : '#54656f', transition: 'color 0.2s' }}>
-                <Send size={24} />
-              </button>
-            </div>
+            </footer>
           </>
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#667781', flexDirection: 'column', gap: '1rem', background: '#f0f2f5' }}>
@@ -952,6 +1243,51 @@ export default function ChatInternoPage() {
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }} onClick={() => setIsNewChatModalOpen(false)}>Cancelar</button>
               <button className="btn btn-primary" style={{ flex: 1, padding: '0.75rem', background: '#22c55e' }} onClick={handleCreateChat}>Iniciar Conversa</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Encaminhar Mensagem */}
+      {showForwardModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '450px', maxWidth: '90%', background: 'white', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', border: 'none' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#111b21' }}>Encaminhar Mensagem</h3>
+            
+            <div style={{ marginBottom: '2rem' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#475569' }}>Selecione a conversa para encaminhar</label>
+              <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                {chats.length === 0 ? (
+                  <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                    Nenhuma conversa ativa encontrada.
+                  </div>
+                ) : (
+                  chats.map(chat => (
+                    <div 
+                      key={chat.id} 
+                      onClick={() => handleForwardMessage(chat.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.2s' }}
+                      className="hover:bg-slate-50"
+                    >
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        {getChatAvatar(chat) ? (
+                          <img src={getChatAvatar(chat)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : chat.type === 'group' ? (
+                          <Users size={16} color="#64748b" />
+                        ) : (
+                          <User size={16} color="#64748b" />
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e293b' }}>{getChatName(chat)}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }} onClick={() => { setShowForwardModal(false); setForwardMessage(null); }}>Cancelar</button>
             </div>
           </div>
         </div>

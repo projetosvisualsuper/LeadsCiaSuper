@@ -1260,8 +1260,8 @@ export const d1Api = {
 
   sendInternalMessage: async (message: any): Promise<any> => {
     const sql = `
-      INSERT INTO internal_messages (id, chatId, senderId, senderName, content, timestamp, readByJson, attachmentUrl, attachmentName, isEdited, isDeleted)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
+      INSERT INTO internal_messages (id, chatId, senderId, senderName, content, timestamp, readByJson, attachmentUrl, attachmentName, isEdited, isDeleted, type, quotedMessageId, quotedMessageSender, quotedMessageContent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
     `;
     const params = [
       message.id,
@@ -1272,7 +1272,11 @@ export const d1Api = {
       message.timestamp || new Date().toISOString(),
       JSON.stringify(message.readBy || []),
       message.attachmentUrl || null,
-      message.attachmentName || null
+      message.attachmentName || null,
+      message.type || 'text',
+      message.quotedMessageId || null,
+      message.quotedMessageSender || null,
+      message.quotedMessageContent || null
     ];
     await executeRun(sql, params);
 

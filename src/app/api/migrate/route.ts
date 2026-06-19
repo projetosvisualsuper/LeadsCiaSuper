@@ -60,6 +60,30 @@ export async function GET() {
     } catch (e) { console.log('Coluna isDeleted já existe ou erro:', e); }
 
     try {
+      await db.prepare(`ALTER TABLE internal_messages ADD COLUMN attachmentUrl TEXT`).run();
+    } catch (e) { console.log('Coluna attachmentUrl já existe ou erro:', e); }
+
+    try {
+      await db.prepare(`ALTER TABLE internal_messages ADD COLUMN attachmentName TEXT`).run();
+    } catch (e) { console.log('Coluna attachmentName já existe ou erro:', e); }
+
+    try {
+      await db.prepare(`ALTER TABLE internal_messages ADD COLUMN type TEXT DEFAULT 'text'`).run();
+    } catch (e) { console.log('Coluna type já existe ou erro:', e); }
+
+    try {
+      await db.prepare(`ALTER TABLE internal_messages ADD COLUMN quotedMessageId TEXT`).run();
+    } catch (e) { console.log('Coluna quotedMessageId já existe ou erro:', e); }
+
+    try {
+      await db.prepare(`ALTER TABLE internal_messages ADD COLUMN quotedMessageSender TEXT`).run();
+    } catch (e) { console.log('Coluna quotedMessageSender já existe ou erro:', e); }
+
+    try {
+      await db.prepare(`ALTER TABLE internal_messages ADD COLUMN quotedMessageContent TEXT`).run();
+    } catch (e) { console.log('Coluna quotedMessageContent já existe ou erro:', e); }
+
+    try {
       await db.prepare(`ALTER TABLE users ADD COLUMN avatarUrl TEXT`).run();
     } catch (e) { console.log('Coluna avatarUrl em users já existe ou erro:', e); }
 

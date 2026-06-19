@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id: chatId } = await params;
     const body = await req.json();
 
-    if (!chatId || !body.id || !body.senderId || !body.content) {
+    if (!chatId || !body.id || !body.senderId || (!body.content && !body.attachmentUrl)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
