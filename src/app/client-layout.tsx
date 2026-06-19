@@ -410,6 +410,7 @@ export default function ClientLayout({
   const isNoScrollPage = ['/atendimento', '/chat-interno'].includes(pathname) && !showMobileMenu;
 
   const gridMenuItems = [
+    { href: '/chat-interno', label: 'Chat Interno', icon: <MessageSquare size={24} />, count: unreadChatCount },
     { href: '/campanhas', label: 'Campanhas', icon: <Mail size={24} /> },
     { href: '/segmentacoes', label: 'Segmentações', icon: <Filter size={24} /> },
     { href: '/relatorios', label: 'Relatórios', icon: <BarChart3 size={24} /> },
@@ -597,27 +598,7 @@ export default function ClientLayout({
               </span>
             )}
           </Link>
-          <Link href="/chat-interno" onClick={() => setShowMobileMenu(false)} className={`mobile-nav-item ${pathname === '/chat-interno' && !showMobileMenu ? 'active' : ''}`} style={{ position: 'relative' }}>
-            <MessageSquare size={20} />
-            <span>Chat Interno</span>
-            {unreadChatCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '4px',
-                right: '12px',
-                background: 'var(--danger)',
-                color: 'white',
-                fontSize: '0.6rem',
-                fontWeight: 800,
-                padding: '2px 4px',
-                borderRadius: '10px',
-                minWidth: '14px',
-                textAlign: 'center'
-              }}>
-                {unreadChatCount}
-              </span>
-            )}
-          </Link>
+
           <button 
             onClick={() => setShowMobileMenu(!showMobileMenu)} 
             className={`mobile-nav-item ${showMobileMenu ? 'active' : ''}`}
