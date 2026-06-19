@@ -577,26 +577,6 @@ export default function ClientLayout({
                 </div>
                 <h3 className="mobile-menu-card-title">Meu Perfil</h3>
               </button>
-
-              {/* Botão Sair */}
-              <button
-                onClick={async () => {
-                  try {
-                    await fetch('/api/auth/logout', { method: 'POST' });
-                    setUserProfile(null);
-                    router.push('/login');
-                  } catch (e) {
-                    console.error(e);
-                  }
-                }}
-                className="mobile-menu-card"
-                style={{ width: '100%', background: 'white', border: '1px solid var(--border)', cursor: 'pointer' }}
-              >
-                <div className="mobile-menu-card-icon" style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'var(--danger)' }}>
-                  <LogIn size={20} />
-                </div>
-                <h3 className="mobile-menu-card-title" style={{ color: 'var(--danger)' }}>Sair</h3>
-              </button>
             </div>
           ) : (
             children
