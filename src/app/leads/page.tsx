@@ -557,12 +557,12 @@ function LeadsContent() {
         borderBottom: '1px solid var(--border)',
         marginBottom: '1.5rem'
       }}>
-        <header style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <header className="leads-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>Gerenciamento de Leads</h2>
             <p style={{ opacity: 0.6 }}>Total de {leads.length} leads cadastrados.</p>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="leads-header-actions" style={{ display: 'flex', gap: '1rem' }}>
             <button className="btn btn-outline" onClick={handleExportLeads}>
               <Download size={18} /> Exportar Backup
             </button>
@@ -718,9 +718,9 @@ function LeadsContent() {
       </div>
 
       {selectedLeads.length > 0 && (
-        <div className="card" style={{ marginBottom: '1.5rem', padding: '0.75rem 1.5rem', background: 'var(--primary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="card selected-leads-panel" style={{ marginBottom: '1.5rem', padding: '0.75rem 1.5rem', background: 'var(--primary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{selectedLeads.length} leads selecionados</span>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="selected-leads-actions" style={{ display: 'flex', gap: '1rem' }}>
             {selectedLeads.length === 1 && (
               <button 
                 className="btn" 
@@ -828,7 +828,7 @@ function LeadsContent() {
       </div>
 
       {/* PAGINAÇÃO */}
-      <div style={{ 
+      <div className="pagination-container" style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
@@ -841,7 +841,7 @@ function LeadsContent() {
         <div style={{ opacity: 0.6, fontSize: '0.875rem' }}>
           Exibindo {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredLeads.length)} de {filteredLeads.length} leads
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="pagination-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
           <button 
             className="btn btn-outline" 
             disabled={currentPage === 1}

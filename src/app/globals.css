@@ -499,3 +499,75 @@ tbody tr:hover {
     display: none !important;
   }
 }
+
+/* Mobile Responsive Adjustments for Leads and Pagination */
+@media (max-width: 768px) {
+  .leads-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+  
+  .leads-header-actions {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  
+  .leads-header-actions .btn {
+    flex: 1 1 45% !important;
+    min-width: 110px !important;
+    padding: 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .selected-leads-panel {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+  
+  .selected-leads-actions {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  
+  .selected-leads-actions .btn {
+    flex: 1 1 45% !important;
+    padding: 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .pagination-container {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    text-align: center;
+  }
+  
+  .pagination-buttons {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    width: 100% !important;
+    gap: 0.35rem !important;
+  }
+  
+  .pagination-buttons .btn {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Garantir que o rodapé móvel fique fixo e visível sem bugs de layout */
+  .mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 9999 !important;
+    background-color: white !important;
+  }
+}
