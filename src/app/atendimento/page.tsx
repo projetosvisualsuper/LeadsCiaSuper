@@ -154,6 +154,30 @@ function AtendimentoContent() {
   const [filterStatus, setFilterStatus] = useState<string>('active'); // active | archived | all
   const [filterPeriod, setFilterPeriod] = useState<string>('all'); // all | today | 7d | 30d
 
+  // Estados para Exclusão Customizada e Notificações no Sistema
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [messageToDeleteId, setMessageToDeleteId] = useState<string | null>(null);
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
+  const [customAlert, setCustomAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('crm_hidden_messages');
+    if (saved) {
+      try {
+        setHiddenMessageIds(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setCustomAlert({ message, type });
+    setTimeout(() => {
+      setCustomAlert(prev => prev?.message === message ? null : prev);
+    }, 4000);
+  };
+
   // Efeito para capturar busca vinda de outras páginas (como Leads)
   useEffect(() => {
     const search = searchParams.get('search');
@@ -484,8 +508,16 @@ function AtendimentoContent() {
     if (file) await uploadFile(file);
   };
 
-  const handleDeleteMessage = async (msgId: string) => {
-    if (!confirm('Deseja realmente excluir esta mensagem? Ela será apagada apenas do painel CRM.')) return;
+  const handleDeleteMessage = (msgId: string) => {
+    setMessageToDeleteId(msgId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteForEveryone = async () => {
+    if (!messageToDeleteId) return;
+    const msgId = messageToDeleteId;
+    setDeleteConfirmOpen(false);
+    setMessageToDeleteId(null);
     try {
       const response = await fetch(`/api/chats?messageId=${msgId}`, {
         method: 'DELETE',
@@ -494,17 +526,31 @@ function AtendimentoContent() {
       
       setMessages(prev => prev.filter(m => m.id !== msgId));
       setActiveMessageMenu(null);
+      showAlert('Mensagem excluída para todos!');
     } catch (error) {
       console.error('Erro ao excluir mensagem:', error);
-      alert('Erro ao excluir mensagem');
+      showAlert('Erro ao excluir mensagem', 'error');
     }
+  };
+
+  const handleConfirmDeleteForMe = () => {
+    if (!messageToDeleteId) return;
+    const msgId = messageToDeleteId;
+    setDeleteConfirmOpen(false);
+    setMessageToDeleteId(null);
+
+    const updated = [...hiddenMessageIds, msgId];
+    setHiddenMessageIds(updated);
+    localStorage.setItem('crm_hidden_messages', JSON.stringify(updated));
+    setActiveMessageMenu(null);
+    showAlert('Mensagem excluída apenas para você!');
   };
 
   const handleCopyMessage = (content: string, mediaUrl?: string) => {
     const textToCopy = mediaUrl || content;
     if (textToCopy) {
       navigator.clipboard.writeText(textToCopy)
-        .then(() => alert('Conteúdo copiado!'))
+        .then(() => showAlert('Conteúdo copiado!'))
         .catch(err => console.error('Erro ao copiar:', err));
     }
     setActiveMessageMenu(null);
@@ -799,6 +845,8 @@ function AtendimentoContent() {
       return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
     }
   };
+
+  const visibleMessages = messages.filter(msg => !hiddenMessageIds.includes(msg.id));
 
   return (
     <div className="atendimento-container">
@@ -1241,15 +1289,15 @@ function AtendimentoContent() {
 
             {/* Mensagens */}
             <div ref={messagesContainerRef} className="messages-container custom-scrollbar">
-              {messages.length === 0 && (
+              {visibleMessages.length === 0 && (
                 <div style={{ textAlign: 'center', margin: '2rem 0', opacity: 0.4 }}>
                   <p style={{ fontSize: '0.875rem' }}>Início da conversa</p>
                 </div>
               )}
               
-              {messages.map((msg, i) => {
-                const isFirstOfGroup = i === 0 || messages[i-1].isIncoming !== msg.isIncoming;
-                const showDateSeparator = i === 0 || new Date(messages[i-1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
+              {visibleMessages.map((msg, i) => {
+                const isFirstOfGroup = i === 0 || visibleMessages[i-1].isIncoming !== msg.isIncoming;
+                const showDateSeparator = i === 0 || new Date(visibleMessages[i-1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
                 const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
 
                 return (
@@ -2085,6 +2133,62 @@ function AtendimentoContent() {
           }
         }
       `}</style>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {deleteConfirmOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '400px', maxWidth: '90%', background: 'white', padding: '1.75rem', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', border: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>Excluir Mensagem</h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0, lineHeight: '1.5' }}>
+              Deseja excluir esta mensagem? Você pode optar por apagar somente para você ou para todos no CRM.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button 
+                onClick={handleConfirmDeleteForEveryone}
+                style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                Excluir para todos
+              </button>
+              <button 
+                onClick={handleConfirmDeleteForMe}
+                style={{ background: '#f1f5f9', color: '#334155', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                Excluir apenas para mim
+              </button>
+              <button 
+                onClick={() => { setDeleteConfirmOpen(false); setMessageToDeleteId(null); }}
+                style={{ background: 'transparent', color: '#64748b', border: 'none', padding: '0.5rem', fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast Customizada */}
+      {customAlert && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          background: customAlert.type === 'error' ? '#ef4444' : '#22c55e',
+          color: 'white',
+          padding: '0.75rem 1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontWeight: 600,
+          fontSize: '0.9rem',
+          animation: 'slideInRight 0.2s ease-out'
+        }}>
+          <span>{customAlert.message}</span>
+          <button onClick={() => setCustomAlert(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginLeft: '0.5rem', fontSize: '1rem', fontWeight: 'bold' }}>&times;</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -95,6 +95,30 @@ export default function ChatInternoPage() {
   const [editGroupName, setEditGroupName] = useState('');
   const [showAddParticipant, setShowAddParticipant] = useState(false);
 
+  // Estados para Exclusão Customizada e Notificações no Sistema
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [messageToDeleteId, setMessageToDeleteId] = useState<string | null>(null);
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
+  const [customAlert, setCustomAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('crm_hidden_messages');
+    if (saved) {
+      try {
+        setHiddenMessageIds(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setCustomAlert({ message, type });
+    setTimeout(() => {
+      setCustomAlert(prev => prev?.message === message ? null : prev);
+    }, 4000);
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const groupAvatarRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -330,7 +354,7 @@ export default function ChatInternoPage() {
       
     } catch (err) {
       console.error('Erro ao acessar microfone:', err);
-      alert('Não foi possível acessar o microfone. Verifique as permissões.');
+      showAlert('Não foi possível acessar o microfone. Verifique as permissões.', 'error');
     }
   };
 
@@ -373,31 +397,53 @@ export default function ChatInternoPage() {
         body: JSON.stringify(msg)
       });
 
-      alert('Mensagem encaminhada com sucesso!');
+      showAlert('Mensagem encaminhada com sucesso!');
     } catch (error) {
       console.error('Erro ao encaminhar:', error);
-      alert('Erro ao encaminhar mensagem.');
+      showAlert('Erro ao encaminhar mensagem.', 'error');
     } finally {
       setShowForwardModal(false);
       setForwardMessage(null);
     }
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!selectedChat) return;
+  const handleDeleteMessage = (messageId: string) => {
+    setMessageToDeleteId(messageId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteForEveryone = async () => {
+    if (!messageToDeleteId || !selectedChat) return;
+    const messageId = messageToDeleteId;
+    setDeleteConfirmOpen(false);
+    setMessageToDeleteId(null);
     try {
       await fetch(`/api/internal-chats/${selectedChat.id}/messages/${messageId}`, {
         method: 'DELETE'
       });
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: '🚫 Mensagem apagada', isDeleted: true } : m));
+      showAlert('Mensagem apagada para todos!');
     } catch (e) {
       console.error(e);
+      showAlert('Erro ao apagar mensagem', 'error');
     }
+  };
+
+  const handleConfirmDeleteForMe = () => {
+    if (!messageToDeleteId) return;
+    const msgId = messageToDeleteId;
+    setDeleteConfirmOpen(false);
+    setMessageToDeleteId(null);
+
+    const updated = [...hiddenMessageIds, msgId];
+    setHiddenMessageIds(updated);
+    localStorage.setItem('crm_hidden_messages', JSON.stringify(updated));
+    showAlert('Mensagem excluída apenas para você!');
   };
 
   const uploadFile = async (file: File) => {
     if (file.size > 2 * 1024 * 1024) {
-      alert("Arquivo muito grande. O limite é de 2MB.");
+      showAlert("Arquivo muito grande. O limite é de 2MB.", "error");
       return;
     }
 
@@ -412,11 +458,11 @@ export default function ChatInternoPage() {
       if (data.success && data.url) {
         await handleSendMessage(data.url, file.name);
       } else {
-        alert("Erro ao enviar arquivo.");
+        showAlert("Erro ao enviar arquivo.", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Erro ao enviar arquivo.");
+      showAlert("Erro ao enviar arquivo.", "error");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -654,6 +700,8 @@ export default function ChatInternoPage() {
   const availableUsersForMention = users.filter(u => chatParticipants.includes(u.uid) && u.name?.toLowerCase().includes(mentionFilter));
   const availableUsersToAdd = users.filter(u => !chatParticipants.includes(u.uid) && u.uid !== me?.uid);
 
+  const visibleMessages = messages.filter(msg => !hiddenMessageIds.includes(msg.id));
+
   return (
     <div className="chat-interno-container">
       {/* Sidebar */}
@@ -838,9 +886,9 @@ export default function ChatInternoPage() {
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}>
-              {messages.map((msg, index) => {
+              {visibleMessages.map((msg, index) => {
                 const isMe = msg.senderId === me?.uid;
-                const prevMsg = messages[index - 1];
+                const prevMsg = visibleMessages[index - 1];
                 const showTail = !prevMsg || prevMsg.senderId !== msg.senderId;
 
                 const showDateSeparator = !prevMsg || new Date(prevMsg.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
@@ -1397,6 +1445,62 @@ export default function ChatInternoPage() {
           }
         }
       `}</style>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {deleteConfirmOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '400px', maxWidth: '90%', background: 'white', padding: '1.75rem', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', border: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>Excluir Mensagem</h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0, lineHeight: '1.5' }}>
+              Deseja excluir esta mensagem? Você pode optar por apagar somente para você ou para todos no CRM.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button 
+                onClick={handleConfirmDeleteForEveryone}
+                style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                Excluir para todos
+              </button>
+              <button 
+                onClick={handleConfirmDeleteForMe}
+                style={{ background: '#f1f5f9', color: '#334155', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                Excluir apenas para mim
+              </button>
+              <button 
+                onClick={() => { setDeleteConfirmOpen(false); setMessageToDeleteId(null); }}
+                style={{ background: 'transparent', color: '#64748b', border: 'none', padding: '0.5rem', fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast Customizada */}
+      {customAlert && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          background: customAlert.type === 'error' ? '#ef4444' : '#22c55e',
+          color: 'white',
+          padding: '0.75rem 1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontWeight: 600,
+          fontSize: '0.9rem',
+          animation: 'slideInRight 0.2s ease-out'
+        }}>
+          <span>{customAlert.message}</span>
+          <button onClick={() => setCustomAlert(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginLeft: '0.5rem', fontSize: '1rem', fontWeight: 'bold' }}>&times;</button>
+        </div>
+      )}
     </div>
   );
 }
