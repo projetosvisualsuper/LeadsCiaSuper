@@ -28,6 +28,17 @@ import {
 
 export default function Dashboard() {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importStatus, setImportStatus] = useState('');
   const [greeting, setGreeting] = useState('Bem-vindo');
@@ -418,12 +429,19 @@ export default function Dashboard() {
           Erro ao carregar dados do Firebase: {errorMessage}
         </div>
       )}
-      <header style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <header style={{ 
+        marginBottom: '2.5rem', 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', 
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'flex-start' : 'flex-end',
+        gap: isMobile ? '1.25rem' : '0' 
+      }}>
         <div>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.025em' }}>{greeting}, Administrador 👋</h2>
-          <p style={{ opacity: 0.6, fontSize: '1.05rem', marginTop: '0.25rem' }}>Aqui está o resumo do seu centro de comando hoje.</p>
+          <h2 style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.025em', wordBreak: 'break-word' }}>{greeting}, Administrador 👋</h2>
+          <p style={{ opacity: 0.6, fontSize: isMobile ? '0.95rem' : '1.05rem', marginTop: '0.25rem' }}>Aqui está o resumo do seu centro de comando hoje.</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
           <select 
             value={period} 
             onChange={e => setPeriod(e.target.value)}
@@ -436,7 +454,8 @@ export default function Dashboard() {
               fontWeight: 600, 
               color: '#1e293b', 
               cursor: 'pointer',
-              outline: 'none'
+              outline: 'none',
+              flex: isMobile ? 1 : 'none'
             }}
           >
             <option value="all">Todo o período</option>
@@ -448,7 +467,7 @@ export default function Dashboard() {
           </select>
           
           {period === 'custom' && (
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'white', padding: '0.25rem 0.5rem', borderRadius: '50px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'white', padding: '0.25rem 0.5rem', borderRadius: '50px', border: '1px solid var(--border)', width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}>
               <input 
                 type="date" 
                 value={customStartDate} 
@@ -465,15 +484,20 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: '50px', border: '1px solid var(--border)', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: '50px', border: '1px solid var(--border)', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: isMobile ? 1 : 'none', justifyContent: 'center' }}>
             <Calendar size={16} />
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
           </div>
         </div>
       </header>
 
       {/* STATS CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: isMobile ? '0.75rem' : '1.25rem', 
+        marginBottom: '2.5rem' 
+      }}>
         <StatCard 
           icon={<MessageSquare size={24} />} 
           title="Conversas Pendentes" 
@@ -522,15 +546,20 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <div className="grid" style={{ 
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
+        gap: '1.5rem', 
+        marginBottom: '1.5rem' 
+      }}>
         {/* LEAD FUNNEL */}
-        <div className="card" style={{ padding: '1.75rem' }}>
+        <div className="card" style={{ padding: isMobile ? '1.25rem 1rem' : '1.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <TrendingUp size={20} style={{ color: 'var(--primary)' }} />
               Funil de Leads
             </h4>
-            <span style={{ fontSize: '0.875rem', background: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '50px', fontWeight: 600, color: '#64748b' }}>Taxa de Conversão: {getStatusPercent(stats.leadsByStatus.convertido)}%</span>
+            <span style={{ fontSize: '0.875rem', background: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '50px', fontWeight: 600, color: '#64748b' }}>Taxa: {getStatusPercent(stats.leadsByStatus.convertido)}%</span>
           </div>
 
           <div style={{ display: 'grid', gap: '1.25rem' }}>
@@ -563,12 +592,12 @@ export default function Dashboard() {
 
         {/* QUICK ACTIONS & CAMPAIGNS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="card" style={{ padding: '1.75rem', flex: 1 }}>
+          <div className="card" style={{ padding: isMobile ? '1.25rem 1rem' : '1.75rem', flex: 1 }}>
             <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Zap size={20} style={{ color: 'var(--warning)' }} />
               Ações Rápidas
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
               <button 
                 onClick={() => router.push('/campanhas')}
                 style={{ padding: '1.25rem', background: 'linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%)', color: 'white', borderRadius: '16px', textAlign: 'left', cursor: 'pointer', border: 'none', transition: 'transform 0.2s', boxShadow: '0 10px 15px -3px rgba(99, 102, 241, 0.3)' }}
@@ -595,9 +624,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+      <div className="grid" style={{ 
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
+        gap: '1.5rem' 
+      }}>
         {/* RECENT LEADS */}
-        <div className="card" style={{ padding: '1.75rem' }}>
+        <div className="card" style={{ padding: isMobile ? '1.25rem 1rem' : '1.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b' }}>Leads Mais Recentes</h4>
             <button onClick={() => router.push('/leads')} style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -630,7 +663,7 @@ export default function Dashboard() {
         </div>
 
         {/* RECENT CAMPAIGNS */}
-        <div className="card" style={{ padding: '1.75rem' }}>
+        <div className="card" style={{ padding: isMobile ? '1.25rem 1rem' : '1.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h4 style={{ fontWeight: 700, fontSize: '1.15rem', color: '#1e293b' }}>Últimas Campanhas</h4>
             <button onClick={() => router.push('/campanhas')} style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -1220,13 +1253,13 @@ export default function Dashboard() {
 
 function StatCard({ icon, title, value, color, bgColor, highlight = false }: any) {
   return (
-    <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', border: highlight ? `1px solid ${color}` : '1px solid var(--border)', background: highlight ? bgColor : 'var(--card)' }}>
-      <div style={{ background: bgColor, width: '56px', height: '56px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+    <div className="card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: highlight ? `1px solid ${color}` : '1px solid var(--border)', background: highlight ? bgColor : 'var(--card)', minWidth: 0 }}>
+      <div style={{ background: bgColor, width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color, flexShrink: 0 }}>
         {icon}
       </div>
-      <div>
-        <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600, marginBottom: '0.25rem' }}>{title}</p>
-        <h3 style={{ fontSize: value === 'Ver Painel' ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#1e293b', lineHeight: 1, whiteSpace: 'nowrap' }}>{value}</h3>
+      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+        <p style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginBottom: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</p>
+        <h3 style={{ fontSize: value === 'Ver Painel' ? '1.1rem' : '1.4rem', fontWeight: 800, color: '#1e293b', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</h3>
       </div>
     </div>
   );
