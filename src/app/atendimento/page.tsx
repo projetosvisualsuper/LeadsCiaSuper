@@ -1380,7 +1380,7 @@ function AtendimentoContent() {
             </div>
 
             {/* Input de Mensagem */}
-            <footer style={{ padding: '0 1.5rem 1.5rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+            <footer style={{ padding: '0 1.5rem 1.5rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
               {replyingToMessage && (
                 <div style={{
                   padding: '10px 15px',
@@ -1559,7 +1559,7 @@ function AtendimentoContent() {
                     style={{ 
                       width: '48px', height: '48px', borderRadius: '50%', 
                       background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
                     }}
                   >
                     <Send size={20} style={{ marginLeft: '3px' }} />
@@ -1570,7 +1570,7 @@ function AtendimentoContent() {
                     style={{ 
                       width: '48px', height: '48px', borderRadius: '50%', 
                       background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
                     }}
                   >
                     <Send size={20} style={{ marginLeft: '3px' }} />
@@ -1582,7 +1582,7 @@ function AtendimentoContent() {
                     style={{ 
                       width: '48px', height: '48px', borderRadius: '50%', 
                       background: '#10b981', color: 'white', border: 'none', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
                     }}
                   >
                     <Mic size={20} />
@@ -1775,6 +1775,7 @@ function AtendimentoContent() {
           justify-content: space-between;
           align-items: center;
           gap: 0.5rem;
+          flex-shrink: 0;
         }
         .chat-header-left {
           display: flex;
