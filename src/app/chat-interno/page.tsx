@@ -130,6 +130,95 @@ export default function ChatInternoPage() {
   const [incomingCallerName, setIncomingCallerName] = useState('');
   const [outgoingReceiverName, setOutgoingReceiverName] = useState('');
 
+  // Sintetizador de áudio nativo para som de chamada (Web Audio API)
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const ringtoneIntervalRef = useRef<any>(null);
+
+  const startDialTone = () => {
+    try {
+      stopCallSounds();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      audioCtxRef.current = ctx;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.frequency.value = 350;
+      osc2.frequency.value = 440;
+      gain.gain.value = 0.05;
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+
+      // Pulsar tom de linha (1s som, 3s silêncio)
+      let soundOn = true;
+      ringtoneIntervalRef.current = setInterval(() => {
+        if (soundOn) {
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+        } else {
+          gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        }
+        soundOn = !soundOn;
+      }, 1500);
+    } catch (e) {
+      console.error('Erro ao tocar som de chamada:', e);
+    }
+  };
+
+  const startRingtone = () => {
+    try {
+      stopCallSounds();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      audioCtxRef.current = ctx;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.frequency.value = 440;
+      osc2.frequency.value = 480;
+      gain.gain.value = 0.05;
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+
+      // Pulsar ringtone clássico (1s som, 2s silêncio)
+      let soundOn = true;
+      ringtoneIntervalRef.current = setInterval(() => {
+        if (soundOn) {
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+        } else {
+          gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        }
+        soundOn = !soundOn;
+      }, 1000);
+    } catch (e) {
+      console.error('Erro ao tocar ringtone:', e);
+    }
+  };
+
+  const stopCallSounds = () => {
+    if (ringtoneIntervalRef.current) {
+      clearInterval(ringtoneIntervalRef.current);
+      ringtoneIntervalRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(console.error);
+      audioCtxRef.current = null;
+    }
+  };
+
   useEffect(() => {
     if (!me?.uid) return;
 
@@ -140,7 +229,16 @@ export default function ChatInternoPage() {
         peer = new PeerClass(me.uid, {
           host: '0.peerjs.com',
           secure: true,
-          port: 443
+          port: 443,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' },
+              { urls: 'stun:stun3.l.google.com:19302' },
+              { urls: 'stun:stun4.l.google.com:19302' }
+            ]
+          }
         });
         setPeerInstance(peer);
 
@@ -158,6 +256,7 @@ export default function ChatInternoPage() {
           setIncomingCallerName(caller?.name || caller?.email || 'Atendente');
           setActiveCall(call);
           setCallState('ringing');
+          startRingtone();
         });
       } catch (err) {
         console.error('Falha ao inicializar PeerJS:', err);
@@ -167,6 +266,7 @@ export default function ChatInternoPage() {
     initPeer();
 
     return () => {
+      stopCallSounds();
       if (peer) {
         peer.destroy();
       }
@@ -195,6 +295,7 @@ export default function ChatInternoPage() {
     const otherUser = users.find(u => u.uid === otherUserId);
     setOutgoingReceiverName(otherUser?.name || otherUser?.email || 'Atendente');
     setCallState('calling');
+    startDialTone();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -204,6 +305,7 @@ export default function ChatInternoPage() {
       setActiveCall(call);
 
       call.on('stream', (rStream: MediaStream) => {
+        stopCallSounds();
         setRemoteStream(rStream);
         setCallState('connected');
       });
@@ -220,6 +322,7 @@ export default function ChatInternoPage() {
       console.error('Erro ao iniciar ligação:', err);
       showAlert('Não foi possível acessar seu microfone.', 'error');
       setCallState('idle');
+      stopCallSounds();
     }
   };
 
@@ -232,6 +335,7 @@ export default function ChatInternoPage() {
 
       activeCall.answer(stream);
       setCallState('connected');
+      stopCallSounds();
 
       activeCall.on('stream', (rStream: MediaStream) => {
         setRemoteStream(rStream);
@@ -253,6 +357,7 @@ export default function ChatInternoPage() {
   };
 
   const declineVoiceCall = () => {
+    stopCallSounds();
     if (activeCall) {
       activeCall.close();
     }
@@ -262,6 +367,7 @@ export default function ChatInternoPage() {
   };
 
   const endVoiceCall = () => {
+    stopCallSounds();
     if (activeCall) {
       activeCall.close();
     }
