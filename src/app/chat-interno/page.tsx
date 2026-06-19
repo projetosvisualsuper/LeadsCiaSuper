@@ -892,6 +892,7 @@ export default function ChatInternoPage() {
             <div style={{ 
               flex: 1, 
               overflowY: 'auto', 
+              minHeight: 0,
               padding: '1.5rem 5%', 
               display: 'flex', 
               flexDirection: 'column', 
