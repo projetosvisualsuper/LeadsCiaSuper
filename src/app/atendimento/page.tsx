@@ -767,13 +767,7 @@ function AtendimentoContent() {
     <div className="atendimento-container">
       
       {/* SIDEBAR DE CONVERSAS */}
-      <div style={{ 
-        width: isMobile ? '100%' : '350px', 
-        background: 'white', 
-        borderRight: '1px solid #e2e8f0', 
-        display: isMobile && selectedChatId ? 'none' : 'flex', 
-        flexDirection: 'column' 
-      }}>
+      <div className={`conversas-sidebar ${selectedChatId ? 'hidden-on-mobile' : ''}`}>
         <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Mensagens</h2>
@@ -1075,25 +1069,24 @@ function AtendimentoContent() {
       </div>
 
       {/* ÁREA DE CHAT */}
-      <div style={{ flex: 1, display: isMobile && !selectedChatId ? 'none' : 'flex', flexDirection: 'column', background: '#f8fafc', position: 'relative' }}>
+      <div className={`chat-area ${selectedChatId ? 'visible-on-mobile' : 'hidden-on-mobile'}`}>
         {selectedChatId ? (
           <>
             {/* Header do Chat */}
-            <header style={{ padding: isMobile ? '0.5rem' : '0.75rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', minWidth: 0 }}>
-                {isMobile && (
-                  <button 
-                    onClick={() => setSelectedChatId(null)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0.25rem 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
-                  >
-                    <ChevronLeft size={24} />
-                  </button>
-                )}
+            <header className="chat-header">
+              <div className="chat-header-left">
+                <button 
+                  className="mobile-back-button"
+                  onClick={() => setSelectedChatId(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0.25rem 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
+                >
+                  <ChevronLeft size={24} />
+                </button>
                 <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <User size={18} color="#94a3b8" />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <h3 style={{ fontSize: isMobile ? '0.9rem' : '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
+                  <h3 className="chat-lead-name">{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981', marginTop: '2px' }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}</span>
@@ -1121,7 +1114,7 @@ function AtendimentoContent() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: isMobile ? '0.4rem' : '0.75rem', flexShrink: 0 }}>
+              <div className="chat-header-right">
                 <button 
                   onClick={() => setShowLeadDetails(!showLeadDetails)}
                   style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: showLeadDetails ? 'var(--primary)' : 'inherit' }}
@@ -1756,6 +1749,51 @@ function AtendimentoContent() {
           overflow: hidden;
           background: #f1f5f9;
         }
+        .conversas-sidebar {
+          width: 350px;
+          background: white;
+          border-right: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+        }
+        .chat-area {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          background: #f8fafc;
+          position: relative;
+        }
+        .chat-header {
+          padding: 0.75rem 1.5rem;
+          background: white;
+          border-bottom: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .chat-header-left {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          min-width: 0;
+        }
+        .mobile-back-button {
+          display: none !important;
+        }
+        .chat-header-right {
+          display: flex;
+          gap: 0.75rem;
+          flex-shrink: 0;
+        }
+        .chat-lead-name {
+          font-size: 1rem;
+          font-weight: 700;
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
         .connection-badge-container {
           flex: 1;
           display: flex;
@@ -1806,6 +1844,33 @@ function AtendimentoContent() {
             height: calc(100vh - 60px) !important;
             margin: 0 !important;
             width: 100% !important;
+          }
+          .conversas-sidebar {
+            width: 100% !important;
+          }
+          .conversas-sidebar.hidden-on-mobile {
+            display: none !important;
+          }
+          .chat-area.hidden-on-mobile {
+            display: none !important;
+          }
+          .chat-area.visible-on-mobile {
+            display: flex !important;
+          }
+          .chat-header {
+            padding: 0.5rem !important;
+          }
+          .chat-header-left {
+            gap: 0.5rem !important;
+          }
+          .mobile-back-button {
+            display: flex !important;
+          }
+          .chat-header-right {
+            gap: 0.4rem !important;
+          }
+          .chat-lead-name {
+            font-size: 0.9rem !important;
           }
           .connection-badge-container {
             display: none !important;
