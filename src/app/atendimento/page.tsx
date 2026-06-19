@@ -27,7 +27,8 @@ import {
   Link,
   ChevronDown,
   Mic,
-  Square
+  Square,
+  Plus
 } from 'lucide-react';
 
 const renderSocialIcon = (platform: string, size: number = 24, color?: string) => {
@@ -122,6 +123,7 @@ function AtendimentoContent() {
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -271,6 +273,15 @@ function AtendimentoContent() {
       const target = e.target as Element;
       if (!target.closest('.message-menu-container') && !target.closest('.message-menu-trigger')) {
         setActiveMessageMenu(null);
+      }
+      if (!target.closest('.actions-dropdown-container')) {
+        setShowActionsDropdown(false);
+      }
+      if (!target.closest('.emoji-picker-container')) {
+        setShowEmojiPicker(false);
+      }
+      if (!target.closest('.template-picker-container')) {
+        setShowTemplatePicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -1417,20 +1428,141 @@ function AtendimentoContent() {
                 </div>
               )}
               <form onSubmit={handleSendMessage} className="chat-form" style={{ paddingTop: replyingToMessage ? '0.75rem' : '' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
+                <div className="actions-dropdown-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <button 
                     type="button" 
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    style={{ color: showEmojiPicker ? 'var(--primary)' : '#64748b', padding: '0.5rem', cursor: 'pointer' }}
+                    onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+                    style={{ 
+                      color: showActionsDropdown ? 'var(--primary)' : '#64748b', 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '50%', 
+                      background: showActionsDropdown ? 'rgba(99, 102, 241, 0.1)' : '#f1f5f9',
+                      border: 'none',
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      transition: 'all 0.2s',
+                      flexShrink: 0
+                    }}
+                    title="Mais opções"
                   >
-                    <Smile size={22} />
+                    <Plus size={22} style={{ transform: showActionsDropdown ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s' }} />
                   </button>
+
+                  {showActionsDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      marginBottom: '10px',
+                      background: 'white',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                      border: '1px solid #e2e8f0',
+                      zIndex: 101,
+                      width: '180px',
+                      padding: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEmojiPicker(true);
+                          setShowActionsDropdown(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem 0.75rem',
+                          textAlign: 'left',
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          color: '#475569',
+                          borderRadius: '8px'
+                        }}
+                        className="hover-bg"
+                      >
+                        <Smile size={18} color="#64748b" />
+                        <span>Emoji</span>
+                      </button>
+
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        style={{ display: 'none' }} 
+                        onChange={handleFileUpload} 
+                      />
+                      <button
+                        type="button"
+                        disabled={uploading}
+                        onClick={() => {
+                          fileInputRef.current?.click();
+                          setShowActionsDropdown(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem 0.75rem',
+                          textAlign: 'left',
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          color: '#475569',
+                          borderRadius: '8px'
+                        }}
+                        className="hover-bg"
+                      >
+                        <Paperclip size={18} color="#64748b" />
+                        <span>{uploading ? 'Enviando...' : 'Anexo'}</span>
+                      </button>
+
+                      {activeChat?.channel === 'whatsapp' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowTemplatePicker(true);
+                            setShowActionsDropdown(false);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.75rem',
+                            textAlign: 'left',
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#475569',
+                            borderRadius: '8px'
+                          }}
+                          className="hover-bg"
+                        >
+                          <MessageSquare size={18} color="#64748b" />
+                          <span>Modelos</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {showEmojiPicker && (
-                    <div style={{ 
+                    <div className="emoji-picker-container" style={{ 
                       position: 'absolute', 
                       bottom: '100%', 
                       left: 0, 
-                      marginBottom: '1rem', 
+                      marginBottom: '10px', 
                       background: 'white', 
                       borderRadius: '16px', 
                       boxShadow: '0 10px 40px rgba(0,0,0,0.15)', 
@@ -1442,7 +1574,7 @@ function AtendimentoContent() {
                       display: 'grid',
                       gridTemplateColumns: 'repeat(8, 1fr)',
                       gap: '5px',
-                      zIndex: 100
+                      zIndex: 102
                     }}>
                       {EMOJIS.map(emoji => (
                         <button 
@@ -1460,75 +1592,48 @@ function AtendimentoContent() {
                       ))}
                     </div>
                   )}
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    style={{ display: 'none' }} 
-                    onChange={handleFileUpload} 
-                  />
-                  <button 
-                    type="button" 
-                    disabled={uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{ color: uploading ? 'var(--primary)' : '#64748b', padding: '0.5rem', cursor: 'pointer', border: 'none', background: 'transparent' }}
-                  >
-                    <Paperclip size={22} />
-                  </button>
-                  
-                  {activeChat?.channel === 'whatsapp' && (
-                    <div style={{ position: 'relative' }}>
-                      <button 
-                        type="button" 
-                        onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-                        style={{ color: showTemplatePicker ? 'var(--primary)' : '#64748b', padding: '0.5rem', cursor: 'pointer', border: 'none', background: 'transparent' }}
-                        title="Modelos Pré-Aprovados (Templates)"
-                      >
-                        <MessageSquare size={22} />
-                      </button>
 
-                      {showTemplatePicker && (
-                        <div style={{ 
-                          position: 'absolute', 
-                          bottom: '100%', 
-                          left: 0, 
-                          marginBottom: '1rem', 
-                          background: 'white', 
-                          borderRadius: '16px', 
-                          boxShadow: '0 10px 40px rgba(0,0,0,0.15)', 
-                          border: '1px solid #e2e8f0', 
-                          padding: '1rem', 
-                          width: '350px', 
-                          zIndex: 100,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.5rem'
-                        }}>
-                          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Modelos Pré-Aprovados (Meta)</p>
-                          {META_TEMPLATES.map((template, idx) => (
-                            <button 
-                              key={idx} 
-                              type="button" 
-                              onClick={() => {
-                                setNewMessage(template);
-                                setShowTemplatePicker(false);
-                              }}
-                              style={{ 
-                                fontSize: '0.875rem', 
-                                padding: '0.75rem', 
-                                background: '#f8fafc', 
-                                border: '1px solid #e2e8f0', 
-                                cursor: 'pointer', 
-                                borderRadius: '8px',
-                                textAlign: 'left',
-                                lineHeight: '1.4'
-                              }}
-                              className="hover-bg"
-                            >
-                              {template}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                  {showTemplatePicker && activeChat?.channel === 'whatsapp' && (
+                    <div className="template-picker-container" style={{ 
+                      position: 'absolute', 
+                      bottom: '100%', 
+                      left: 0, 
+                      marginBottom: '10px', 
+                      background: 'white', 
+                      borderRadius: '16px', 
+                      boxShadow: '0 10px 40px rgba(0,0,0,0.15)', 
+                      border: '1px solid #e2e8f0', 
+                      padding: '1rem', 
+                      width: '350px', 
+                      zIndex: 102,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem'
+                    }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Modelos Pré-Aprovados (Meta)</p>
+                      {META_TEMPLATES.map((template, idx) => (
+                        <button 
+                          key={idx} 
+                          type="button" 
+                          onClick={() => {
+                            setNewMessage(template);
+                            setShowTemplatePicker(false);
+                          }}
+                          style={{ 
+                            fontSize: '0.875rem', 
+                            padding: '0.75rem', 
+                            background: '#f8fafc', 
+                            border: '1px solid #e2e8f0', 
+                            cursor: 'pointer', 
+                            borderRadius: '8px',
+                            textAlign: 'left',
+                            lineHeight: '1.4'
+                          }}
+                          className="hover-bg"
+                        >
+                          {template}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
