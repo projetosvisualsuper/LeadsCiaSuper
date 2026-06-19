@@ -95,12 +95,22 @@ function AtendimentoContent() {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setShowLeadDetails(false);
+      }
     };
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setShowLeadDetails(false);
+    }
+  }, [selectedChatId, isMobile]);
 
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);

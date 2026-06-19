@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { InternalChat, InternalMessage, UserProfile } from '@/types/crm';
-import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward } from 'lucide-react';
+import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward, ChevronLeft } from 'lucide-react';
 
 const EMOJIS = ['😀','😂','😍','😭','🙏','👍','🔥','❤️','🎉','😊','😎','🤔','😡','🥺','✨','💯','🙌','👏','👀','🚀'];
 
