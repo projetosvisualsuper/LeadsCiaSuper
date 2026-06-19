@@ -206,8 +206,8 @@ export default function ConfigPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Favicon deve ser bem pequeno
-    const compressed = await compressImage(file, 64, 64, 0.8);
+    // Aumentado para 512x512 para manter alta definição no ícone do celular e tela de carregamento (PWA)
+    const compressed = await compressImage(file, 512, 512, 0.7);
     setSettings(prev => ({ 
       ...prev, 
       landingPage: { ...prev.landingPage!, faviconUrl: compressed }

@@ -9,6 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Leads Cia Super | CRM & E-mail Marketing",
     description: "Gerenciamento inteligente de leads e campanhas",
+    manifest: "/manifest.json",
     icons: {
       icon: "/api/img/favicon",
       apple: "/api/img/favicon",
