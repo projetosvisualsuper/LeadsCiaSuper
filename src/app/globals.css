@@ -395,6 +395,8 @@ tbody tr:hover {
   }
   .main-content.no-padding {
     padding: 0 !important;
+    height: calc(100dvh - 60px) !important;
+    margin-bottom: 60px !important;
   }
   
   .app-container {

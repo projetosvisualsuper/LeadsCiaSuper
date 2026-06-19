@@ -261,6 +261,22 @@ export default function ClientLayout({
           setCallState('ringing');
           startRingtone();
 
+          // Registrar listeners para fechar caso o originador cancele antes de atender
+          call.on('close', () => {
+            stopCallSounds();
+            setCallState('idle');
+            setActiveCall(null);
+            setIncomingCallerName('');
+          });
+
+          call.on('error', (err: any) => {
+            console.error('Erro na chamada recebida:', err);
+            stopCallSounds();
+            setCallState('idle');
+            setActiveCall(null);
+            setIncomingCallerName('');
+          });
+
           if (document.hidden) {
             showNativeNotification('Chamada de Voz Recebida', `${callerName} está ligando para você...`);
           }

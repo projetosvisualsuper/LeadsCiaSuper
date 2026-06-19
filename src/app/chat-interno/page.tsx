@@ -1454,7 +1454,7 @@ export default function ChatInternoPage() {
         }
         @media (max-width: 768px) {
           .chat-interno-container {
-            height: calc(100vh - 60px) !important;
+            height: 100% !important;
             margin: 0 !important;
             width: 100% !important;
           }
