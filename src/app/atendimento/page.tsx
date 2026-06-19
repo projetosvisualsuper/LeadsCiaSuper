@@ -1185,7 +1185,8 @@ function AtendimentoContent() {
                     <div 
                       className="message-bubble-wrapper"
                       style={{ 
-                        alignSelf: msg.isIncoming ? 'flex-start' : 'flex-end'
+                        alignSelf: msg.isIncoming ? 'flex-start' : 'flex-end',
+                        alignItems: msg.isIncoming ? 'flex-start' : 'flex-end'
                       }}
                     >
                       {isFirstOfGroup && (
@@ -1206,7 +1207,9 @@ function AtendimentoContent() {
                         fontSize: '0.9rem',
                         lineHeight: 1.5,
                         position: 'relative',
-                        transition: 'background-color 0.5s ease'
+                        transition: 'background-color 0.5s ease',
+                        width: 'fit-content',
+                        maxWidth: '100%'
                       }}
                     >
                       {/* Botão de Menu (Sempre Visível) */}
@@ -1762,6 +1765,7 @@ function AtendimentoContent() {
           flex-direction: column;
           background: #f8fafc;
           position: relative;
+          min-width: 0;
         }
         .chat-header {
           padding: 0.75rem 1.5rem;
@@ -1856,6 +1860,8 @@ function AtendimentoContent() {
           }
           .chat-area.visible-on-mobile {
             display: flex !important;
+            width: 100% !important;
+            max-width: 100% !important;
           }
           .chat-header {
             padding: 0.5rem !important;
