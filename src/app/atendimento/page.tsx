@@ -1085,8 +1085,12 @@ function AtendimentoContent() {
                 >
                   <ChevronLeft size={24} />
                 </button>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <User size={18} color="#94a3b8" />
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                  {activeChat?.leadAvatar ? (
+                    <img src={activeChat.leadAvatar} alt={activeChat.leadName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={18} color="#94a3b8" />
+                  )}
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <h3 className="chat-lead-name">{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
