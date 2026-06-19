@@ -401,7 +401,28 @@ export default function ClientLayout({
     );
   };
 
-  const isNoScrollPage = ['/atendimento', '/chat-interno'].includes(pathname);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  useEffect(() => {
+    setShowMobileMenu(false);
+  }, [pathname]);
+
+  const isNoScrollPage = ['/atendimento', '/chat-interno'].includes(pathname) && !showMobileMenu;
+
+  const gridMenuItems = [
+    { href: '/campanhas', label: 'Campanhas', icon: <Mail size={24} /> },
+    { href: '/segmentacoes', label: 'Segmentações', icon: <Filter size={24} /> },
+    { href: '/relatorios', label: 'Relatórios', icon: <BarChart3 size={24} /> },
+    { href: '/integracoes', label: 'Integrações', icon: <Code size={24} /> },
+    { href: '/captura-editor', label: 'Páginas de Captura', icon: <LayoutIcon size={24} /> },
+    { href: '/whatsapp', label: 'Botão WhatsApp', icon: <MessageCircle size={24} /> },
+    { href: '/bio', label: 'Link na Bio', icon: <Smartphone size={24} /> },
+    { href: '/popups', label: 'Pop-ups', icon: <SquareStack size={24} /> },
+    { href: '/bots', label: 'Bots e Automações', icon: <Bot size={24} /> },
+    { href: '/conexoes', label: 'Conexões WhatsApp', icon: <MessageSquare size={24} /> },
+    { href: '/configuracoes', label: 'Configurações', icon: <SettingsIcon size={24} /> },
+    { href: '/usuarios', label: 'Usuários', icon: <ShieldCheck size={24} />, count: pendingUsersCount },
+  ];
 
   return (
     <div className="app-container">
@@ -505,8 +526,107 @@ export default function ClientLayout({
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           ...(isNoScrollPage ? { height: '100vh', overflow: 'hidden' } : {})
         }}>
-          {children}
+          {showMobileMenu ? (
+            <div className="mobile-grid-menu">
+              {gridMenuItems
+                .filter(item => rolePermissions[userRole]?.includes(item.href))
+                .map(item => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setShowMobileMenu(false)}
+                    className="mobile-menu-card"
+                  >
+                    <div className="mobile-menu-card-icon" style={{ position: 'relative' }}>
+                      {item.icon}
+                      {item.count && item.count > 0 ? (
+                        <span style={{
+                          position: 'absolute',
+                          top: '-4px',
+                          right: '-4px',
+                          background: 'var(--danger)',
+                          color: 'white',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          minWidth: '18px',
+                          textAlign: 'center',
+                          boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)'
+                        }}>
+                          {item.count}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h3 className="mobile-menu-card-title">{item.label}</h3>
+                  </Link>
+                ))}
+            </div>
+          ) : (
+            children
+          )}
         </main>
+
+        <div className="mobile-bottom-nav">
+          <Link href="/" onClick={() => setShowMobileMenu(false)} className={`mobile-nav-item ${pathname === '/' && !showMobileMenu ? 'active' : ''}`}>
+            <LayoutDashboard size={20} />
+            <span>Início</span>
+          </Link>
+          <Link href="/leads" onClick={() => setShowMobileMenu(false)} className={`mobile-nav-item ${pathname === '/leads' && !showMobileMenu ? 'active' : ''}`}>
+            <Users size={20} />
+            <span>Leads</span>
+          </Link>
+          <Link href="/atendimento" onClick={() => setShowMobileMenu(false)} className={`mobile-nav-item ${pathname === '/atendimento' && !showMobileMenu ? 'active' : ''}`} style={{ position: 'relative' }}>
+            <Zap size={20} />
+            <span>Atendimento</span>
+            {whatsappUnreadCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '4px',
+                right: '12px',
+                background: 'var(--danger)',
+                color: 'white',
+                fontSize: '0.6rem',
+                fontWeight: 800,
+                padding: '2px 4px',
+                borderRadius: '10px',
+                minWidth: '14px',
+                textAlign: 'center'
+              }}>
+                {whatsappUnreadCount}
+              </span>
+            )}
+          </Link>
+          <Link href="/chat-interno" onClick={() => setShowMobileMenu(false)} className={`mobile-nav-item ${pathname === '/chat-interno' && !showMobileMenu ? 'active' : ''}`} style={{ position: 'relative' }}>
+            <MessageSquare size={20} />
+            <span>Chat Interno</span>
+            {unreadChatCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '4px',
+                right: '12px',
+                background: 'var(--danger)',
+                color: 'white',
+                fontSize: '0.6rem',
+                fontWeight: 800,
+                padding: '2px 4px',
+                borderRadius: '10px',
+                minWidth: '14px',
+                textAlign: 'center'
+              }}>
+                {unreadChatCount}
+              </span>
+            )}
+          </Link>
+          <button 
+            onClick={() => setShowMobileMenu(!showMobileMenu)} 
+            className={`mobile-nav-item ${showMobileMenu ? 'active' : ''}`}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+          >
+            <Menu size={20} />
+            <span>Mais</span>
+          </button>
+        </div>
 
         {/* Global Notifications Toast */}
         {notification && (

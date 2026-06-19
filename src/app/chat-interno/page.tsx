@@ -22,14 +22,15 @@ const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) 
       <button 
         onClick={toggleSpeed} 
         style={{ 
-          background: isIncoming ? '#e2e8f0' : 'rgba(0, 0, 0, 0.08)', 
+          background: isIncoming ? '#cbd5e1' : 'rgba(255, 255, 255, 0.3)', 
           border: 'none', 
           borderRadius: '12px', 
-          padding: '2px 8px', 
-          fontSize: '0.75rem', 
-          fontWeight: 'bold',
+          padding: '4px 10px', 
+          fontSize: '0.8rem', 
+          fontWeight: '800',
           cursor: 'pointer',
-          color: isIncoming ? '#475569' : '#1e293b'
+          color: isIncoming ? '#0f172a' : '#ffffff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}
         title="Velocidade do Áudio"
       >
@@ -40,6 +41,17 @@ const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) 
 };
 
 export default function ChatInternoPage() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [chats, setChats] = useState<InternalChat[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [me, setMe] = useState<UserProfile | null>(null);
@@ -623,9 +635,23 @@ export default function ChatInternoPage() {
   const availableUsersToAdd = users.filter(u => !chatParticipants.includes(u.uid) && u.uid !== me?.uid);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', margin: '-2rem', background: '#f8fafc', overflow: 'hidden' }}>
+    <div style={{ 
+      display: 'flex', 
+      height: isMobile ? 'calc(100vh - 60px)' : '100vh', 
+      margin: isMobile ? '0' : '-2rem', 
+      background: '#f8fafc', 
+      overflow: 'hidden' 
+    }}>
       {/* Sidebar */}
-      <div style={{ width: '320px', background: 'white', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0, zIndex: 5 }}>
+      <div style={{ 
+        width: isMobile ? '100%' : '320px', 
+        background: 'white', 
+        borderRight: '1px solid var(--border)', 
+        display: isMobile && selectedChat ? 'none' : 'flex', 
+        flexDirection: 'column', 
+        minHeight: 0, 
+        zIndex: 5 
+      }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Chat Interno</h2>
           <button className="btn btn-outline" style={{ padding: '0.5rem' }} onClick={() => setIsNewChatModalOpen(true)}>
@@ -708,7 +734,7 @@ export default function ChatInternoPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
+      <div style={{ flex: 1, display: isMobile && !selectedChat ? 'none' : 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
         {selectedChat ? (
           <>
             {/* Header */}
@@ -716,6 +742,17 @@ export default function ChatInternoPage() {
               style={{ padding: '1rem', background: '#f0f2f5', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', cursor: selectedChat.type === 'group' ? 'pointer' : 'default', zIndex: 5 }}
               onClick={() => selectedChat.type === 'group' && setShowGroupInfo(true)}
             >
+              {isMobile && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedChat(null);
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0.25rem 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
+                >
+                  <ChevronLeft size={24} />
+                </button>
+              )}
                <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
                 {getChatAvatar(selectedChat) ? (
                   <img src={getChatAvatar(selectedChat)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1087,7 +1124,7 @@ export default function ChatInternoPage() {
 
         {/* Group Info Modal (Lateral Direito) */}
         {showGroupInfo && selectedChat?.type === 'group' && (
-          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '350px', background: '#f0f2f5', borderLeft: '1px solid var(--border)', zIndex: 20, display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.2s ease-out' }}>
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: isMobile ? '100%' : '350px', background: '#f0f2f5', borderLeft: '1px solid var(--border)', zIndex: 20, display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.2s ease-out' }}>
             <div style={{ padding: '1.25rem', background: 'white', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border)' }}>
               <button onClick={() => setShowGroupInfo(false)} style={{ color: '#54656f' }}><X size={20} /></button>
               <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#111b21' }}>Dados do grupo</h3>

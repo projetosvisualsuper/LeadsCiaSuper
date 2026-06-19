@@ -366,3 +366,119 @@ tbody tr:hover {
     font-size: 1.85rem;
   }
 }
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important; /* Reset padding for maximum screen usage on mobile */
+    margin-bottom: 60px !important;
+    min-height: calc(100vh - 60px);
+  }
+  
+  .app-container {
+    flex-direction: column;
+  }
+}
+
+/* Bottom Navigation Bar for Mobile */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: white;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 9999;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary);
+  font-size: 0.725rem;
+  font-weight: 500;
+  text-decoration: none;
+  gap: 3px;
+  opacity: 0.75;
+  transition: all 0.2s;
+  flex: 1;
+  height: 100%;
+}
+
+.mobile-nav-item.active {
+  color: var(--primary);
+  opacity: 1;
+  font-weight: 700;
+}
+
+/* Grid Menu (Inspirado no Bíblia 360) */
+.mobile-grid-menu {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+  padding: 1rem;
+  background: #f8fafc;
+  min-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.mobile-menu-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.65rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: var(--foreground);
+}
+
+.mobile-menu-card:active {
+  transform: scale(0.96);
+  background: var(--accent);
+}
+
+.mobile-menu-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-menu-card-title {
+  font-size: 0.825rem;
+  font-weight: 600;
+  margin: 0;
+  color: #1e293b;
+}
+
+@media (min-width: 769px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+  .mobile-grid-menu {
+    display: none !important;
+  }
+}

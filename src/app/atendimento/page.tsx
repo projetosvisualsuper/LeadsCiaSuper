@@ -71,14 +71,15 @@ const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) 
       <button 
         onClick={toggleSpeed} 
         style={{ 
-          background: isIncoming ? '#e2e8f0' : 'rgba(255,255,255,0.2)', 
+          background: isIncoming ? '#cbd5e1' : 'rgba(255,255,255,0.3)', 
           border: 'none', 
           borderRadius: '12px', 
-          padding: '2px 8px', 
-          fontSize: '0.75rem', 
-          fontWeight: 'bold',
+          padding: '4px 10px', 
+          fontSize: '0.8rem', 
+          fontWeight: '800',
           cursor: 'pointer',
-          color: isIncoming ? '#475569' : 'white'
+          color: isIncoming ? '#0f172a' : '#ffffff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}
         title="Velocidade do Áudio"
       >
@@ -90,6 +91,17 @@ const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) 
 
 function AtendimentoContent() {
   const searchParams = useSearchParams();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -743,15 +755,21 @@ function AtendimentoContent() {
 
   return (
     <div style={{ 
-      height: 'calc(100vh - 4rem)', 
-      margin: '-1.5rem', 
+      height: isMobile ? 'calc(100vh - 60px)' : 'calc(100vh - 4rem)', 
+      margin: isMobile ? '0' : '-1.5rem', 
       display: 'flex', 
       overflow: 'hidden', 
       background: '#f1f5f9'
     }}>
       
       {/* SIDEBAR DE CONVERSAS */}
-      <div style={{ width: '350px', background: 'white', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ 
+        width: isMobile ? '100%' : '350px', 
+        background: 'white', 
+        borderRight: '1px solid #e2e8f0', 
+        display: isMobile && selectedChatId ? 'none' : 'flex', 
+        flexDirection: 'column' 
+      }}>
         <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Mensagens</h2>
@@ -1053,12 +1071,20 @@ function AtendimentoContent() {
       </div>
 
       {/* ÁREA DE CHAT */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f8fafc', position: 'relative' }}>
+      <div style={{ flex: 1, display: isMobile && !selectedChatId ? 'none' : 'flex', flexDirection: 'column', background: '#f8fafc', position: 'relative' }}>
         {selectedChatId ? (
           <>
             {/* Header do Chat */}
             <header style={{ padding: '0.75rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {isMobile && (
+                  <button 
+                    onClick={() => setSelectedChatId(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0.25rem 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <User size={20} color="#94a3b8" />
                 </div>
@@ -1591,7 +1617,19 @@ function AtendimentoContent() {
 
       {/* PAINEL DE DETALHES DO LEAD */}
       {selectedChatId && showLeadDetails && (
-        <div style={{ width: '320px', background: 'white', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.3s ease-out' }}>
+        <div style={{ 
+          width: isMobile ? '100%' : '320px', 
+          position: isMobile ? 'absolute' : 'relative',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 200,
+          background: 'white', 
+          borderLeft: '1px solid #e2e8f0', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          animation: 'slideInRight 0.3s ease-out' 
+        }}>
           <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontWeight: 800 }}>Sobre o Lead</h3>
             <button onClick={() => setShowLeadDetails(false)} style={{ opacity: 0.4 }}><X size={20} /></button>
