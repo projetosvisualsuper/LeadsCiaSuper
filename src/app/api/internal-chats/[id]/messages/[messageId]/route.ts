@@ -29,6 +29,24 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Message ID is required' }, { status: 400 });
     }
 
+    // Buscar a mensagem para verificar se possui anexo associado no R2
+    const msgList = await d1Api.runQuery(`SELECT attachmentUrl FROM internal_messages WHERE id = ?`, [messageId]);
+    if (msgList && msgList[0]?.attachmentUrl) {
+      const attachmentUrl = msgList[0].attachmentUrl;
+      const prefix = '/api/media/';
+      if (attachmentUrl.startsWith(prefix)) {
+        const key = decodeURIComponent(attachmentUrl.substring(prefix.length));
+        const bucket = process.env.BUCKET || (globalThis as any).BUCKET;
+        if (bucket) {
+          try {
+            await bucket.delete(key);
+          } catch (err) {
+            console.error('Erro ao deletar arquivo do R2:', err);
+          }
+        }
+      }
+    }
+
     await d1Api.deleteInternalMessage(messageId);
 
     return NextResponse.json({ success: true, message: 'Message deleted' });

@@ -1338,7 +1338,7 @@ export const d1Api = {
   },
 
   deleteInternalMessage: async (messageId: string): Promise<void> => {
-    await executeRun(`UPDATE internal_messages SET content = '🚫 Mensagem apagada', isDeleted = 1 WHERE id = ?`, [messageId]);
+    await executeRun(`UPDATE internal_messages SET content = '🚫 Mensagem apagada', isDeleted = 1, attachmentUrl = NULL, attachmentName = NULL WHERE id = ?`, [messageId]);
   },
 
   deleteInternalChat: async (chatId: string): Promise<void> => {

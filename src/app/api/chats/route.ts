@@ -134,6 +134,23 @@ export async function DELETE(req: NextRequest) {
     const messageId = searchParams.get('messageId');
 
     if (messageId) {
+      // Buscar a mensagem para verificar se possui mídia associada no R2
+      const msgList = await d1Api.runQuery(`SELECT mediaUrl FROM messages WHERE id = ?`, [messageId]);
+      if (msgList && msgList[0]?.mediaUrl) {
+        const mediaUrl = msgList[0].mediaUrl;
+        const prefix = '/api/media/';
+        if (mediaUrl.startsWith(prefix)) {
+          const key = decodeURIComponent(mediaUrl.substring(prefix.length));
+          const bucket = process.env.BUCKET || (globalThis as any).BUCKET;
+          if (bucket) {
+            try {
+              await bucket.delete(key);
+            } catch (err) {
+              console.error('Erro ao deletar arquivo do R2:', err);
+            }
+          }
+        }
+      }
       await d1Api.executeRun(`DELETE FROM messages WHERE id = ?`, [messageId]);
       return NextResponse.json({ success: true });
     }
