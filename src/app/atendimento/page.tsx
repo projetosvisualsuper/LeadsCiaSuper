@@ -28,7 +28,8 @@ import {
   ChevronDown,
   Mic,
   Square,
-  Plus
+  Plus,
+  Upload
 } from 'lucide-react';
 
 const renderSocialIcon = (platform: string, size: number = 24, color?: string) => {
@@ -124,6 +125,7 @@ function AtendimentoContent() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -377,8 +379,7 @@ function AtendimentoContent() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadFile = async (file: File) => {
     const chat = chats.find(c => c.id === selectedChatId);
     if (!file || !selectedChatId || !chat) return;
 
@@ -459,6 +460,28 @@ function AtendimentoContent() {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await uploadFile(file);
   };
 
   const handleDeleteMessage = async (msgId: string) => {
@@ -1083,7 +1106,45 @@ function AtendimentoContent() {
       </div>
 
       {/* ÁREA DE CHAT */}
-      <div className={`chat-area ${selectedChatId ? 'visible-on-mobile' : 'hidden-on-mobile'}`}>
+      <div 
+        className={`chat-area ${selectedChatId ? 'visible-on-mobile' : 'hidden-on-mobile'}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{ position: 'relative' }}
+      >
+        {isDragging && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(99, 102, 241, 0.15)',
+            backdropFilter: 'blur(4px)',
+            border: '3px dashed var(--primary)',
+            borderRadius: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            pointerEvents: 'none'
+          }}>
+            <div style={{
+              background: 'white',
+              padding: '2rem',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem',
+              textAlign: 'center'
+            }}>
+              <Upload size={48} color="var(--primary)" />
+              <p style={{ fontWeight: 700, color: '#1e293b', margin: 0 }}>Arraste e solte o arquivo aqui para enviar</p>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Imagens, vídeos, áudios ou documentos</p>
+            </div>
+          </div>
+        )}
         {selectedChatId ? (
           <>
             {/* Header do Chat */}

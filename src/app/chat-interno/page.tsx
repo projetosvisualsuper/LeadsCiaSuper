@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { InternalChat, InternalMessage, UserProfile } from '@/types/crm';
-import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward, ChevronLeft } from 'lucide-react';
+import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward, ChevronLeft, Upload } from 'lucide-react';
 
 const EMOJIS = ['😀','😂','😍','😭','🙏','👍','🔥','❤️','🎉','😊','😎','🤔','😡','🥺','✨','💯','🙌','👏','👀','🚀'];
 
@@ -68,6 +68,7 @@ export default function ChatInternoPage() {
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   
   // Gravador de áudio
@@ -394,10 +395,7 @@ export default function ChatInternoPage() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
+  const uploadFile = async (file: File) => {
     if (file.size > 2 * 1024 * 1024) {
       alert("Arquivo muito grande. O limite é de 2MB.");
       return;
@@ -423,6 +421,28 @@ export default function ChatInternoPage() {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await uploadFile(file);
   };
 
   const handleCreateChat = async () => {
@@ -728,7 +748,44 @@ export default function ChatInternoPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div style={{ flex: 1, display: isMobile && !selectedChat ? 'none' : 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
+      <div 
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{ flex: 1, display: isMobile && !selectedChat ? 'none' : 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}
+      >
+        {selectedChat && isDragging && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(0, 168, 132, 0.15)',
+            backdropFilter: 'blur(4px)',
+            border: '3px dashed #00a884',
+            borderRadius: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            pointerEvents: 'none'
+          }}>
+            <div style={{
+              background: 'white',
+              padding: '2rem',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem',
+              textAlign: 'center'
+            }}>
+              <Upload size={48} color="#00a884" />
+              <p style={{ fontWeight: 700, color: '#1e293b', margin: 0 }}>Arraste e solte o arquivo aqui para enviar</p>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Imagens, vídeos, áudios ou documentos (máx 2MB)</p>
+            </div>
+          </div>
+        )}
         {selectedChat ? (
           <>
             {/* Header */}
