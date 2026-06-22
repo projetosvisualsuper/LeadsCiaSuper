@@ -117,6 +117,7 @@ function LeadsContent() {
     toUpdate: { lead: Lead; updates: any }[];
     loading: boolean;
   }>({ total: 0, toCreate: [], toUpdate: [], loading: false });
+  const [customImportTag, setCustomImportTag] = useState('');
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -416,6 +417,10 @@ function LeadsContent() {
     setImportAnalysis(prev => ({ ...prev, loading: true }));
     
     try {
+      const customTags = customImportTag
+        ? customImportTag.split(',').map(t => t.trim()).filter(t => t)
+        : [];
+
       const allLeadsToProcess: Lead[] = [
         ...importAnalysis.toCreate.map(data => ({
           ...data,
@@ -423,11 +428,12 @@ function LeadsContent() {
           dataCriacao: new Date().toISOString(),
           status: 'novo' as LeadStatus,
           consentimentoLGPD: true,
-          tags: data.tags || []
+          tags: Array.from(new Set([...(data.tags || []), ...customTags]))
         })),
         ...importAnalysis.toUpdate.map(item => ({
           ...item.lead,
-          ...item.updates
+          ...item.updates,
+          tags: Array.from(new Set([...(item.lead.tags || []), ...(item.updates.tags || []), ...customTags]))
         }))
       ];
 
@@ -435,6 +441,7 @@ function LeadsContent() {
 
       alert('Importação concluída com sucesso!');
       setIsImportPreviewOpen(false);
+      setCustomImportTag('');
       refreshLeads();
     } catch (error) {
       console.error(error);
@@ -1182,7 +1189,11 @@ function LeadsContent() {
                 <FileSpreadsheet size={24} style={{ color: 'var(--primary)' }} />
                 <h3 style={{ margin: 0 }}>Importação Inteligente</h3>
               </div>
-              <button style={{ opacity: 0.5 }} onClick={() => setIsImportPreviewOpen(false)}>
+              <button style={{ opacity: 0.5 }} onClick={() => {
+                setIsImportPreviewOpen(false);
+                setImportAnalysis({ total: 0, toCreate: [], toUpdate: [], loading: false });
+                setCustomImportTag('');
+              }}>
                 <X size={20} />
               </button>
             </div>
@@ -1234,6 +1245,18 @@ function LeadsContent() {
                     </div>
                   </div>
 
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Adicionar Tag aos Leads da Planilha (opcional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ex: leads-planilha, junho-2026" 
+                      className="btn-outline" 
+                      style={{ width: '100%', height: '40px', padding: '0 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}
+                      value={customImportTag}
+                      onChange={e => setCustomImportTag(e.target.value)}
+                    />
+                  </div>
+
                   <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '1rem', borderRadius: 'var(--radius)', fontSize: '0.875rem', color: '#92400e', marginBottom: '1.5rem' }}>
                     <strong>Aviso de Inteligência:</strong> O sistema identificou duplicatas comparando Nome, E-mail, Telefone e Empresa. Os dados existentes serão mantidos e novos campos serão preenchidos.
                   </div>
@@ -1244,6 +1267,7 @@ function LeadsContent() {
                     </button>
                     <button className="btn btn-outline" style={{ flex: 1, height: '48px' }} onClick={() => {
                       setImportAnalysis({ total: 0, toCreate: [], toUpdate: [], loading: false });
+                      setCustomImportTag('');
                     }}>
                       Trocar Arquivo
                     </button>
