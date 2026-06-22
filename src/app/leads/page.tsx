@@ -74,7 +74,8 @@ function LeadsContent() {
     status: '',
     origem: '',
     estado: '',
-    canal: ''
+    canal: '',
+    tag: ''
   });
 
   useEffect(() => {
@@ -93,12 +94,14 @@ function LeadsContent() {
     const canal = searchParams.get('canal');
     const status = searchParams.get('status');
     const origem = searchParams.get('origem');
-    if (canal || status || origem) {
+    const tag = searchParams.get('tag');
+    if (canal || status || origem || tag) {
       setFilters(prev => ({
         ...prev,
         canal: canal || '',
         status: status || '',
-        origem: origem || ''
+        origem: origem || '',
+        tag: tag || ''
       }));
     }
   }, [searchParams]);
@@ -473,6 +476,7 @@ function LeadsContent() {
     const matchesStatus = !filters.status || lead.status === filters.status;
     const matchesOrigem = !filters.origem || lead.origem === filters.origem;
     const matchesEstado = !filters.estado || lead.estado === filters.estado;
+    const matchesTag = !filters.tag || (lead.tags && lead.tags.includes(filters.tag));
 
     // Filtro por canal de entrada
     let matchesCanal = true;
@@ -498,7 +502,7 @@ function LeadsContent() {
       }
     }
 
-    return matchesSearch && matchesStatus && matchesOrigem && matchesEstado && matchesCanal;
+    return matchesSearch && matchesStatus && matchesOrigem && matchesEstado && matchesCanal && matchesTag;
   });
 
   // Sorting Logic
@@ -551,6 +555,7 @@ function LeadsContent() {
   // Pegar valores únicos para os filtros
   const uniqueOrigens = Array.from(new Set(leads.map(l => l.origem))).filter(Boolean);
   const uniqueEstados = Array.from(new Set(leads.map(l => l.estado))).filter(Boolean);
+  const uniqueTags = Array.from(new Set(leads.flatMap(l => l.tags || []))).filter(Boolean);
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
@@ -639,7 +644,7 @@ function LeadsContent() {
                     <button 
                       style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}
                       onClick={() => {
-                        setFilters({ status: '', origem: '', estado: '', canal: '' });
+                        setFilters({ status: '', origem: '', estado: '', canal: '', tag: '' });
                         setIsFilterMenuOpen(false);
                       }}
                     >
@@ -706,6 +711,19 @@ function LeadsContent() {
                       >
                         <option value="">Todos</option>
                         {uniqueEstados.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', opacity: 0.6 }}>Tag</label>
+                      <select 
+                        className="btn-outline" 
+                        style={{ width: '100%', height: '36px', padding: '0 0.5rem', fontSize: '0.875rem' }}
+                        value={filters.tag}
+                        onChange={(e) => setFilters({ ...filters, tag: e.target.value })}
+                      >
+                        <option value="">Todas</option>
+                        {uniqueTags.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
                   </div>
