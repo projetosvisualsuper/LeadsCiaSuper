@@ -22,7 +22,8 @@ import {
   MailOpen,
   MousePointerClick,
   BarChart3,
-  Edit2
+  Edit2,
+  Copy
 } from 'lucide-react';
 
 export default function CampanhasPage() {
@@ -355,6 +356,28 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     setEditingId(campaign.id);
     setIsCreating(true);
     // Scroll para o topo para ver o formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handleDuplicate = (campaign: Campaign) => {
+    setNewCampaign({
+      nome: `${campaign.nome} (Cópia)`,
+      assunto: campaign.assunto,
+      preheader: campaign.preheader || '',
+      conteudoHtml: campaign.conteudoHtml || '',
+      textoSimples: campaign.textoSimples || '',
+      bannerImg: campaign.bannerImg || '',
+      botaoTexto: campaign.botaoTexto || '',
+      botaoLink: campaign.botaoLink || '',
+      channel: campaign.channel || 'email',
+      whatsappConnectionId: campaign.whatsappConnectionId || '',
+      whatsappTemplateId: campaign.whatsappTemplateId || '',
+      segmentId: campaign.segmentId || '',
+      tipoEnvio: 'imediato',
+      dataAgendada: ''
+    });
+    setEditingId(null);
+    setIsCreating(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -763,6 +786,14 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
                   disabled={campaign.status !== 'rascunho' && campaign.status !== 'agendada'}
                 >
                   <Edit2 size={18} />
+                </button>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ width: '38px', height: '38px', padding: 0 }}
+                  title="Duplicar Campanha"
+                  onClick={() => handleDuplicate(campaign)}
+                >
+                  <Copy size={18} />
                 </button>
                 <button 
                   className="btn btn-outline" 
