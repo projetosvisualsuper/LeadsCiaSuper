@@ -13,7 +13,8 @@ import {
   X,
   Check,
   ChevronRight,
-  Filter
+  Filter,
+  Search
 } from 'lucide-react';
 
 export default function SegmentacoesPage() {
@@ -29,6 +30,8 @@ export default function SegmentacoesPage() {
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [emailFilter, setEmailFilter] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [activeTab, setActiveTab] = useState<'current' | 'add'>('current');
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -146,11 +149,29 @@ export default function SegmentacoesPage() {
 
   const uniqueTags = Array.from(new Set(leads.flatMap(l => l.tags || []))).filter(Boolean).sort();
 
-  const modalFilteredLeads = leads.filter(lead => {
-    let match = true;
-    if (tagFilter && !lead.tags?.includes(tagFilter)) match = false;
-    if (emailFilter && !lead.email) match = false;
-    return match;
+  // Leads in the current segment
+  const segmentLeads = leads.filter(lead => formData.leadIds.includes(lead.id));
+
+  // Determine which list of leads to filter (current leads in segment or all leads to add)
+  const baseLeads = activeTab === 'current' ? segmentLeads : leads;
+
+  const modalFilteredLeads = baseLeads.filter(lead => {
+    // Filter by search query (name, email, or tags)
+    if (searchFilter) {
+      const searchLower = searchFilter.toLowerCase();
+      const matchName = lead.nome?.toLowerCase().includes(searchLower);
+      const matchEmail = lead.email?.toLowerCase().includes(searchLower);
+      const matchTag = lead.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+      if (!matchName && !matchEmail && !matchTag) return false;
+    }
+    
+    // Filter by tag dropdown
+    if (tagFilter && !lead.tags?.includes(tagFilter)) return false;
+    
+    // Filter by email checkbox
+    if (emailFilter && !lead.email) return false;
+    
+    return true;
   });
 
   const selectAllFiltered = () => {
@@ -187,6 +208,10 @@ export default function SegmentacoesPage() {
         <button className="btn btn-primary" onClick={() => {
           setSelectedSegment(null);
           setFormData({ nome: '', descricao: '', leadIds: [] });
+          setSearchFilter('');
+          setTagFilter('');
+          setEmailFilter(false);
+          setActiveTab('add');
           setIsModalOpen(true);
         }}>
           <Plus size={18} /> Criar Segmentação
@@ -234,17 +259,21 @@ export default function SegmentacoesPage() {
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => openCampaignModal(segment)}>
                   <Mail size={18} /> Enviar Campanha
                 </button>
-                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
-                   setSelectedSegment(segment);
-                   setFormData({
-                     nome: segment.nome,
-                     descricao: segment.descricao || '',
-                     leadIds: segment.leadIds
-                   });
-                   setIsModalOpen(true);
-                }}>
-                  Editar
-                </button>
+                 <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
+                    setSelectedSegment(segment);
+                    setFormData({
+                      nome: segment.nome,
+                      descricao: segment.descricao || '',
+                      leadIds: segment.leadIds
+                    });
+                    setSearchFilter('');
+                    setTagFilter('');
+                    setEmailFilter(false);
+                    setActiveTab('current');
+                    setIsModalOpen(true);
+                 }}>
+                   Editar
+                 </button>
               </div>
             </div>
           ))
@@ -254,19 +283,28 @@ export default function SegmentacoesPage() {
       {/* Modal Criar/Editar Segmentação */}
       {isModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-          <div className="card" style={{ width: '600px', maxWidth: '100%', position: 'relative' }}>
+          <div className="card" style={{ 
+            width: '950px', 
+            maxWidth: '95vw', 
+            maxHeight: '90vh', 
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '2rem',
+            overflow: 'hidden'
+          }}>
             <button style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', opacity: 0.5 }} onClick={() => setIsModalOpen(false)}>
               <X size={24} />
             </button>
             <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>{selectedSegment ? 'Editar Segmentação' : 'Nova Segmentação'}</h3>
             
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nome da Segmentação</label>
                 <input 
                   type="text" 
                   className="btn-outline" 
-                  style={{ width: '100%', height: '42px', padding: '0 1rem' }} 
+                  style={{ width: '100%', height: '42px', padding: '0 1rem', background: 'var(--background)', borderRadius: 'var(--radius)' }} 
                   placeholder="Ex: Leads Quentes - Março"
                   value={formData.nome}
                   onChange={e => setFormData({ ...formData, nome: e.target.value })}
@@ -276,7 +314,7 @@ export default function SegmentacoesPage() {
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Descrição (Opcional)</label>
                 <textarea 
                   className="btn-outline" 
-                  style={{ width: '100%', minHeight: '80px', padding: '0.75rem' }} 
+                  style={{ width: '100%', minHeight: '80px', padding: '0.75rem', background: 'var(--background)', borderRadius: 'var(--radius)' }} 
                   placeholder="Para que serve este grupo de leads?"
                   value={formData.descricao}
                   onChange={e => setFormData({ ...formData, descricao: e.target.value })}
@@ -284,38 +322,135 @@ export default function SegmentacoesPage() {
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Selecionar Leads ({formData.leadIds.length} selecionados)</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+                  Selecionar Leads ({formData.leadIds.length} selecionados)
+                </label>
+
+                {/* Tabs */}
+                {selectedSegment && (
+                  <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1rem' }}>
+                    <button 
+                      className={`btn ${activeTab === 'current' ? 'btn-primary' : 'btn-outline'}`}
+                      style={{ 
+                        height: '36px', 
+                        padding: '0 1rem', 
+                        fontSize: '0.875rem', 
+                        fontWeight: 600,
+                        background: activeTab === 'current' ? 'var(--primary)' : 'transparent',
+                        borderColor: activeTab === 'current' ? 'var(--primary)' : 'var(--border)'
+                      }}
+                      onClick={() => setActiveTab('current')}
+                    >
+                      Leads na Segmentação ({segmentLeads.length})
+                    </button>
+                    <button 
+                      className={`btn ${activeTab === 'add' ? 'btn-primary' : 'btn-outline'}`}
+                      style={{ 
+                        height: '36px', 
+                        padding: '0 1rem', 
+                        fontSize: '0.875rem', 
+                        fontWeight: 600,
+                        background: activeTab === 'add' ? 'var(--primary)' : 'transparent',
+                        borderColor: activeTab === 'add' ? 'var(--primary)' : 'var(--border)'
+                      }}
+                      onClick={() => setActiveTab('add')}
+                    >
+                      Adicionar Novos Leads
+                    </button>
+                  </div>
+                )}
+
+                {/* Filters Row */}
+                <div style={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: '0.75rem', 
+                  alignItems: 'center', 
+                  marginBottom: '1rem',
+                  background: 'var(--accent)',
+                  padding: '0.75rem',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid var(--border)'
+                }}>
+                  <div style={{ flex: '1 1 250px', position: 'relative' }}>
+                    <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                    <input 
+                      type="text"
+                      className="btn-outline"
+                      style={{ 
+                        width: '100%', 
+                        height: '36px', 
+                        padding: '0 0.75rem 0 2.25rem', 
+                        fontSize: '0.875rem', 
+                        background: 'var(--card)', 
+                        borderRadius: '6px' 
+                      }}
+                      placeholder="Filtrar por nome, e-mail ou tag..."
+                      value={searchFilter}
+                      onChange={e => setSearchFilter(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ flex: '0 1 180px', minWidth: '150px' }}>
                     <select 
                       className="btn-outline" 
-                      style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.5rem' }}
+                      style={{ 
+                        width: '100%', 
+                        height: '36px', 
+                        fontSize: '0.875rem', 
+                        padding: '0 0.5rem', 
+                        background: 'var(--card)', 
+                        borderRadius: '6px' 
+                      }}
                       value={tagFilter}
                       onChange={(e) => setTagFilter(e.target.value)}
                     >
                       <option value="">Filtrar por Tag...</option>
                       {uniqueTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
                     </select>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <label style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.35rem', 
+                      fontSize: '0.875rem', 
+                      cursor: 'pointer', 
+                      whiteSpace: 'nowrap',
+                      userSelect: 'none'
+                    }}>
                       <input 
                         type="checkbox" 
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                         checked={emailFilter} 
                         onChange={e => setEmailFilter(e.target.checked)} 
                       />
                       Somente com E-mail
                     </label>
+                  </div>
+
+                  <div style={{ marginLeft: 'auto' }}>
                     <button 
                       className="btn btn-outline" 
-                      style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem' }}
+                      style={{ 
+                        height: '36px', 
+                        fontSize: '0.875rem', 
+                        padding: '0 1rem', 
+                        background: 'var(--card)', 
+                        borderColor: 'var(--border)' 
+                      }}
                       onClick={selectAllFiltered}
                     >
-                      {modalFilteredLeads.every(l => formData.leadIds.includes(l.id)) ? 'Desmarcar Filtrados' : 'Selecionar Filtrados'}
+                      {modalFilteredLeads.length > 0 && modalFilteredLeads.every(l => formData.leadIds.includes(l.id)) 
+                        ? 'Desmarcar Filtrados' 
+                        : 'Selecionar Filtrados'}
                     </button>
                   </div>
                 </div>
                 
                 <div style={{ 
-                  maxHeight: '300px', 
+                  maxHeight: '350px', 
                   overflowY: 'auto', 
                   border: '1px solid var(--border)', 
                   borderRadius: 'var(--radius)',
@@ -324,23 +459,25 @@ export default function SegmentacoesPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ position: 'sticky', top: 0, background: 'var(--accent)', zIndex: 1 }}>
                       <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', width: '40px' }}>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', width: '40px' }}>
                           <input 
                             type="checkbox" 
+                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                             checked={modalFilteredLeads.length > 0 && modalFilteredLeads.every(l => formData.leadIds.includes(l.id))}
                             onChange={selectAllFiltered}
                           />
                         </th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.75rem' }}>NOME / E-MAIL / TAGS</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.75rem' }}>ORIGEM</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--secondary)' }}>NOME / E-MAIL / TAGS</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--secondary)', width: '200px' }}>ORIGEM</th>
                       </tr>
                     </thead>
                     <tbody>
                       {modalFilteredLeads.map(lead => (
                         <tr key={lead.id} style={{ borderTop: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.75rem' }}>
+                          <td style={{ padding: '0.75rem 1rem' }}>
                             <input 
                               type="checkbox" 
+                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                               checked={formData.leadIds.includes(lead.id)}
                               onChange={() => {
                                 if (formData.leadIds.includes(lead.id)) {
@@ -351,34 +488,40 @@ export default function SegmentacoesPage() {
                               }}
                             />
                           </td>
-                          <td style={{ padding: '0.75rem' }}>
-                            <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{lead.nome}</div>
-                            <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{lead.email}</div>
-                            <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.25rem' }}>
-                              {lead.tags?.map(t => (
-                                <span key={t} style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent)', borderRadius: '4px', border: '1px solid var(--border)' }}>{t}</span>
-                              ))}
-                            </div>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--foreground)' }}>{lead.nome}</div>
+                            <div style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.1rem' }}>{lead.email}</div>
+                            {lead.tags && lead.tags.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.35rem' }}>
+                                {lead.tags.map(t => (
+                                  <span key={t} style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', background: 'var(--accent)', color: 'var(--foreground)', borderRadius: '4px', border: '1px solid var(--border)', fontWeight: 500 }}>{t}</span>
+                                ))}
+                              </div>
+                            )}
                           </td>
-                          <td style={{ padding: '0.75rem', fontSize: '0.875rem', opacity: 0.7 }}>{lead.origem}</td>
+                          <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', opacity: 0.8 }}>{lead.origem}</td>
                         </tr>
                       ))}
                       {modalFilteredLeads.length === 0 && (
                         <tr>
-                          <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', opacity: 0.5 }}>Nenhum lead encontrado com esta tag.</td>
+                          <td colSpan={3} style={{ padding: '3rem', textAlign: 'center', opacity: 0.5, fontSize: '0.875rem' }}>
+                            {activeTab === 'current' 
+                              ? 'Nenhum lead nesta segmentação corresponde aos filtros.' 
+                              : 'Nenhum lead encontrado para adicionar.'}
+                          </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
+            </div>
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave}>
-                  <Check size={18} /> Salvar Segmentação
-                </button>
-                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setIsModalOpen(false)}>Cancelar</button>
-              </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave}>
+                <Check size={18} /> Salvar Segmentação
+              </button>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setIsModalOpen(false)}>Cancelar</button>
             </div>
           </div>
         </div>
