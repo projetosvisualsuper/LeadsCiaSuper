@@ -354,6 +354,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
       dataAgendada: campaign.dataAgendada || ''
     });
     setEditingId(campaign.id);
+    setViewMode(campaign.conteudoHtml && !campaign.textoSimples ? 'html' : 'normal');
     setIsCreating(true);
     // Scroll para o topo para ver o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -377,6 +378,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
       dataAgendada: ''
     });
     setEditingId(null);
+    setViewMode(campaign.conteudoHtml && !campaign.textoSimples ? 'html' : 'normal');
     setIsCreating(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
