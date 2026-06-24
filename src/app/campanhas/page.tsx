@@ -291,6 +291,33 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     setViewMode('html');
   };
 
+  const injectTrackingToHTML = (html: string, campaignId: string, systemUrl: string) => {
+    let finalHtml = html;
+
+    // 1. Atualizar IDs de campanhas antigas/duplicadas nos links de rastreamento existentes
+    finalHtml = finalHtml.replace(/(\/api\/track\?[^"'\s>]*campaignId=)[^&"'\s>]+/gi, `$1${campaignId}`);
+
+    // 2. Envelopar links externos em links de rastreamento de cliques (evitando os já rastreados)
+    finalHtml = finalHtml.replace(/href=(["'])(https?:\/\/[^"'\s>]+)\1/gi, (match, quote, url) => {
+      if (url.includes('/api/track')) {
+        return match;
+      }
+      return `href=${quote}${systemUrl}/api/track?type=click&campaignId=${campaignId}&url=${encodeURIComponent(url)}${quote}`;
+    });
+
+    // 3. Inserir pixel de abertura se não existir
+    if (!finalHtml.includes('/api/track?type=open') && !finalHtml.includes('/api/track?type=open'.replace(/\?/g, '%3F'))) {
+      const pixelTag = `<img src="${systemUrl}/api/track?type=open&campaignId=${campaignId}" width="1" height="1" alt="" style="display:none;" />`;
+      if (finalHtml.includes('</body>')) {
+        finalHtml = finalHtml.replace('</body>', `${pixelTag}</body>`);
+      } else {
+        finalHtml = finalHtml + pixelTag;
+      }
+    }
+
+    return finalHtml;
+  };
+
   const handleCreate = async () => {
     const isEditing = !!editingId;
     const newCampaignId = newCampaign.id || editingId || Math.random().toString(36).substr(2, 9);
@@ -299,12 +326,17 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     let finalHtml = newCampaign.conteudoHtml;
     if (!finalHtml && newCampaign.textoSimples) {
       finalHtml = await generateProfessionalHTML(newCampaign.textoSimples, newCampaign.assunto, newCampaign.bannerImg, newCampaignId, newCampaign.botaoTexto, newCampaign.botaoLink, newCampaign.preheader);
-    } else if (finalHtml && !finalHtml.includes('/api/track') && newCampaign.textoSimples) {
-      // Se o usuário já converteu/manualmente preencheu o HTML mas ele não tem links de rastreamento, regenera para garantir a injeção do pixel
-      finalHtml = await generateProfessionalHTML(newCampaign.textoSimples, newCampaign.assunto, newCampaign.bannerImg, newCampaignId, newCampaign.botaoTexto, newCampaign.botaoLink, newCampaign.preheader);
     } else if (finalHtml && newCampaign.bannerImg && newCampaign.bannerImg.startsWith('data:image')) {
       // Se o usuário clicou em "Transformar em HTML" antes, o HTML tem o base64 chumbado. Precisamos regenerar com a URL da API.
       finalHtml = await generateProfessionalHTML(newCampaign.textoSimples, newCampaign.assunto, newCampaign.bannerImg, newCampaignId, newCampaign.botaoTexto, newCampaign.botaoLink, newCampaign.preheader);
+    }
+
+    // Injeta/atualiza o rastreamento no HTML final (seja gerado ou colado manualmente)
+    if (finalHtml) {
+      const settings = await api.getSettings();
+      const websiteUrl = (settings.empresa?.website || '').startsWith('http') ? (settings.empresa?.website || '') : 'https://' + (settings.empresa?.website || 'www.visualsuper.com.br');
+      const systemUrl = typeof window !== 'undefined' ? window.location.origin : websiteUrl;
+      finalHtml = injectTrackingToHTML(finalHtml, newCampaignId, systemUrl);
     }
 
     const existingCampaign = isEditing ? campaigns.find(c => c.id === editingId) : null;
