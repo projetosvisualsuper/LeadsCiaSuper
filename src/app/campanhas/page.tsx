@@ -68,6 +68,7 @@ export default function CampanhasPage() {
 
   // Form State
   const [newCampaign, setNewCampaign] = useState({
+    id: '',
     nome: '',
     assunto: '',
     preheader: '',
@@ -277,18 +278,29 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
   };
 
   const handleConvertToHTML = async () => {
-    const html = await generateProfessionalHTML(newCampaign.textoSimples, newCampaign.assunto, newCampaign.bannerImg, undefined, newCampaign.botaoTexto, newCampaign.botaoLink, newCampaign.preheader);
+    const html = await generateProfessionalHTML(
+      newCampaign.textoSimples, 
+      newCampaign.assunto, 
+      newCampaign.bannerImg, 
+      newCampaign.id || editingId || Math.random().toString(36).substr(2, 9), 
+      newCampaign.botaoTexto, 
+      newCampaign.botaoLink, 
+      newCampaign.preheader
+    );
     setNewCampaign(prev => ({ ...prev, conteudoHtml: html }));
     setViewMode('html');
   };
 
   const handleCreate = async () => {
     const isEditing = !!editingId;
-    const newCampaignId = editingId || Math.random().toString(36).substr(2, 9);
+    const newCampaignId = newCampaign.id || editingId || Math.random().toString(36).substr(2, 9);
     
     // Se o HTML estiver vazio mas o texto não, gera um automático antes de salvar
     let finalHtml = newCampaign.conteudoHtml;
     if (!finalHtml && newCampaign.textoSimples) {
+      finalHtml = await generateProfessionalHTML(newCampaign.textoSimples, newCampaign.assunto, newCampaign.bannerImg, newCampaignId, newCampaign.botaoTexto, newCampaign.botaoLink, newCampaign.preheader);
+    } else if (finalHtml && !finalHtml.includes('/api/track') && newCampaign.textoSimples) {
+      // Se o usuário já converteu/manualmente preencheu o HTML mas ele não tem links de rastreamento, regenera para garantir a injeção do pixel
       finalHtml = await generateProfessionalHTML(newCampaign.textoSimples, newCampaign.assunto, newCampaign.bannerImg, newCampaignId, newCampaign.botaoTexto, newCampaign.botaoLink, newCampaign.preheader);
     } else if (finalHtml && newCampaign.bannerImg && newCampaign.bannerImg.startsWith('data:image')) {
       // Se o usuário clicou em "Transformar em HTML" antes, o HTML tem o base64 chumbado. Precisamos regenerar com a URL da API.
@@ -319,6 +331,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     setIsCreating(false);
     setEditingId(null);
     setNewCampaign({ 
+      id: '',
       nome: '', 
       assunto: '', 
       preheader: '', 
@@ -338,6 +351,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
 
   const handleEdit = (campaign: Campaign) => {
     setNewCampaign({
+      id: campaign.id,
       nome: campaign.nome,
       assunto: campaign.assunto,
       preheader: campaign.preheader || '',
@@ -362,6 +376,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
   
   const handleDuplicate = (campaign: Campaign) => {
     setNewCampaign({
+      id: Math.random().toString(36).substr(2, 9),
       nome: `${campaign.nome} (Cópia)`,
       assunto: campaign.assunto,
       preheader: campaign.preheader || '',
@@ -483,7 +498,27 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
           >
             <Clock size={18} /> {isProcessingQueue ? 'Processando...' : 'Processar Fila'}
           </button>
-          <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
+          <button className="btn btn-primary" onClick={() => {
+            setNewCampaign({
+              id: Math.random().toString(36).substr(2, 9),
+              nome: '',
+              assunto: '',
+              preheader: '',
+              conteudoHtml: '',
+              textoSimples: '',
+              bannerImg: '',
+              botaoTexto: '',
+              botaoLink: '',
+              channel: 'email',
+              whatsappConnectionId: '',
+              whatsappTemplateId: '',
+              segmentId: '',
+              tipoEnvio: 'imediato',
+              dataAgendada: ''
+            });
+            setEditingId(null);
+            setIsCreating(true);
+          }}>
             <Plus size={18} /> Nova Campanha
           </button>
         </div>
@@ -757,7 +792,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
               <button className="btn btn-primary" onClick={handleCreate} style={{ padding: '0 2rem' }}>{editingId ? 'Salvar Alterações' : 'Salvar Campanha'}</button>
-              <button className="btn btn-outline" onClick={() => { setIsCreating(false); setEditingId(null); setNewCampaign({ nome: '', assunto: '', preheader: '', conteudoHtml: '', textoSimples: '', bannerImg: '', botaoTexto: '', botaoLink: '', channel: 'email', whatsappConnectionId: '', whatsappTemplateId: '', segmentId: '', tipoEnvio: 'imediato', dataAgendada: '' }); }}>Cancelar</button>
+              <button className="btn btn-outline" onClick={() => { setIsCreating(false); setEditingId(null); setNewCampaign({ id: '', nome: '', assunto: '', preheader: '', conteudoHtml: '', textoSimples: '', bannerImg: '', botaoTexto: '', botaoLink: '', channel: 'email', whatsappConnectionId: '', whatsappTemplateId: '', segmentId: '', tipoEnvio: 'imediato', dataAgendada: '' }); }}>Cancelar</button>
             </div>
           </div>
         </div>
