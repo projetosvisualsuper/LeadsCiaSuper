@@ -76,7 +76,13 @@ async function getMetaProfile(userId: string, channel: string) {
 // Recebe as notificações de mensagens reais via POST
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.log('Webhook Meta: corpo vazio ou não-JSON recebido');
+      return new NextResponse('EVENT_RECEIVED', { status: 200 });
+    }
 
     console.log('Webhook Meta recebido:', JSON.stringify(body, null, 2));
 
