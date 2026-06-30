@@ -831,23 +831,34 @@ function AtendimentoContent() {
     // 6. Filtro por Conexão de WhatsApp
     const matchesConnection = filterConnection === 'all' || chat.connectionId === filterConnection;
 
-    // 7. Filtro por Tempo sem Resposta
-    const matchesResponseTime = (() => {
-      if (filterResponseTime === 'all') return true;
-      if (chat.lastMessageIsIncoming !== 1) return false;
-      const unansweredMs = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
-      if (filterResponseTime === 'unanswered') return true;
-      if (filterResponseTime === 'unanswered_5m') return unansweredMs > 5 * 60 * 1000;
-      if (filterResponseTime === 'unanswered_15m') return unansweredMs > 15 * 60 * 1000;
-      if (filterResponseTime === 'unanswered_30m') return unansweredMs > 30 * 60 * 1000;
-      if (filterResponseTime === 'unanswered_1h') return unansweredMs > 60 * 60 * 1000;
-      if (filterResponseTime === 'unanswered_4h') return unansweredMs > 4 * 60 * 60 * 1000;
-      if (filterResponseTime === 'unanswered_24h') return unansweredMs > 24 * 60 * 60 * 1000;
-      return true;
-    })();
-
-    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection && matchesResponseTime;
+    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection;
   });
+
+  const getMaxUnansweredTime = () => {
+    let maxMs = 0;
+    filteredChats.forEach(chat => {
+      if (chat.lastMessageIsIncoming === 1) {
+        const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+        if (ms > maxMs) {
+          maxMs = ms;
+        }
+      }
+    });
+
+    if (maxMs === 0) return 'Respondido';
+    
+    const diffMins = Math.floor(maxMs / 60000);
+    if (diffMins < 1) return 'Menos de 1 min';
+    if (diffMins < 60) return `${diffMins} min`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} h`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} d`;
+  };
+  
+  const maxUnansweredTimeStr = getMaxUnansweredTime();
 
   const activeChat = chats.find(c => c.id === selectedChatId);
 
@@ -1132,31 +1143,26 @@ function AtendimentoContent() {
               ))}
             </select>
 
-            <select 
-              value={filterResponseTime}
-              onChange={e => setFilterResponseTime(e.target.value)}
-              style={{ 
-                flex: 1, 
-                padding: '0.45rem 0.75rem', 
-                borderRadius: '8px', 
-                border: '1px solid #e2e8f0', 
-                fontSize: '0.8rem', 
-                fontWeight: 600, 
-                color: '#475569',
-                background: '#f8fafc',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              <option value="all">Tempo de resposta</option>
-              <option value="unanswered">Sem resposta (Todas)</option>
-              <option value="unanswered_5m">Sem resp. &gt; 5 min</option>
-              <option value="unanswered_15m">Sem resp. &gt; 15 min</option>
-              <option value="unanswered_30m">Sem resp. &gt; 30 min</option>
-              <option value="unanswered_1h">Sem resp. &gt; 1h</option>
-              <option value="unanswered_4h">Sem resp. &gt; 4h</option>
-              <option value="unanswered_24h">Sem resp. &gt; 24h</option>
-            </select>
+            <div style={{ 
+              flex: 1, 
+              padding: '0.45rem 0.75rem', 
+              borderRadius: '8px', 
+              border: '1px solid', 
+              borderColor: maxUnansweredTimeStr === 'Respondido' ? '#e2e8f0' : 'rgba(239, 68, 68, 0.2)', 
+              fontSize: '0.8rem', 
+              fontWeight: 600, 
+              color: maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444',
+              background: maxUnansweredTimeStr === 'Respondido' ? '#f8fafc' : 'rgba(239, 68, 68, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem',
+              whiteSpace: 'nowrap',
+              height: '34px'
+            }} title="Maior tempo sem resposta da lista atual">
+              <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
+              <span>Maior espera: <strong>{maxUnansweredTimeStr}</strong></span>
+            </div>
           </div>
         </header>
 
@@ -1195,9 +1201,37 @@ function AtendimentoContent() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', alignItems: 'center' }}>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, color: (chat.unreadCount || 0) > 0 ? '#1e293b' : 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.leadName}</h4>
-                    <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400, color: (chat.unreadCount || 0) > 0 ? '#22c55e' : 'inherit' }}>
-                      {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400, color: (chat.unreadCount || 0) > 0 ? '#22c55e' : 'inherit' }}>
+                        {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
+                      {chat.lastMessageIsIncoming === 1 && (() => {
+                        const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+                        const diffMins = Math.floor(ms / 60000);
+                        let timeStr = 'Aguardando';
+                        if (diffMins >= 1) {
+                          if (diffMins < 60) timeStr = `${diffMins}m`;
+                          else {
+                            const diffHours = Math.floor(diffMins / 60);
+                            if (diffHours < 24) timeStr = `${diffHours}h`;
+                            else timeStr = `${Math.floor(diffHours / 24)}d`;
+                          }
+                        }
+                        return (
+                          <span style={{ 
+                            fontSize: '0.65rem', 
+                            background: 'rgba(239, 68, 68, 0.1)', 
+                            color: '#ef4444', 
+                            padding: '1px 5px', 
+                            borderRadius: '4px', 
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {timeStr}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                     <div style={{ minWidth: 0 }}>
@@ -1314,9 +1348,17 @@ function AtendimentoContent() {
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <h3 className="chat-lead-name">{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981', marginTop: '2px' }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981' }}>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}</span>
+                    </div>
+                    {unansweredTimeStr && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#ef4444' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }}></div>
+                        <span>Sem resposta há {unansweredTimeStr}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
