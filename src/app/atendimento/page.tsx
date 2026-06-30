@@ -2156,7 +2156,7 @@ function AtendimentoContent() {
           flex: 1;
           height: 100%;
           min-height: 0;
-          margin: -1.5rem;
+          margin: 0;
           display: flex;
           overflow: hidden;
           background: #f1f5f9;

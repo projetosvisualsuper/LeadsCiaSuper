@@ -1447,11 +1447,13 @@ export default function ChatInternoPage() {
       <style jsx>{`
         .chat-interno-container {
           display: flex;
-          height: 100vh;
-          margin: -2rem;
+          flex: 1;
+          height: 100%;
+          min-height: 0;
+          margin: 0;
           background: #f8fafc;
           overflow: hidden;
-          width: calc(100% + 4rem);
+          width: 100%;
         }
         @media (max-width: 768px) {
           .chat-interno-container {
