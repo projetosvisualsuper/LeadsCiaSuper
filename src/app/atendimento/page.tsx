@@ -966,6 +966,57 @@ function AtendimentoContent() {
               </button>
             </div>
           </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+            <select 
+              value={filterConnection}
+              onChange={e => setFilterConnection(e.target.value)}
+              style={{ 
+                flex: 1, 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                color: '#475569',
+                background: '#f8fafc',
+                cursor: 'pointer',
+                outline: 'none',
+                height: '34px',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="all">Conexão WhatsApp</option>
+              {connections.map(conn => (
+                <option key={conn.id} value={conn.id}>
+                  {conn.name || conn.evolutionInstanceName}
+                </option>
+              ))}
+            </select>
+
+            <div style={{ 
+              flex: 1, 
+              padding: '0.45rem 0.75rem', 
+              borderRadius: '8px', 
+              border: '1px solid', 
+              borderColor: maxUnansweredTimeStr === 'Respondido' ? '#e2e8f0' : 'rgba(239, 68, 68, 0.2)', 
+              fontSize: '0.8rem', 
+              fontWeight: 600, 
+              color: maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444',
+              background: maxUnansweredTimeStr === 'Respondido' ? '#f8fafc' : 'rgba(239, 68, 68, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem',
+              whiteSpace: 'nowrap',
+              height: '34px',
+              boxSizing: 'border-box'
+            }} title="Maior tempo sem resposta da lista atual">
+              <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
+              <span>Espera: <strong>{maxUnansweredTimeStr}</strong></span>
+            </div>
+          </div>
+
           <div style={{ position: 'relative' }}>
             {searchQuery ? (
               <button 
@@ -1124,56 +1175,6 @@ function AtendimentoContent() {
                 </span>
               )}
             </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
-            <select 
-              value={filterConnection}
-              onChange={e => setFilterConnection(e.target.value)}
-              style={{ 
-                flex: 1, 
-                padding: '0.45rem 0.75rem', 
-                borderRadius: '8px', 
-                border: '1px solid #e2e8f0', 
-                fontSize: '0.8rem', 
-                fontWeight: 600, 
-                color: '#475569',
-                background: '#f8fafc',
-                cursor: 'pointer',
-                outline: 'none',
-                height: '34px',
-                boxSizing: 'border-box'
-              }}
-            >
-              <option value="all">Conexão WhatsApp</option>
-              {connections.map(conn => (
-                <option key={conn.id} value={conn.id}>
-                  {conn.name || conn.evolutionInstanceName}
-                </option>
-              ))}
-            </select>
-
-            <div style={{ 
-              flex: 1, 
-              padding: '0.45rem 0.75rem', 
-              borderRadius: '8px', 
-              border: '1px solid', 
-              borderColor: maxUnansweredTimeStr === 'Respondido' ? '#e2e8f0' : 'rgba(239, 68, 68, 0.2)', 
-              fontSize: '0.8rem', 
-              fontWeight: 600, 
-              color: maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444',
-              background: maxUnansweredTimeStr === 'Respondido' ? '#f8fafc' : 'rgba(239, 68, 68, 0.05)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.35rem',
-              whiteSpace: 'nowrap',
-              height: '34px',
-              boxSizing: 'border-box'
-            }} title="Maior tempo sem resposta da lista atual">
-              <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
-              <span>Espera: <strong>{maxUnansweredTimeStr}</strong></span>
-            </div>
           </div>
         </header>
 
