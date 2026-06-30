@@ -109,6 +109,17 @@ export async function PATCH(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: 'Chat ID required' }, { status: 400 });
     }
+
+    if ('lastMessageIsIncoming' in updates && updates.lastMessageIsIncoming === 0) {
+      // Atualizar a última mensagem no banco de dados para isIncoming = 0
+      const lastMsgQuery = `SELECT id FROM messages WHERE chatId = ? ORDER BY timestamp DESC LIMIT 1`;
+      const { results } = await d1Api.runQuery(lastMsgQuery, [id]);
+      if (results && results.length > 0) {
+        const lastMsgId = results[0].id;
+        await d1Api.executeRun(`UPDATE messages SET isIncoming = 0 WHERE id = ?`, [lastMsgId]);
+      }
+      delete updates.lastMessageIsIncoming;
+    }
     
     const keys = Object.keys(updates);
     if (keys.length === 0) {
