@@ -82,6 +82,7 @@ export default function ClientLayout({
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [whatsappUnreadCount, setWhatsappUnreadCount] = useState(0);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [disconnectedConnections, setDisconnectedConnections] = useState<any[]>([]);
 
   // Estados para Ligações de Voz via WebRTC (Globais)
   const [callState, setCallState] = useState<'idle' | 'calling' | 'ringing' | 'connected'>('idle');
@@ -510,6 +511,18 @@ export default function ClientLayout({
       });
   }, [router, isCapturePage]);
 
+  const checkConnectionsStatus = async () => {
+    try {
+      const data = await api.getWhatsappConnections();
+      if (Array.isArray(data)) {
+        const disconnected = data.filter((c: any) => c.status !== 'connected');
+        setDisconnectedConnections(disconnected);
+      }
+    } catch (e) {
+      console.error('Erro ao verificar conexões de WhatsApp:', e);
+    }
+  };
+
   useEffect(() => {
     if (userProfile?.uid) {
       const fetchUnreadChats = async () => {
@@ -535,6 +548,7 @@ export default function ClientLayout({
       // Traz as infos uma vez
       fetchUnreadChats();
       fetchWhatsappUnread();
+      checkConnectionsStatus();
 
       // Poll apenas de pendencias e chat (como era antes para pending users)
       const fetchPending = async () => {
@@ -555,6 +569,7 @@ export default function ClientLayout({
         fetchPending();
         fetchUnreadChats();
         fetchWhatsappUnread();
+        checkConnectionsStatus();
       }, 30000); // Check a cada 30s
 
       const handleVisibilityChange = () => {
@@ -562,6 +577,7 @@ export default function ClientLayout({
           fetchPending();
           fetchUnreadChats();
           fetchWhatsappUnread();
+          checkConnectionsStatus();
         }
       };
       document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -984,7 +1000,59 @@ export default function ClientLayout({
               </button>
             </div>
           ) : (
-            children
+            <>
+              {!isCapturePage && disconnectedConnections.length > 0 && (
+                <div style={{
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  color: '#92400e',
+                  padding: '1rem 1.5rem',
+                  borderRadius: '12px',
+                  margin: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                }}>
+                  <div style={{
+                    background: '#fef3c7',
+                    padding: '0.5rem',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#d97706',
+                    flexShrink: 0
+                  }}>
+                    <ShieldAlert size={22} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h5 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#78350f' }}>
+                      Conexão de WhatsApp Inativa
+                    </h5>
+                    <p style={{ margin: '0.125rem 0 0', fontSize: '0.8rem', color: '#92400e' }}>
+                      O número de WhatsApp <strong>{disconnectedConnections.map(c => c.name).join(', ')}</strong> está desconectado. Reconecte a instância para manter o envio e recebimento de mensagens ativos.
+                    </p>
+                  </div>
+                  <Link 
+                    href="/conexoes" 
+                    style={{ 
+                      padding: '0.5rem 1rem', 
+                      fontSize: '0.8rem', 
+                      background: '#d97706', 
+                      color: 'white',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      flexShrink: 0
+                    }}
+                  >
+                    Reconectar
+                  </Link>
+                </div>
+              )}
+              {children}
+            </>
           )}
         </main>
 
