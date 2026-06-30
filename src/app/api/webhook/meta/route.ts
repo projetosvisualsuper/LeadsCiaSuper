@@ -86,21 +86,7 @@ export async function POST(req: NextRequest) {
 
     console.log('Webhook Meta recebido:', JSON.stringify(body, null, 2));
 
-    // Salvar o último payload recebido no banco de dados para depuração
-    try {
-      await d1Api.executeRun(
-        `INSERT INTO settings (key, valueJson) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`,
-        [
-          'meta_last_webhook_payload',
-          JSON.stringify({
-            payload: body,
-            timestamp: new Date().toISOString()
-          })
-        ]
-      );
-    } catch (e) {
-      console.error('Falha ao salvar último payload no banco:', e);
-    }
+
 
     if (body.object === 'instagram' || body.object === 'page') {
       const entry = body.entry?.[0];
