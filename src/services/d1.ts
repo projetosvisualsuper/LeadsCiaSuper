@@ -801,7 +801,12 @@ export const d1Api = {
 
   // Chats / Inbox
   getChats: async (): Promise<ChatSession[]> => {
-    const { results } = await runQuery(`SELECT * FROM chats ORDER BY lastTimestamp DESC, dataCriacao DESC`);
+    const { results } = await runQuery(`
+      SELECT c.*, 
+        (SELECT m.isIncoming FROM messages m WHERE m.chatId = c.id ORDER BY m.timestamp DESC LIMIT 1) as lastMessageIsIncoming
+      FROM chats c
+      ORDER BY c.lastTimestamp DESC, c.dataCriacao DESC
+    `);
     return results as ChatSession[];
   },
 

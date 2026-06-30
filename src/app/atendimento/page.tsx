@@ -153,6 +153,8 @@ function AtendimentoContent() {
   const [filterUnread, setFilterUnread] = useState<boolean>(false);
   const [filterStatus, setFilterStatus] = useState<string>('active'); // active | archived | all
   const [filterPeriod, setFilterPeriod] = useState<string>('all'); // all | today | 7d | 30d
+  const [filterConnection, setFilterConnection] = useState<string>('all');
+  const [filterResponseTime, setFilterResponseTime] = useState<string>('all');
 
   // Estados para Exclusão Customizada e Notificações no Sistema
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -826,7 +828,25 @@ function AtendimentoContent() {
       return true;
     })();
 
-    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod;
+    // 6. Filtro por Conexão de WhatsApp
+    const matchesConnection = filterConnection === 'all' || chat.connectionId === filterConnection;
+
+    // 7. Filtro por Tempo sem Resposta
+    const matchesResponseTime = (() => {
+      if (filterResponseTime === 'all') return true;
+      if (chat.lastMessageIsIncoming !== 1) return false;
+      const unansweredMs = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+      if (filterResponseTime === 'unanswered') return true;
+      if (filterResponseTime === 'unanswered_5m') return unansweredMs > 5 * 60 * 1000;
+      if (filterResponseTime === 'unanswered_15m') return unansweredMs > 15 * 60 * 1000;
+      if (filterResponseTime === 'unanswered_30m') return unansweredMs > 30 * 60 * 1000;
+      if (filterResponseTime === 'unanswered_1h') return unansweredMs > 60 * 60 * 1000;
+      if (filterResponseTime === 'unanswered_4h') return unansweredMs > 4 * 60 * 60 * 1000;
+      if (filterResponseTime === 'unanswered_24h') return unansweredMs > 24 * 60 * 60 * 1000;
+      return true;
+    })();
+
+    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection && matchesResponseTime;
   });
 
   const activeChat = chats.find(c => c.id === selectedChatId);
@@ -845,6 +865,34 @@ function AtendimentoContent() {
       return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
     }
   };
+
+  const getUnansweredTimeString = () => {
+    if (!activeChat) return null;
+    
+    // Check if unanswered
+    const isUnanswered = activeChat.lastMessageIsIncoming === 1 || (messages.length > 0 && messages[messages.length - 1].isIncoming);
+    if (!isUnanswered) return null;
+    
+    const lastTime = messages.length > 0 
+      ? messages[messages.length - 1].timestamp 
+      : (activeChat.lastTimestamp || activeChat.dataCriacao);
+      
+    if (!lastTime) return null;
+    
+    const diffMs = Date.now() - new Date(lastTime).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Menos de 1 minuto';
+    if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? 'minuto' : 'minutos'}`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} ${diffDays === 1 ? 'dia' : 'dias'}`;
+  };
+
+  const unansweredTimeStr = getUnansweredTimeString();
 
   const visibleMessages = messages.filter(msg => !hiddenMessageIds.includes(msg.id));
 
@@ -1057,6 +1105,58 @@ function AtendimentoContent() {
                 </span>
               )}
             </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
+            <select 
+              value={filterConnection}
+              onChange={e => setFilterConnection(e.target.value)}
+              style={{ 
+                flex: 1, 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                color: '#475569',
+                background: '#f8fafc',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="all">Conexão WhatsApp</option>
+              {connections.map(conn => (
+                <option key={conn.id} value={conn.id}>
+                  {conn.name || conn.evolutionInstanceName}
+                </option>
+              ))}
+            </select>
+
+            <select 
+              value={filterResponseTime}
+              onChange={e => setFilterResponseTime(e.target.value)}
+              style={{ 
+                flex: 1, 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                color: '#475569',
+                background: '#f8fafc',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="all">Tempo de resposta</option>
+              <option value="unanswered">Sem resposta (Todas)</option>
+              <option value="unanswered_5m">Sem resp. &gt; 5 min</option>
+              <option value="unanswered_15m">Sem resp. &gt; 15 min</option>
+              <option value="unanswered_30m">Sem resp. &gt; 30 min</option>
+              <option value="unanswered_1h">Sem resp. &gt; 1h</option>
+              <option value="unanswered_4h">Sem resp. &gt; 4h</option>
+              <option value="unanswered_24h">Sem resp. &gt; 24h</option>
+            </select>
           </div>
         </header>
 
@@ -1857,6 +1957,38 @@ function AtendimentoContent() {
               <h4 style={{ fontSize: '1.1rem', fontWeight: 800 }}>{selectedLead?.nome}</h4>
               <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>{selectedLead?.email || 'Sem e-mail cadastrado'}</p>
             </div>
+
+            {unansweredTimeStr && (
+              <div style={{ 
+                padding: '1rem', 
+                background: 'rgba(239, 68, 68, 0.05)', 
+                borderRadius: '12px', 
+                border: '1px solid rgba(239, 68, 68, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                marginBottom: '1.5rem',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.05)'
+              }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '50%', 
+                  background: '#fef2f2', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: '#ef4444',
+                  flexShrink: 0
+                }}>
+                  <Clock size={16} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#ef4444', display: 'block', opacity: 0.8 }}>Sem Resposta</label>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#991b1b' }}>{unansweredTimeStr}</span>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'grid', gap: '1.5rem' }}>
               <div>

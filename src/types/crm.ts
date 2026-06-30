@@ -379,6 +379,7 @@ export interface ChatSession {
   lastPlatformMessageId?: string; // ID da mensagem na plataforma de origem (ex: commentId no YouTube)
   lastVideoId?: string; // ID do vídeo (para o YouTube)
   dataCriacao: string;
+  lastMessageIsIncoming?: number;
 }
 
 export interface InternalChat {
