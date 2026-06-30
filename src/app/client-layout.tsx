@@ -940,7 +940,7 @@ export default function ClientLayout({
         </aside>
         
         <main className={`main-content ${isNoScrollPage ? 'no-padding' : ''}`} style={{
-          ...(isNoScrollPage ? { height: '100dvh', overflow: 'hidden' } : {})
+          ...(isNoScrollPage ? { height: '100dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' } : {})
         }}>
           {showMobileMenu ? (
             <div className="mobile-grid-menu">
@@ -1006,7 +1006,7 @@ export default function ClientLayout({
                   background: '#fffbeb',
                   border: '1px solid #fde68a',
                   color: '#92400e',
-                  padding: '1rem 1.5rem',
+                  padding: '0.5rem 1.25rem',
                   borderRadius: '12px',
                   margin: '0.5rem 1rem 0 1rem',
                   display: 'flex',

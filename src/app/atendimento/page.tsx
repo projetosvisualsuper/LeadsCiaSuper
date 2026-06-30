@@ -2153,7 +2153,9 @@ function AtendimentoContent() {
 
       <style jsx>{`
         .atendimento-container {
-          height: calc(100vh - 4rem);
+          flex: 1;
+          height: 100%;
+          min-height: 0;
           margin: -1.5rem;
           display: flex;
           overflow: hidden;
