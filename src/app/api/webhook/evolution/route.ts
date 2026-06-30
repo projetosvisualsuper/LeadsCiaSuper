@@ -302,12 +302,15 @@ export async function POST(req: NextRequest) {
 
       let leadId = '';
       let leadName = pushName;
+      if (isFromMe || leadName === 'Você') {
+        leadName = 'Contato WhatsApp';
+      }
       const agora = new Date().toISOString();
 
       if (existingLeads && existingLeads.length > 0) {
         const lead = existingLeads[0];
         leadId = lead.id;
-        leadName = lead.nome || pushName; // Prefere o nome salvo no CRM
+        leadName = lead.nome && lead.nome !== 'Você' ? lead.nome : leadName; // Prefere o nome salvo no CRM se válido
         
         await d1Api.executeRun(
           `UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`,
@@ -318,7 +321,7 @@ export async function POST(req: NextRequest) {
         leadId = Math.random().toString(36).substr(2, 9);
         await d1Api.saveLead({
           id: leadId,
-          nome: pushName,
+          nome: leadName,
           telefone: phoneNumber,
           celular: phoneNumber,
           origem: `WhatsApp (${connectionName})`,
@@ -327,7 +330,7 @@ export async function POST(req: NextRequest) {
           dataUltimaAtividade: agora,
           consentimentoLGPD: true,
           tags: ['whatsapp', 'evolution']
-        });
+        } as any);
       }
 
       // 4. Identificador Único do Chat
