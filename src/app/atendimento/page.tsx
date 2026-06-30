@@ -795,8 +795,8 @@ function AtendimentoContent() {
     // 2. Filtro por Canal
     const matchesChannel = filterChannel === 'all' || chat.channel === filterChannel;
 
-    // 3. Filtro de Não Lidas
-    const matchesUnread = !filterUnread || (chat.unreadCount || 0) > 0;
+    // 3. Filtro de Não Respondidas
+    const matchesUnread = !filterUnread || chat.lastMessageIsIncoming === 1;
 
     // 4. Filtro por Status da Conversa (Ativa vs. Arquivada)
     const chatStatus = chat.status || 'active';
@@ -1021,7 +1021,9 @@ function AtendimentoContent() {
                 color: '#475569',
                 background: '#f8fafc',
                 cursor: 'pointer',
-                outline: 'none'
+                outline: 'none',
+                height: '34px',
+                boxSizing: 'border-box'
               }}
             >
               <option value="all">Todos os Canais</option>
@@ -1045,7 +1047,9 @@ function AtendimentoContent() {
                 color: '#475569',
                 background: '#f8fafc',
                 cursor: 'pointer',
-                outline: 'none'
+                outline: 'none',
+                height: '34px',
+                boxSizing: 'border-box'
               }}
             >
               <option value="active">Conversas Ativas</option>
@@ -1068,7 +1072,9 @@ function AtendimentoContent() {
                 color: '#475569',
                 background: '#f8fafc',
                 cursor: 'pointer',
-                outline: 'none'
+                outline: 'none',
+                height: '34px',
+                boxSizing: 'border-box'
               }}
             >
               <option value="all">Todo o período</option>
@@ -1095,11 +1101,13 @@ function AtendimentoContent() {
                 justifyContent: 'center',
                 gap: '0.5rem',
                 transition: 'all 0.2s',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                height: '34px',
+                boxSizing: 'border-box'
               }}
             >
-              Não lidas
-              {chats.filter(c => (c.unreadCount || 0) > 0).length > 0 && (
+              Não respondidas
+              {chats.filter(c => c.lastMessageIsIncoming === 1).length > 0 && (
                 <span style={{ 
                   background: 'var(--primary)', 
                   color: 'white', 
@@ -1112,7 +1120,7 @@ function AtendimentoContent() {
                   justifyContent: 'center',
                   fontWeight: 800
                 }}>
-                  {chats.filter(c => (c.unreadCount || 0) > 0).length}
+                  {chats.filter(c => c.lastMessageIsIncoming === 1).length}
                 </span>
               )}
             </button>
@@ -1132,7 +1140,9 @@ function AtendimentoContent() {
                 color: '#475569',
                 background: '#f8fafc',
                 cursor: 'pointer',
-                outline: 'none'
+                outline: 'none',
+                height: '34px',
+                boxSizing: 'border-box'
               }}
             >
               <option value="all">Conexão WhatsApp</option>
@@ -1158,10 +1168,11 @@ function AtendimentoContent() {
               justifyContent: 'center',
               gap: '0.35rem',
               whiteSpace: 'nowrap',
-              height: '34px'
+              height: '34px',
+              boxSizing: 'border-box'
             }} title="Maior tempo sem resposta da lista atual">
               <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
-              <span>Maior espera: <strong>{maxUnansweredTimeStr}</strong></span>
+              <span>Espera: <strong>{maxUnansweredTimeStr}</strong></span>
             </div>
           </div>
         </header>
