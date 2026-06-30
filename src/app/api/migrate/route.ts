@@ -87,7 +87,16 @@ export async function GET() {
       await db.prepare(`ALTER TABLE users ADD COLUMN avatarUrl TEXT`).run();
     } catch (e) { console.log('Coluna avatarUrl em users já existe ou erro:', e); }
 
-    return NextResponse.json({ success: true, message: 'Tabelas e colunas (incluindo avatarUrl de usuarios) adicionadas com sucesso no D1!' });
+    // Limpeza de chats de teste anteriores a hoje (30 de Junho de 2026)
+    try {
+      await db.prepare(`UPDATE messages SET isIncoming = 0 WHERE timestamp < '2026-06-30T00:00:00'`).run();
+    } catch (e) { console.log('Erro ao atualizar messages antigas:', e); }
+
+    try {
+      await db.prepare(`UPDATE chats SET unreadCount = 0 WHERE lastTimestamp < '2026-06-30T00:00:00'`).run();
+    } catch (e) { console.log('Erro ao resetar unreadCount antigo:', e); }
+
+    return NextResponse.json({ success: true, message: 'Tabelas e colunas adicionadas e histórico antigo limpo com sucesso no D1!' });
   } catch (err: any) {
     return NextResponse.json({ error: err.message, success: false });
   }
