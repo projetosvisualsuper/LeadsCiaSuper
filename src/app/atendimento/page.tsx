@@ -709,6 +709,29 @@ function AtendimentoContent() {
     }
   };
 
+  const handleMarkAsAnswered = async () => {
+    if (!selectedChatId) return;
+    try {
+      // Optimistically update frontend state
+      setChats(prev => prev.map(chat => 
+        chat.id === selectedChatId 
+          ? { ...chat, lastMessageIsIncoming: 0 } 
+          : chat
+      ));
+      
+      await fetch('/api/chats', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedChatId, lastMessageIsIncoming: 0 })
+      });
+      setShowChatMenu(false);
+      showAlert('Conversa marcada como respondida com sucesso!', 'success');
+    } catch (err) {
+      console.error('Erro ao marcar conversa como respondida:', err);
+      showAlert('Erro ao marcar conversa como respondida.', 'error');
+    }
+  };
+
   const handleChangeChatConnection = async (connId: string) => {
     if (!selectedChatId) return;
     const conn = connections.find((c: any) => c.id === connId);
@@ -1423,6 +1446,14 @@ function AtendimentoContent() {
                       width: '180px',
                       overflow: 'hidden'
                     }}>
+                      {activeChat?.lastMessageIsIncoming === 1 && (
+                        <button 
+                          onClick={handleMarkAsAnswered}
+                          style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
+                        >
+                          <CheckCheck size={14} color="#10b981" /> Marcar como Respondido
+                        </button>
+                      )}
                       <button 
                         onClick={handleArchiveChat}
                         style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
