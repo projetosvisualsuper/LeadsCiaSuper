@@ -40,17 +40,28 @@ export async function POST(request: Request) {
       return body[keyName] ? String(body[keyName]) : '';
     };
 
-    const email = getField(body, ['email', 'email_address', 'user_email', 'billing_email']);
-    const rawTelefone = getField(body, ['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number']);
+    // Função auxiliar para buscar campo priorizando getField e depois meta_data
+    const getValue = (keys: string[]): string => {
+      const val = getField(body, keys);
+      if (val) return val;
+      for (const key of keys) {
+        const metaVal = getMetaValue(key);
+        if (metaVal) return metaVal;
+      }
+      return '';
+    };
+
+    const email = getValue(['email', 'email_address', 'user_email', 'billing_email', 'your-email', 'your_email']);
+    const rawTelefone = getValue(['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number', 'your-phone', 'your_phone', 'telephone']);
     const telefone = rawTelefone.replace(/\D/g, '');
     
     // Tenta extrair nome completo ou primeiro/último nome
-    let nome = getField(body, ['nome', 'name', 'full_name', 'billing_first_name', 'first_name']);
-    const sobrenome = getField(body, ['sobrenome', 'last_name', 'billing_last_name']);
+    let nome = getValue(['nome', 'name', 'full_name', 'billing_first_name', 'first_name', 'your-name', 'your_name']);
+    const sobrenome = getValue(['sobrenome', 'last_name', 'billing_last_name']);
     if (nome && sobrenome && !nome.includes(sobrenome)) nome += ' ' + sobrenome;
 
-    const valor = getField(body, ['valor', 'total', 'amount', 'order_total']);
-    const pedidoId = getField(body, ['pedidoId', 'order_id', 'id', 'number', 'order_number']);
+    const valor = getValue(['valor', 'total', 'amount', 'order_total']);
+    const pedidoId = getValue(['pedidoId', 'order_id', 'id', 'number', 'order_number']);
 
     // Identificar se é uma Cotação (Suporta YITH WooCommerce Request a Quote)
     const isYithRaq = getMetaValue('ywraq_raq') === 'yes' || getMetaValue('ywraq_raq_status') !== '';
