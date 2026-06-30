@@ -56,7 +56,7 @@ async function getMetaProfile(userId: string, channel: string) {
       console.error('Meta API Error:', JSON.stringify(errorData));
       
       try {
-        await d1Api.executeRun(`INSERT OR REPLACE INTO settings (id, value) VALUES (?, ?)`, [
+        await d1Api.executeRun(`INSERT INTO settings (key, valueJson) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`, [
           'meta_debug',
           JSON.stringify({
             lastError: errorData,
@@ -416,8 +416,23 @@ export async function POST(req: NextRequest) {
     }
 
     return new NextResponse('EVENT_RECEIVED', { status: 200 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro no Webhook Meta:', error);
+    try {
+      await d1Api.executeRun(
+        `INSERT INTO settings (key, valueJson) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`,
+        [
+          'meta_webhook_error',
+          JSON.stringify({
+            message: error?.message || String(error),
+            stack: error?.stack || null,
+            timestamp: new Date().toISOString()
+          })
+        ]
+      );
+    } catch (e) {
+      console.error('Failed to log webhook error to DB:', e);
+    }
     return new NextResponse('Internal Error', { status: 500 });
   }
 }
