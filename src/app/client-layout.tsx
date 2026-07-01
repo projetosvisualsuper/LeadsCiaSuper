@@ -73,6 +73,9 @@ export default function ClientLayout({
   // Se a rota NÃO estiver na lista acima, consideramos que é uma Página de Captura pública
   const isCapturePage = !adminRoutes.includes(pathname);
   const [notification, setNotification] = useState<any>(null);
+  const [unreadLeads, setUnreadLeads] = useState<any[]>([]);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const notificationsDropdownRef = useRef<HTMLDivElement>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
@@ -721,6 +724,22 @@ export default function ClientLayout({
               message: `${latestLead.nome || 'Cliente'} entrou via ${latestLead.origem}`
             });
             
+            // Adicionar à lista de novos leads não lidos
+            setUnreadLeads(prev => [
+              {
+                id: latestLead.id,
+                nome: latestLead.nome || 'Cliente',
+                origem: latestLead.origem || 'WhatsApp',
+                timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              },
+              ...prev
+            ]);
+
+            // Auto-ocultar a notificação visual após 6 segundos
+            setTimeout(() => {
+              setNotification(prev => (prev?.type === 'lead' ? null : prev));
+            }, 6000);
+            
             // Tocar som de notificação
             playChime();
           }
@@ -755,6 +774,18 @@ export default function ClientLayout({
 
     checkPendingUsers();
   }, [userProfile?.role]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (notificationsDropdownRef.current && !notificationsDropdownRef.current.contains(e.target as Node)) {
+        setShowNotificationsDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
 
   if (pathname === '/whatsapp-widget') {
     return (
@@ -859,17 +890,115 @@ export default function ClientLayout({
         )}
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
           <div style={{ 
-            padding: '1.5rem 1rem', 
+            padding: '1.5rem 1.25rem', 
             marginBottom: '1rem', 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: isSidebarCollapsed ? 'center' : 'space-between' 
+            justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
+            flexDirection: isSidebarCollapsed ? 'column' : 'row',
+            gap: isSidebarCollapsed ? '1rem' : '0.5rem',
+            position: 'relative'
           }}>
             {!isSidebarCollapsed && (
               <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                 Leads Cia<span style={{ color: 'var(--primary)' }}> Super</span>
               </h1>
             )}
+            
+            {/* Sino de Notificações */}
+            <div ref={notificationsDropdownRef} style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: showNotificationsDropdown ? 'var(--primary)' : '#64748b',
+                  backgroundColor: showNotificationsDropdown ? 'rgba(0,0,0,0.05)' : 'transparent',
+                  position: 'relative',
+                  transition: 'all 0.2s',
+                  boxShadow: showNotificationsDropdown ? 'inset 0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                }}
+                className="hover:bg-slate-100 hover:text-slate-700"
+                title="Novos Leads"
+              >
+                <Bell size={20} />
+                {unreadLeads.length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    background: 'var(--danger)',
+                    color: 'white',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 0 2px white'
+                  }}>
+                    {unreadLeads.length}
+                  </span>
+                )}
+              </button>
+
+              {showNotificationsDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: isSidebarCollapsed ? '40px' : 'auto',
+                  right: isSidebarCollapsed ? 'auto' : '0',
+                  marginTop: '0.5rem',
+                  width: '280px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  border: '1px solid var(--border)',
+                  zIndex: 1000,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  maxHeight: '350px',
+                  overflowY: 'auto'
+                }}>
+                  <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>Novos Leads</span>
+                    {unreadLeads.length > 0 && (
+                      <button 
+                        onClick={() => setUnreadLeads([])}
+                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Limpar Tudo
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ padding: '0.5rem 0' }}>
+                    {unreadLeads.length === 0 ? (
+                      <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
+                        Nenhum lead novo pendente.
+                      </div>
+                    ) : (
+                      unreadLeads.map((lead) => (
+                        <div key={lead.id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>{lead.nome}</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#64748b' }}>
+                            <span>Origem: {lead.origem}</span>
+                            <span>{lead.timestamp}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <button 
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               style={{ 
