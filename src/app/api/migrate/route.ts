@@ -124,6 +124,7 @@ export async function GET() {
         }
       }
 
+      const leadStatements: any[] = [];
       for (const [normPhone, group] of Object.entries(leadGroups)) {
         if (group.length > 1) {
           group.sort((a, b) => {
@@ -139,14 +140,26 @@ export async function GET() {
 
           for (const dup of duplicateLeads) {
             console.log(`Mesclando lead duplicado ${dup.nome} (${dup.id}) no principal ${primaryLead.nome} (${primaryLead.id})`);
-            await db.prepare(`UPDATE queue SET leadId = ? WHERE leadId = ?`).bind(primaryLead.id, dup.id).run();
-            await db.prepare(`UPDATE chats SET leadId = ? WHERE leadId = ?`).bind(primaryLead.id, dup.id).run();
-            await db.prepare(`DELETE FROM leads WHERE id = ?`).bind(dup.id).run();
+            leadStatements.push(db.prepare(`UPDATE queue SET leadId = ? WHERE leadId = ?`).bind(primaryLead.id, dup.id));
+            leadStatements.push(db.prepare(`UPDATE chats SET leadId = ? WHERE leadId = ?`).bind(primaryLead.id, dup.id));
+            leadStatements.push(db.prepare(`DELETE FROM leads WHERE id = ?`).bind(dup.id));
           }
 
-          await db.prepare(`UPDATE leads SET telefone = ?, celular = ? WHERE id = ?`).bind(normPhone, normPhone, primaryLead.id).run();
+          if (primaryLead.telefone !== normPhone || primaryLead.celular !== normPhone) {
+            leadStatements.push(db.prepare(`UPDATE leads SET telefone = ?, celular = ? WHERE id = ?`).bind(normPhone, normPhone, primaryLead.id));
+          }
         } else {
-          await db.prepare(`UPDATE leads SET telefone = ?, celular = ? WHERE id = ?`).bind(normPhone, normPhone, group[0].id).run();
+          const lead = group[0];
+          if (lead.telefone !== normPhone || lead.celular !== normPhone) {
+            leadStatements.push(db.prepare(`UPDATE leads SET telefone = ?, celular = ? WHERE id = ?`).bind(normPhone, normPhone, lead.id));
+          }
+        }
+      }
+
+      if (leadStatements.length > 0) {
+        console.log(`Executando ${leadStatements.length} atualizações de leads em lotes...`);
+        for (let i = 0; i < leadStatements.length; i += 100) {
+          await db.batch(leadStatements.slice(i, i + 100));
         }
       }
 
@@ -164,6 +177,7 @@ export async function GET() {
         }
       }
 
+      const chatStatements: any[] = [];
       for (const [targetChatId, group] of Object.entries(chatGroups)) {
         if (group.length > 1) {
           group.sort((a, b) => {
@@ -177,35 +191,34 @@ export async function GET() {
           const duplicateChats = group.slice(1);
 
           if (primaryChat.id !== targetChatId) {
-            try {
-              await db.prepare(`UPDATE chats SET id = ? WHERE id = ?`).bind(targetChatId, primaryChat.id).run();
-              await db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, primaryChat.id).run();
-              primaryChat.id = targetChatId;
-            } catch (err) {
-              console.log('Erro ao atualizar ID do chat principal:', err);
-            }
+            chatStatements.push(db.prepare(`UPDATE chats SET id = ? WHERE id = ?`).bind(targetChatId, primaryChat.id));
+            chatStatements.push(db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, primaryChat.id));
+            primaryChat.id = targetChatId;
           }
 
           for (const dup of duplicateChats) {
             console.log(`Mesclando chat duplicado ${dup.id} no principal ${targetChatId}`);
-            await db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, dup.id).run();
-            await db.prepare(`DELETE FROM chats WHERE id = ?`).bind(dup.id).run();
+            chatStatements.push(db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, dup.id));
+            chatStatements.push(db.prepare(`DELETE FROM chats WHERE id = ?`).bind(dup.id));
           }
         } else {
           const chat = group[0];
           if (chat.id !== targetChatId) {
-            try {
-              await db.prepare(`UPDATE chats SET id = ? WHERE id = ?`).bind(targetChatId, chat.id).run();
-              await db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, chat.id).run();
-            } catch (err) {
-              console.log(`Erro ao renomear chatId unico ${chat.id} para ${targetChatId}:`, err);
-            }
+            chatStatements.push(db.prepare(`UPDATE chats SET id = ? WHERE id = ?`).bind(targetChatId, chat.id));
+            chatStatements.push(db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, chat.id));
           }
         }
       }
 
+      if (chatStatements.length > 0) {
+        console.log(`Executando ${chatStatements.length} atualizações de chats em lotes...`);
+        for (let i = 0; i < chatStatements.length; i += 100) {
+          await db.batch(chatStatements.slice(i, i + 100));
+        }
+      }
+
     } catch (e: any) {
-      console.log('Erro na normalização/mesclagem de leads/chats:', e);
+      console.error('Erro na normalização/mesclagem de leads/chats:', e);
     }
 
     // Limpeza de chats de teste anteriores a hoje (30 de Junho de 2026)
