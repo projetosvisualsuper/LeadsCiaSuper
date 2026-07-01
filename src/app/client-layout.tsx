@@ -890,115 +890,17 @@ export default function ClientLayout({
         )}
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
           <div style={{ 
-            padding: '1.5rem 1.25rem', 
+            padding: '1.5rem 1rem', 
             marginBottom: '1rem', 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
-            flexDirection: isSidebarCollapsed ? 'column' : 'row',
-            gap: isSidebarCollapsed ? '1rem' : '0.5rem',
-            position: 'relative'
+            justifyContent: isSidebarCollapsed ? 'center' : 'space-between' 
           }}>
             {!isSidebarCollapsed && (
               <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                 Leads Cia<span style={{ color: 'var(--primary)' }}> Super</span>
               </h1>
             )}
-            
-            {/* Sino de Notificações */}
-            <div ref={notificationsDropdownRef} style={{ position: 'relative' }}>
-              <button 
-                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: showNotificationsDropdown ? 'var(--primary)' : '#64748b',
-                  backgroundColor: showNotificationsDropdown ? 'rgba(0,0,0,0.05)' : 'transparent',
-                  position: 'relative',
-                  transition: 'all 0.2s',
-                  boxShadow: showNotificationsDropdown ? 'inset 0 1px 2px rgba(0,0,0,0.05)' : 'none'
-                }}
-                className="hover:bg-slate-100 hover:text-slate-700"
-                title="Novos Leads"
-              >
-                <Bell size={20} />
-                {unreadLeads.length > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: '2px',
-                    right: '2px',
-                    background: 'var(--danger)',
-                    color: 'white',
-                    fontSize: '0.65rem',
-                    fontWeight: 'bold',
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 0 0 2px white'
-                  }}>
-                    {unreadLeads.length}
-                  </span>
-                )}
-              </button>
-
-              {showNotificationsDropdown && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: isSidebarCollapsed ? '40px' : 'auto',
-                  right: isSidebarCollapsed ? 'auto' : '0',
-                  marginTop: '0.5rem',
-                  width: '280px',
-                  background: 'white',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                  border: '1px solid var(--border)',
-                  zIndex: 1000,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  maxHeight: '350px',
-                  overflowY: 'auto'
-                }}>
-                  <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>Novos Leads</span>
-                    {unreadLeads.length > 0 && (
-                      <button 
-                        onClick={() => setUnreadLeads([])}
-                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        Limpar Tudo
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ padding: '0.5rem 0' }}>
-                    {unreadLeads.length === 0 ? (
-                      <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
-                        Nenhum lead novo pendente.
-                      </div>
-                    ) : (
-                      unreadLeads.map((lead) => (
-                        <div key={lead.id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>{lead.nome}</span>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#64748b' }}>
-                            <span>Origem: {lead.origem}</span>
-                            <span>{lead.timestamp}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
             <button 
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               style={{ 
@@ -1130,54 +1032,159 @@ export default function ClientLayout({
             </div>
           ) : (
             <>
-              {!isCapturePage && disconnectedConnections.length > 0 && (
+              {!isCapturePage && (
                 <div style={{
-                  background: '#fffbeb',
-                  border: '1px solid #fde68a',
-                  color: '#92400e',
-                  padding: '0.5rem 1.25rem',
-                  borderRadius: '12px',
-                  margin: '0.5rem 1rem 0 1rem',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '1rem',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                  justifyContent: 'space-between',
+                  margin: '0.5rem 1rem 0 1rem',
+                  gap: '1rem'
                 }}>
-                  <div style={{
-                    background: '#fef3c7',
-                    padding: '0.5rem',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#d97706',
-                    flexShrink: 0
-                  }}>
-                    <ShieldAlert size={22} />
+                  {disconnectedConnections.length > 0 ? (
+                    <div style={{
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      color: '#92400e',
+                      padding: '0.5rem 1.25rem',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                      flex: 1
+                    }}>
+                      <div style={{
+                        background: '#fef3c7',
+                        padding: '0.5rem',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#d97706',
+                        flexShrink: 0
+                      }}>
+                        <ShieldAlert size={22} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h5 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#78350f' }}>
+                          Conexão de WhatsApp Inativa
+                        </h5>
+                        <p style={{ margin: '0.125rem 0 0', fontSize: '0.8rem', color: '#92400e' }}>
+                          O número de WhatsApp <strong>{disconnectedConnections.map(c => c.name).join(', ')}</strong> está desconectado. Reconecte a instância para manter o envio e recebimento de mensagens ativos.
+                        </p>
+                      </div>
+                      <Link 
+                        href="/conexoes" 
+                        style={{ 
+                          padding: '0.5rem 1rem', 
+                          fontSize: '0.8rem', 
+                          background: '#d97706', 
+                          color: 'white',
+                          fontWeight: 600,
+                          borderRadius: '8px',
+                          textDecoration: 'none',
+                          flexShrink: 0
+                        }}
+                      >
+                        Reconectar
+                      </Link>
+                    </div>
+                  ) : (
+                    <div style={{ flex: 1 }} />
+                  )}
+
+                  {/* Sino de Notificações */}
+                  <div ref={notificationsDropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
+                    <button 
+                      onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                      style={{
+                        background: 'white',
+                        border: '1px solid var(--border)',
+                        cursor: 'pointer',
+                        padding: '0.6rem',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: showNotificationsDropdown ? 'var(--primary)' : '#64748b',
+                        position: 'relative',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}
+                      className="hover:bg-slate-50 hover:text-slate-700"
+                      title="Novos Leads"
+                    >
+                      <Bell size={20} />
+                      {unreadLeads.length > 0 && (
+                        <span style={{
+                          position: 'absolute',
+                          top: '-4px',
+                          right: '-4px',
+                          background: 'var(--danger)',
+                          color: 'white',
+                          fontSize: '0.65rem',
+                          fontWeight: 'bold',
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 0 0 2px white'
+                        }}>
+                          {unreadLeads.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {showNotificationsDropdown && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        right: '0',
+                        marginTop: '0.5rem',
+                        width: '280px',
+                        background: 'white',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        border: '1px solid var(--border)',
+                        zIndex: 1000,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        maxHeight: '350px',
+                        overflowY: 'auto'
+                      }}>
+                        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>Novos Leads</span>
+                          {unreadLeads.length > 0 && (
+                            <button 
+                              onClick={() => setUnreadLeads([])}
+                              style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              Limpar Tudo
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ padding: '0.5rem 0' }}>
+                          {unreadLeads.length === 0 ? (
+                            <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
+                              Nenhum lead novo pendente.
+                            </div>
+                          ) : (
+                            unreadLeads.map((lead) => (
+                              <div key={lead.id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>{lead.nome}</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#64748b' }}>
+                                  <span>Origem: {lead.origem}</span>
+                                  <span>{lead.timestamp}</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <h5 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#78350f' }}>
-                      Conexão de WhatsApp Inativa
-                    </h5>
-                    <p style={{ margin: '0.125rem 0 0', fontSize: '0.8rem', color: '#92400e' }}>
-                      O número de WhatsApp <strong>{disconnectedConnections.map(c => c.name).join(', ')}</strong> está desconectado. Reconecte a instância para manter o envio e recebimento de mensagens ativos.
-                    </p>
-                  </div>
-                  <Link 
-                    href="/conexoes" 
-                    style={{ 
-                      padding: '0.5rem 1rem', 
-                      fontSize: '0.8rem', 
-                      background: '#d97706', 
-                      color: 'white',
-                      fontWeight: 600,
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      flexShrink: 0
-                    }}
-                  >
-                    Reconectar
-                  </Link>
                 </div>
               )}
               {children}
