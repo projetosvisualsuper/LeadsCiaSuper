@@ -234,8 +234,9 @@ export async function GET() {
       // Tentar restaurar avatares ausentes chamando a API do Evolution para todos os chats ativos
       try {
         console.log('Iniciando restauração de avatares ausentes via Evolution API...');
-        const settingsQuery = await db.prepare(`SELECT valueJson FROM settings WHERE key = 'omnichannel'`).first();
-        const settings = settingsQuery ? JSON.parse(settingsQuery.valueJson) : {};
+        const settingsQuery = await db.prepare(`SELECT valueJson FROM settings WHERE key = 'global'`).first();
+        const globalSettings = settingsQuery ? JSON.parse(settingsQuery.valueJson) : {};
+        const settings = globalSettings?.omnichannel || {};
         const apiUrl = settings?.evolutionApiUrl || '';
         const apiKey = settings?.evolutionApiKey || '';
         
