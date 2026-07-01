@@ -158,7 +158,7 @@ function AtendimentoContent() {
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [filterConnection, setFilterConnection] = useState<string>('all');
   const [filterResponseTime, setFilterResponseTime] = useState<string>('all');
-  const [filterContactType, setFilterContactType] = useState<string>('all'); // all | external | internal
+  const [filterContactType, setFilterContactType] = useState<string>('external'); // all | external | internal
   const [filterUnreadOnly, setFilterUnreadOnly] = useState<boolean>(false);
 
   // Estados para Exclusão Customizada e Notificações no Sistema

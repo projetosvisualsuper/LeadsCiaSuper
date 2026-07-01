@@ -60,6 +60,12 @@ export default function ChatInternoPage() {
   const [messages, setMessages] = useState<InternalMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Estados para WhatsApp Interno
+  const [activeTab, setActiveTab] = useState<'system' | 'whatsapp'>('system');
+  const [whatsappChats, setWhatsappChats] = useState<any[]>([]);
+  const [selectedWhatsappChat, setSelectedWhatsappChat] = useState<any | null>(null);
+  const [whatsappMessages, setWhatsappMessages] = useState<any[]>([]);
   
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatType, setNewChatType] = useState<'direct'|'group'>('direct');
@@ -199,6 +205,25 @@ export default function ChatInternoPage() {
     }
   }, [selectedChat]);
 
+  useEffect(() => {
+    if (selectedWhatsappChat && activeTab === 'whatsapp') {
+      loadWhatsappMessages(selectedWhatsappChat.id);
+      const interval = setInterval(() => {
+        if (!document.hidden) loadWhatsappMessages(selectedWhatsappChat.id);
+      }, 8000); // Polling 8s
+
+      const handleVisibilityChange = () => {
+        if (!document.hidden) loadWhatsappMessages(selectedWhatsappChat.id);
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [selectedWhatsappChat, activeTab]);
+
   const loadData = async () => {
     if (!me) return;
     try {
@@ -211,6 +236,19 @@ export default function ChatInternoPage() {
       if (selectedChat) {
         const updatedChat = data.chats?.find((c: any) => c.id === selectedChat.id);
         if (updatedChat) setSelectedChat(updatedChat);
+      }
+
+      // Buscar conversas internas de WhatsApp
+      const waRes = await fetch(`/api/chats?t=${Date.now()}`);
+      if (waRes.ok) {
+        const waChatsList = await waRes.json();
+        const internalWaChats = waChatsList.filter((c: any) => c.isInternal === 1);
+        setWhatsappChats(internalWaChats);
+        
+        if (selectedWhatsappChat) {
+          const updatedWa = internalWaChats.find((c: any) => c.id === selectedWhatsappChat.id);
+          if (updatedWa) setSelectedWhatsappChat(updatedWa);
+        }
       }
       setLoading(false);
     } catch (e) {
@@ -240,6 +278,18 @@ export default function ChatInternoPage() {
     }
   };
 
+  const loadWhatsappMessages = async (chatId: string) => {
+    try {
+      const res = await fetch(`/api/chats?chatId=${chatId}&t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setWhatsappMessages(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const scrollToBottom = () => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -250,7 +300,60 @@ export default function ChatInternoPage() {
     if (messages.length > 0) scrollToBottom();
   }, [messages.length]);
 
+  const handleSendWhatsappMessage = async (mediaUrl?: string, mediaMimeType?: string) => {
+    if ((!newMessage.trim() && !mediaUrl) || !selectedWhatsappChat || !me) return;
+
+    try {
+      const msgPayload = {
+        chatId: selectedWhatsappChat.id,
+        leadId: selectedWhatsappChat.leadId,
+        content: newMessage.trim(),
+        isIncoming: false,
+        mediaUrl: mediaUrl || null,
+        mediaMimeType: mediaMimeType || null,
+        senderId: 'vendedor',
+        senderName: me.name || me.email || 'Vendedor'
+      };
+
+      // Optimistic update
+      const localMsg = {
+        id: Math.random().toString(36).substr(2, 9),
+        chatId: selectedWhatsappChat.id,
+        senderId: 'vendedor',
+        senderName: 'Você',
+        content: newMessage.trim(),
+        timestamp: new Date().toISOString(),
+        isIncoming: 0,
+        mediaUrl: mediaUrl || null,
+        mediaMimeType: mediaMimeType || null
+      };
+      setWhatsappMessages(prev => [...prev, localMsg]);
+      setNewMessage('');
+      scrollToBottom();
+
+      const res = await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(msgPayload)
+      });
+
+      if (res.ok) {
+        loadWhatsappMessages(selectedWhatsappChat.id);
+      }
+    } catch (e) {
+      console.error('Erro ao enviar mensagem de WhatsApp interno:', e);
+    }
+  };
+
   const handleSendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
+    if (activeTab === 'whatsapp') {
+      let mimeType = 'image/png';
+      if (attachmentName?.endsWith('.pdf')) mimeType = 'application/pdf';
+      else if (attachmentName?.endsWith('.webm') || attachmentName?.endsWith('.mp3')) mimeType = 'audio/webm';
+      await handleSendWhatsappMessage(attachmentUrl, attachmentUrl ? mimeType : undefined);
+      return;
+    }
+
     if ((!newMessage.trim() && !attachmentUrl) || !selectedChat || !me) return;
     
     if (editingMessageId) {
@@ -709,88 +812,184 @@ export default function ChatInternoPage() {
         width: isMobile ? '100%' : '320px', 
         background: 'white', 
         borderRight: '1px solid var(--border)', 
-        display: isMobile && selectedChat ? 'none' : 'flex', 
+        display: isMobile && (selectedChat || selectedWhatsappChat) ? 'none' : 'flex', 
         flexDirection: 'column', 
         minHeight: 0, 
         zIndex: 5 
       }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Chat Interno</h2>
-          <button className="btn btn-outline" style={{ padding: '0.5rem' }} onClick={() => setIsNewChatModalOpen(true)}>
-            <Plus size={18} />
+          {activeTab === 'system' && (
+            <button className="btn btn-outline" style={{ padding: '0.5rem' }} onClick={() => setIsNewChatModalOpen(true)}>
+              <Plus size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Tab Buttons Selector */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: '#f8fafc' }}>
+          <button 
+            onClick={() => { setActiveTab('system'); setSelectedWhatsappChat(null); }}
+            style={{ 
+              flex: 1, 
+              padding: '0.75rem', 
+              border: 'none', 
+              background: activeTab === 'system' ? 'white' : 'transparent',
+              borderBottom: activeTab === 'system' ? '2px solid var(--primary)' : 'none',
+              fontWeight: activeTab === 'system' ? 'bold' : 'normal',
+              color: activeTab === 'system' ? 'var(--primary)' : '#64748b',
+              cursor: 'pointer',
+              fontSize: '0.85rem'
+            }}
+          >
+            Chat do Sistema
+          </button>
+          <button 
+            onClick={() => { setActiveTab('whatsapp'); setSelectedChat(null); }}
+            style={{ 
+              flex: 1, 
+              padding: '0.75rem', 
+              border: 'none', 
+              background: activeTab === 'whatsapp' ? 'white' : 'transparent',
+              borderBottom: activeTab === 'whatsapp' ? '2px solid var(--primary)' : 'none',
+              fontWeight: activeTab === 'whatsapp' ? 'bold' : 'normal',
+              color: activeTab === 'whatsapp' ? 'var(--primary)' : '#64748b',
+              cursor: 'pointer',
+              fontSize: '0.85rem'
+            }}
+          >
+            WhatsApp Interno
           </button>
         </div>
+
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              onClick={() => { setSelectedChat(chat); setShowGroupInfo(false); setShowEmojiPicker(false); setEditingMessageId(null); setNewMessage(''); }}
-              style={{ 
-                padding: '1rem', 
-                borderBottom: '1px solid var(--border)', 
-                cursor: 'pointer',
-                background: selectedChat?.id === chat.id 
-                  ? 'var(--accent)' 
-                  : ((chat.unreadCount || 0) > 0 ? '#f0fdf4' : 'transparent'),
-                display: 'flex',
-                gap: '1rem',
-                alignItems: 'center'
-              }}
-              className="hover:bg-slate-50"
-            >
-              <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-                {getChatAvatar(chat) ? (
-                  <img src={getChatAvatar(chat)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : chat.type === 'group' ? (
-                  <Users size={20} color="#64748b" />
-                ) : (
-                  <User size={20} color="#64748b" />
-                )}
-              </div>
-              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>
-                    {getChatName(chat)}
-                  </h4>
+          {activeTab === 'system' ? (
+            <>
+              {chats.map(chat => (
+                <div 
+                  key={chat.id} 
+                  onClick={() => { setSelectedChat(chat); setShowGroupInfo(false); setShowEmojiPicker(false); setEditingMessageId(null); setNewMessage(''); }}
+                  style={{ 
+                    padding: '1rem', 
+                    borderBottom: '1px solid var(--border)', 
+                    cursor: 'pointer',
+                    background: selectedChat?.id === chat.id 
+                      ? 'var(--accent)' 
+                      : ((chat.unreadCount || 0) > 0 ? '#f0fdf4' : 'transparent'),
+                    display: 'flex',
+                    gap: '1rem',
+                    alignItems: 'center'
+                  }}
+                  className="hover:bg-slate-50"
+                >
+                  <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    {getChatAvatar(chat) ? (
+                      <img src={getChatAvatar(chat)} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : chat.type === 'group' ? (
+                      <Users size={20} color="#64748b" />
+                    ) : (
+                      <User size={20} color="#64748b" />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>
+                        {getChatName(chat)}
+                      </h4>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                      <p style={{ 
+                        fontSize: '0.8rem', 
+                        color: (chat.unreadCount || 0) > 0 ? '#475569' : '#64748b', 
+                        fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400,
+                        whiteSpace: 'nowrap', 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        margin: 0
+                      }}>
+                        {chat.lastMessage || 'Nova conversa'}
+                      </p>
+                      {(chat.unreadCount || 0) > 0 && (
+                        <span style={{ 
+                          background: '#22c55e', 
+                          color: 'white', 
+                          fontSize: '0.7rem', 
+                          fontWeight: 'bold', 
+                          minWidth: '20px',
+                          height: '20px',
+                          borderRadius: '10px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          padding: '0 6px',
+                          flexShrink: 0
+                        }}>
+                          {chat.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                  <p style={{ 
-                    fontSize: '0.8rem', 
-                    color: (chat.unreadCount || 0) > 0 ? '#475569' : '#64748b', 
-                    fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400,
-                    whiteSpace: 'nowrap', 
-                    overflow: 'hidden', 
-                    textOverflow: 'ellipsis', 
-                    margin: 0
-                  }}>
-                    {chat.lastMessage || 'Nova conversa'}
-                  </p>
-                  {(chat.unreadCount || 0) > 0 && (
-                    <span style={{ 
-                      background: '#22c55e', 
-                      color: 'white', 
-                      fontSize: '0.7rem', 
-                      fontWeight: 'bold', 
-                      minWidth: '20px',
-                      height: '20px',
-                      borderRadius: '10px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      padding: '0 6px',
-                      flexShrink: 0
-                    }}>
-                      {chat.unreadCount}
-                    </span>
-                  )}
+              ))}
+              {chats.length === 0 && (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                  Nenhuma conversa. Clique no + para começar.
                 </div>
-              </div>
-            </div>
-          ))}
-          {chats.length === 0 && (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
-              Nenhuma conversa. Clique no + para começar.
-            </div>
+              )}
+            </>
+          ) : (
+            <>
+              {whatsappChats.map(chat => (
+                <div 
+                  key={chat.id} 
+                  onClick={() => { setSelectedWhatsappChat(chat); setShowEmojiPicker(false); setNewMessage(''); }}
+                  style={{ 
+                    padding: '1rem', 
+                    borderBottom: '1px solid var(--border)', 
+                    cursor: 'pointer',
+                    background: selectedWhatsappChat?.id === chat.id 
+                      ? 'var(--accent)' 
+                      : 'transparent',
+                    display: 'flex',
+                    gap: '1rem',
+                    alignItems: 'center'
+                  }}
+                  className="hover:bg-slate-50"
+                >
+                  <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    {chat.leadAvatar ? (
+                      <img src={chat.leadAvatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <User size={20} color="#64748b" />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>
+                        {chat.leadName}
+                      </h4>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                      <p style={{ 
+                        fontSize: '0.8rem', 
+                        color: '#64748b', 
+                        whiteSpace: 'nowrap', 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        margin: 0
+                      }}>
+                        {chat.lastMessage || 'Nova conversa'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {whatsappChats.length === 0 && (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                  Nenhuma conversa de WhatsApp interna encontrada.
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -800,9 +999,9 @@ export default function ChatInternoPage() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        style={{ flex: 1, display: isMobile && !selectedChat ? 'none' : 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}
+        style={{ flex: 1, display: isMobile && !(selectedChat || selectedWhatsappChat) ? 'none' : 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}
       >
-        {selectedChat && isDragging && (
+        {(selectedChat || selectedWhatsappChat) && isDragging && (
           <div style={{
             position: 'absolute',
             inset: 0,
@@ -834,7 +1033,209 @@ export default function ChatInternoPage() {
             </div>
           </div>
         )}
-        {selectedChat ? (
+        {activeTab === 'whatsapp' ? (
+          selectedWhatsappChat ? (
+            <>
+              {/* WhatsApp Header */}
+              <div 
+                style={{ padding: '1rem', background: '#f0f2f5', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 5 }}
+              >
+                {isMobile && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedWhatsappChat(null);
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0.25rem 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
+                <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                  {selectedWhatsappChat.leadAvatar ? (
+                    <img src={selectedWhatsappChat.leadAvatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={20} color="#475569" />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontWeight: '600', fontSize: '1rem', color: '#111b21' }}>{selectedWhatsappChat.leadName}</h3>
+                  <p style={{ fontSize: '0.75rem', color: '#667781', marginTop: '0.1rem' }}>WhatsApp · Conexão: {selectedWhatsappChat.connectionName || 'Padrão'}</p>
+                </div>
+              </div>
+
+              {/* WhatsApp Messages Area */}
+              <div style={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                minHeight: 0,
+                padding: '1.5rem 5%', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.5rem',
+                backgroundColor: '#efeae2',
+                backgroundImage: 'url("https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-solid-color-whatsapp-bg-whatsapp-dark-whatsapp-theme.jpg")',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}>
+                {whatsappMessages.map((msg, index) => {
+                  const isMe = msg.isIncoming === 0;
+                  const prevMsg = whatsappMessages[index - 1];
+                  const showTail = !prevMsg || (prevMsg.isIncoming === 0) !== isMe;
+                  const showDateSeparator = !prevMsg || new Date(prevMsg.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
+                  const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
+
+                  return (
+                    <Fragment key={msg.id || index}>
+                      {showDateSeparator && (
+                        <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+                          <span style={{ background: 'rgba(255,255,255,0.95)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#54656f', boxShadow: '0 1px 2px rgba(11,20,26,0.1)' }}>
+                            {dateLabel}
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexDirection: isMe ? 'row-reverse' : 'row', maxWidth: '85%' }}>
+                          
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                            <div 
+                              style={{
+                                position: 'relative',
+                                background: isMe ? '#dcf8c6' : 'white',
+                                color: '#111b21',
+                                padding: '0.4rem 0.5rem 0.4rem 0.6rem',
+                                borderRadius: '7.5px',
+                                borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
+                                borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
+                                maxWidth: '100%',
+                                width: 'fit-content',
+                                boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
+                                display: 'flex',
+                                flexDirection: 'column'
+                              }}
+                            >
+                              {showTail && isMe && (
+                                <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, right: '-8px', color: '#dcf8c6' }}>
+                                  <path opacity=".13" d="M5.188 1H0v11.193l6.467-8.625C7.526 2.156 6.958 1 5.188 1z"></path>
+                                  <path fill="currentColor" d="M5.188 0H0v11.193l6.467-8.625C7.526 1.156 6.958 0 5.188 0z"></path>
+                                </svg>
+                              )}
+                              {showTail && !isMe && (
+                                <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, left: '-8px', color: 'white' }}>
+                                  <path opacity=".13" fill="#0000000" d="M1.533 3.568 8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568z"></path>
+                                  <path fill="currentColor" d="M1.533 2.568 8 11.193V0H2.812C1.042 0 .474 1.156 1.533 2.568z"></path>
+                                </svg>
+                              )}
+
+                              {/* Media Render */}
+                              {msg.mediaUrl && (
+                                <div style={{ marginBottom: '0.25rem' }}>
+                                  {msg.mediaMimeType?.startsWith('audio') || msg.mediaUrl.match(/\.(webm|mp3|ogg|wav|m4a)$/i) ? (
+                                    <AudioPlayer src={msg.mediaUrl} isIncoming={!isMe} />
+                                  ) : msg.mediaMimeType?.startsWith('image') || msg.mediaUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                    <img src={msg.mediaUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.mediaUrl, '_blank')} />
+                                  ) : (
+                                    <a href={msg.mediaUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit' }}>
+                                      <FileText size={20} />
+                                      <span style={{ fontSize: '0.85rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Arquivo Anexo</span>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+
+                              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '0.9rem', lineHeight: '1.4', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                                  {msg.content}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', color: '#667781', fontSize: '0.65rem', marginBottom: '-2px', minWidth: isMe ? '45px' : 'auto', flexShrink: 0 }}>
+                                  <span style={{ marginTop: '2px' }}>{formatTime(msg.timestamp)}</span>
+                                  {isMe && <CheckCheck size={14} color="#3b82f6" style={{ marginLeft: '4px' }} />}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </Fragment>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input Footer */}
+              <footer style={{ padding: '0.5rem 1rem', background: '#f0f2f5', display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', zIndex: 10 }}>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button 
+                    ref={emojiButtonRef}
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#54656f', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Smile size={24} />
+                  </button>
+                  <button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#54656f', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Paperclip size={24} />
+                  </button>
+                </div>
+
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input 
+                    ref={inputRef}
+                    type="text" 
+                    placeholder="Digite uma mensagem" 
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSendMessage();
+                      }
+                    }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.6rem 1rem', 
+                      borderRadius: '8px', 
+                      border: 'none', 
+                      outline: 'none',
+                      fontSize: '0.95rem',
+                      background: 'white'
+                    }} 
+                  />
+                </div>
+
+                <div>
+                  {isUploading ? (
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '0.75rem' }}>...</span>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => handleSendMessage()} 
+                      style={{ 
+                        width: '40px', height: '40px', borderRadius: '50%', 
+                        background: '#00a884', color: 'white', border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0
+                      }}
+                    >
+                      <Send size={18} style={{ marginLeft: '2px' }} />
+                    </button>
+                  )}
+                </div>
+              </footer>
+            </>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#667781', flexDirection: 'column', gap: '1rem', background: '#f0f2f5' }}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: '50%', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                <MessageSquare size={48} color="#00a884" />
+              </div>
+              <h2 style={{ fontSize: '1.5rem', color: '#41525d', marginTop: '1rem', fontWeight: 300 }}>WhatsApp Interno</h2>
+              <p style={{ fontSize: '0.875rem' }}>Selecione uma conversa ao lado para iniciar.</p>
+            </div>
+          )
+        ) : selectedChat ? (
           <>
             {/* Header */}
             <div 
