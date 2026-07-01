@@ -217,6 +217,20 @@ export async function GET() {
         }
       }
 
+      // Sincronizar os nomes e avatares atuais de todos os leads nas sessões de chat
+      try {
+        console.log('Sincronizando nomes de leads nas sessões de chat...');
+        await db.prepare(`
+          UPDATE chats 
+          SET 
+            leadName = (SELECT nome FROM leads WHERE leads.id = chats.leadId),
+            leadAvatar = (SELECT avatar FROM leads WHERE leads.id = chats.leadId)
+          WHERE EXISTS (SELECT 1 FROM leads WHERE leads.id = chats.leadId)
+        `).run();
+      } catch (err) {
+        console.error('Erro ao sincronizar nomes de leads nas sessões de chat:', err);
+      }
+
     } catch (e: any) {
       console.error('Erro na normalização/mesclagem de leads/chats:', e);
     }

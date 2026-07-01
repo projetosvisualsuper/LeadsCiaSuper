@@ -213,6 +213,12 @@ export const d1Api = {
         targetId
       ];
       await executeRun(sql, params);
+
+      // Sincronizar nome e avatar nas sessões de chat vinculadas
+      const finalName = lead.nome && lead.nome !== 'Cliente' ? lead.nome : existingData.nome;
+      const finalAvatar = lead.avatar || existingData.avatar || null;
+      await executeRun(`UPDATE chats SET leadName = ?, leadAvatar = ? WHERE leadId = ?`, [finalName, finalAvatar, targetId]);
+
       lead.id = targetId;
     } else {
       // Criar Novo Lead
