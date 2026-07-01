@@ -82,28 +82,54 @@ export default function BioLinksPage() {
       // Comprensão em massa de todas as imagens antes de salvar para garantir que fique abaixo de 1MB
       const bioToSave = { ...currentBio };
       
+      const uploadBase64Image = async (base64: string, filename = 'image.jpg'): Promise<string> => {
+        const resBlob = await fetch(base64);
+        const blob = await resBlob.blob();
+        const file = new File([blob], filename, { type: blob.type });
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('chatId', 'bio');
+        
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!res.ok) throw new Error('Falha no upload da imagem');
+        const data = await res.json();
+        if (data.success && data.url) {
+          return data.url;
+        }
+        throw new Error(data.error || 'Erro desconhecido no upload');
+      };
+
       if (bioToSave.avatarUrl?.startsWith('data:image')) {
         const format = bioToSave.avatarUrl.includes('image/png') ? 'image/png' : 'image/jpeg';
-        bioToSave.avatarUrl = await compressImage(bioToSave.avatarUrl, 400, format);
+        const compressed = await compressImage(bioToSave.avatarUrl, 400, format);
+        bioToSave.avatarUrl = await uploadBase64Image(compressed, `avatar-${Date.now()}.${format === 'image/png' ? 'png' : 'jpg'}`);
       }
       
       if (bioToSave.footerLogoUrl?.startsWith('data:image')) {
-        // Usar PNG para a logo no salvamento em massa também
-        bioToSave.footerLogoUrl = await compressImage(bioToSave.footerLogoUrl, 500, 'image/png');
+        const compressed = await compressImage(bioToSave.footerLogoUrl, 500, 'image/png');
+        bioToSave.footerLogoUrl = await uploadBase64Image(compressed, `footer-${Date.now()}.png`);
       }
 
       bioToSave.items = await Promise.all(bioToSave.items.map(async item => {
         if (item.imageUrl?.startsWith('data:image')) {
           // Detectar se é PNG para manter transparência
           const format = item.imageUrl.includes('image/png') ? 'image/png' : 'image/jpeg';
-          item = { ...item, imageUrl: await compressImage(item.imageUrl, 700, format) };
+          const compressed = await compressImage(item.imageUrl, 700, format);
+          const url = await uploadBase64Image(compressed, `item-${item.id}-${Date.now()}.${format === 'image/png' ? 'png' : 'jpg'}`);
+          item = { ...item, imageUrl: url };
         }
         
         if (item.type === 'carousel' && item.carouselImages) {
-          item.carouselImages = await Promise.all(item.carouselImages.map(async img => {
+          item.carouselImages = await Promise.all(item.carouselImages.map(async (img, idx) => {
             if (img.startsWith('data:image')) {
               const format = img.includes('image/png') ? 'image/png' : 'image/jpeg';
-              return await compressImage(img, 700, format);
+              const compressed = await compressImage(img, 700, format);
+              return await uploadBase64Image(compressed, `carousel-${item.id}-${idx}-${Date.now()}.${format === 'image/png' ? 'png' : 'jpg'}`);
             }
             return img;
           }));
