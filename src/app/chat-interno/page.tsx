@@ -328,6 +328,12 @@ export default function ChatInternoPage() {
     if (messages.length > 0) scrollToBottom();
   }, [messages.length]);
 
+  useEffect(() => {
+    if (whatsappMessages.length > 0) {
+      scrollToBottom();
+    }
+  }, [whatsappMessages.length]);
+
   const handleSendWhatsappMessage = async (mediaUrl?: string, mediaMimeType?: string) => {
     if ((!newMessage.trim() && !mediaUrl) || !selectedWhatsappChat || !me) return;
 
@@ -1113,13 +1119,7 @@ export default function ChatInternoPage() {
                     }}
                   >
                     <option value="">Todas as Conexões</option>
-                    {getUniqueConnectionsForChat().map((conn: any) => (
-                      <option key={conn.id} value={conn.id}>
-                        {conn.name}
-                      </option>
-                    ))}
-                    {/* Fallback to list all connections if no unique matches in messages */}
-                    {getUniqueConnectionsForChat().length === 0 && connections.map((conn: any) => (
+                    {connections.map((conn: any) => (
                       <option key={conn.id} value={conn.id}>
                         {conn.name}
                       </option>
@@ -1145,8 +1145,8 @@ export default function ChatInternoPage() {
                 {(() => {
                   const visibleWaMessages = whatsappMessages.filter(m => {
                     if (!selectedConnectionId) return true;
-                    const msgConnId = m.connectionId || selectedWhatsappChat.connectionId;
-                    return msgConnId === selectedConnectionId;
+                    if (!m.connectionId) return true;
+                    return m.connectionId === selectedConnectionId;
                   });
                   return visibleWaMessages.map((msg, index) => {
                     const isMe = !msg.isIncoming || msg.isIncoming === 0;
