@@ -159,6 +159,7 @@ function AtendimentoContent() {
   const [filterConnection, setFilterConnection] = useState<string>('all');
   const [filterResponseTime, setFilterResponseTime] = useState<string>('all');
   const [filterContactType, setFilterContactType] = useState<string>('all'); // all | external | internal
+  const [filterUnreadOnly, setFilterUnreadOnly] = useState<boolean>(false);
 
   // Estados para Exclusão Customizada e Notificações no Sistema
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -899,7 +900,10 @@ function AtendimentoContent() {
       (filterContactType === 'internal' && chat.isInternal === 1) ||
       (filterContactType === 'external' && chat.isInternal !== 1);
 
-    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection && matchesContactType;
+    // 8. Filtro por Mensagens Não Lidas (unreadCount > 0)
+    const matchesUnreadOnly = !filterUnreadOnly || (chat.unreadCount || 0) > 0;
+
+    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection && matchesContactType && matchesUnreadOnly;
   });
 
   const getMaxUnansweredTime = () => {
@@ -1062,27 +1066,70 @@ function AtendimentoContent() {
               ))}
             </select>
 
-            <div style={{ 
-              flex: 1, 
-              padding: '0.45rem 0.75rem', 
-              borderRadius: '8px', 
-              border: '1px solid', 
-              borderColor: maxUnansweredTimeStr === 'Respondido' ? '#e2e8f0' : 'rgba(239, 68, 68, 0.2)', 
-              fontSize: '0.8rem', 
-              fontWeight: 600, 
-              color: maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444',
-              background: maxUnansweredTimeStr === 'Respondido' ? '#f8fafc' : 'rgba(239, 68, 68, 0.05)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.35rem',
-              whiteSpace: 'nowrap',
-              height: '34px',
-              boxSizing: 'border-box'
-            }} title="Maior tempo sem resposta da lista atual">
-              <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
-              <span>Espera: <strong>{maxUnansweredTimeStr}</strong></span>
-            </div>
+            <button
+              onClick={() => setFilterUnread(!filterUnread)}
+              style={{
+                flex: 1,
+                padding: '0.45rem 0.75rem',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: filterUnread ? 'var(--primary)' : '#e2e8f0',
+                background: filterUnread ? 'rgba(99, 102, 241, 0.1)' : '#f8fafc',
+                color: filterUnread ? 'var(--primary)' : '#475569',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+                height: '34px',
+                boxSizing: 'border-box'
+              }}
+            >
+              Não respondidas
+              {chats.filter(c => c.lastMessageIsIncoming === 1).length > 0 && (
+                <span style={{ 
+                  background: 'var(--primary)', 
+                  color: 'white', 
+                  fontSize: '0.65rem', 
+                  borderRadius: '50%', 
+                  width: '16px', 
+                  height: '16px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontWeight: 800
+                }}>
+                  {chats.filter(c => c.lastMessageIsIncoming === 1).length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div style={{ 
+            padding: '0.45rem 0.75rem', 
+            borderRadius: '8px', 
+            border: '1px solid', 
+            borderColor: maxUnansweredTimeStr === 'Respondido' ? '#e2e8f0' : 'rgba(239, 68, 68, 0.2)', 
+            fontSize: '0.8rem', 
+            fontWeight: 600, 
+            color: maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444',
+            background: maxUnansweredTimeStr === 'Respondido' ? '#f8fafc' : 'rgba(239, 68, 68, 0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.35rem',
+            whiteSpace: 'nowrap',
+            height: '34px',
+            boxSizing: 'border-box',
+            marginBottom: '0.75rem',
+            width: '100%'
+          }} title="Maior tempo sem resposta da lista atual">
+            <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
+            <span>Espera: <strong>{maxUnansweredTimeStr}</strong></span>
           </div>
 
           <div style={{ position: 'relative' }}>
@@ -1204,15 +1251,15 @@ function AtendimentoContent() {
             </select>
 
             <button
-              onClick={() => setFilterUnread(!filterUnread)}
+              onClick={() => setFilterUnreadOnly(!filterUnreadOnly)}
               style={{
                 flex: 1,
                 padding: '0.45rem 0.75rem',
                 borderRadius: '8px',
                 border: '1px solid',
-                borderColor: filterUnread ? 'var(--primary)' : '#e2e8f0',
-                background: filterUnread ? 'rgba(99, 102, 241, 0.1)' : '#f8fafc',
-                color: filterUnread ? 'var(--primary)' : '#475569',
+                borderColor: filterUnreadOnly ? '#22c55e' : '#e2e8f0',
+                background: filterUnreadOnly ? 'rgba(34, 197, 94, 0.1)' : '#f8fafc',
+                color: filterUnreadOnly ? '#22c55e' : '#475569',
                 fontSize: '0.8rem',
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -1226,10 +1273,10 @@ function AtendimentoContent() {
                 boxSizing: 'border-box'
               }}
             >
-              Não respondidas
-              {chats.filter(c => c.lastMessageIsIncoming === 1).length > 0 && (
+              Não lidas
+              {chats.filter(c => (c.unreadCount || 0) > 0).length > 0 && (
                 <span style={{ 
-                  background: 'var(--primary)', 
+                  background: '#22c55e', 
                   color: 'white', 
                   fontSize: '0.65rem', 
                   borderRadius: '50%', 
@@ -1240,7 +1287,7 @@ function AtendimentoContent() {
                   justifyContent: 'center',
                   fontWeight: 800
                 }}>
-                  {chats.filter(c => c.lastMessageIsIncoming === 1).length}
+                  {chats.filter(c => (c.unreadCount || 0) > 0).length}
                 </span>
               )}
             </button>
