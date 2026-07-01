@@ -516,7 +516,8 @@ export async function POST(req: NextRequest) {
         leadId,
         leadName,
         mediaUrl,
-        mediaMimeType
+        mediaMimeType,
+        connectionId
       });
 
       // 6. Autoresponder (Apenas se for uma nova sessão e a mensagem for recebida)

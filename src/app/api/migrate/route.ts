@@ -88,6 +88,10 @@ export async function GET() {
     } catch (e) { console.log('Coluna avatarUrl em users já existe ou erro:', e); }
 
     try {
+      await db.prepare(`ALTER TABLE messages ADD COLUMN connectionId TEXT`).run();
+    } catch (e) { console.log('Coluna connectionId em messages já existe ou erro:', e); }
+
+    try {
       await db.prepare(`ALTER TABLE chats ADD COLUMN isInternal INTEGER DEFAULT 0`).run();
     } catch (e) { console.log('Coluna isInternal em chats já existe ou erro:', e); }
 

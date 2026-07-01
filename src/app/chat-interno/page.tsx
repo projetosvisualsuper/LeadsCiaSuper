@@ -66,6 +66,8 @@ export default function ChatInternoPage() {
   const [whatsappChats, setWhatsappChats] = useState<any[]>([]);
   const [selectedWhatsappChat, setSelectedWhatsappChat] = useState<any | null>(null);
   const [whatsappMessages, setWhatsappMessages] = useState<any[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
   
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatType, setNewChatType] = useState<'direct'|'group'>('direct');
@@ -238,6 +240,13 @@ export default function ChatInternoPage() {
         if (updatedChat) setSelectedChat(updatedChat);
       }
 
+      // Buscar conexões do WhatsApp
+      const connRes = await fetch('/api/chats?type=connections');
+      if (connRes.ok) {
+        const connList = await connRes.json();
+        setConnections(connList || []);
+      }
+
       // Buscar conversas internas de WhatsApp
       const waRes = await fetch(`/api/chats?t=${Date.now()}`);
       if (waRes.ok) {
@@ -290,6 +299,25 @@ export default function ChatInternoPage() {
     }
   };
 
+  useEffect(() => {
+    if (selectedWhatsappChat) {
+      setSelectedConnectionId(selectedWhatsappChat.connectionId || '');
+    }
+  }, [selectedWhatsappChat]);
+
+  const getUniqueConnectionsForChat = () => {
+    const ids = new Set<string>();
+    if (selectedWhatsappChat?.connectionId) {
+      ids.add(selectedWhatsappChat.connectionId);
+    }
+    whatsappMessages.forEach(m => {
+      if (m.connectionId) {
+        ids.add(m.connectionId);
+      }
+    });
+    return connections.filter(conn => ids.has(conn.id));
+  };
+
   const scrollToBottom = () => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -312,7 +340,8 @@ export default function ChatInternoPage() {
         mediaUrl: mediaUrl || null,
         mediaMimeType: mediaMimeType || null,
         senderId: 'vendedor',
-        senderName: me.name || me.email || 'Vendedor'
+        senderName: me.name || me.email || 'Vendedor',
+        connectionId: selectedConnectionId || selectedWhatsappChat.connectionId
       };
 
       // Optimistic update
@@ -1060,7 +1089,42 @@ export default function ChatInternoPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontWeight: '600', fontSize: '1rem', color: '#111b21' }}>{selectedWhatsappChat.leadName}</h3>
-                  <p style={{ fontSize: '0.75rem', color: '#667781', marginTop: '0.1rem' }}>WhatsApp · Conexão: {selectedWhatsappChat.connectionName || 'Padrão'}</p>
+                  <p style={{ fontSize: '0.75rem', color: '#667781', marginTop: '0.1rem' }}>
+                    WhatsApp · Conexão Atual: {connections.find(c => c.id === selectedConnectionId)?.name || selectedWhatsappChat.connectionName || 'Padrão'}
+                  </p>
+                </div>
+                {/* Lista suspensa para trocar de conexão interna */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#54656f', fontWeight: 600 }}>Com quem:</span>
+                  <select
+                    value={selectedConnectionId || ''}
+                    onChange={(e) => setSelectedConnectionId(e.target.value)}
+                    style={{
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: '#1e293b',
+                      background: 'white',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <option value="">Todas as Conexões</option>
+                    {getUniqueConnectionsForChat().map((conn: any) => (
+                      <option key={conn.id} value={conn.id}>
+                        {conn.name}
+                      </option>
+                    ))}
+                    {/* Fallback to list all connections if no unique matches in messages */}
+                    {getUniqueConnectionsForChat().length === 0 && connections.map((conn: any) => (
+                      <option key={conn.id} value={conn.id}>
+                        {conn.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1078,89 +1142,96 @@ export default function ChatInternoPage() {
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }}>
-                {whatsappMessages.map((msg, index) => {
-                  const isMe = msg.isIncoming === 0;
-                  const prevMsg = whatsappMessages[index - 1];
-                  const showTail = !prevMsg || (prevMsg.isIncoming === 0) !== isMe;
-                  const showDateSeparator = !prevMsg || new Date(prevMsg.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
-                  const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
+                {(() => {
+                  const visibleWaMessages = whatsappMessages.filter(m => {
+                    if (!selectedConnectionId) return true;
+                    const msgConnId = m.connectionId || selectedWhatsappChat.connectionId;
+                    return msgConnId === selectedConnectionId;
+                  });
+                  return visibleWaMessages.map((msg, index) => {
+                    const isMe = msg.isIncoming === 0;
+                    const prevMsg = visibleWaMessages[index - 1];
+                    const showTail = !prevMsg || (prevMsg.isIncoming === 0) !== isMe;
+                    const showDateSeparator = !prevMsg || new Date(prevMsg.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
+                    const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
 
-                  return (
-                    <Fragment key={msg.id || index}>
-                      {showDateSeparator && (
-                        <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
-                          <span style={{ background: 'rgba(255,255,255,0.95)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#54656f', boxShadow: '0 1px 2px rgba(11,20,26,0.1)' }}>
-                            {dateLabel}
-                          </span>
-                        </div>
-                      )}
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px', width: '100%' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexDirection: isMe ? 'row-reverse' : 'row', maxWidth: '85%' }}>
-                          
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                            <div 
-                              style={{
-                                position: 'relative',
-                                background: isMe ? '#dcf8c6' : 'white',
-                                color: '#111b21',
-                                padding: '0.4rem 0.5rem 0.4rem 0.6rem',
-                                borderRadius: '7.5px',
-                                borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
-                                borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
-                                maxWidth: '100%',
-                                width: 'fit-content',
-                                boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
-                                display: 'flex',
-                                flexDirection: 'column'
-                              }}
-                            >
-                              {showTail && isMe && (
-                                <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, right: '-8px', color: '#dcf8c6' }}>
-                                  <path opacity=".13" d="M5.188 1H0v11.193l6.467-8.625C7.526 2.156 6.958 1 5.188 1z"></path>
-                                  <path fill="currentColor" d="M5.188 0H0v11.193l6.467-8.625C7.526 1.156 6.958 0 5.188 0z"></path>
-                                </svg>
-                              )}
-                              {showTail && !isMe && (
-                                <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, left: '-8px', color: 'white' }}>
-                                  <path opacity=".13" fill="#0000000" d="M1.533 3.568 8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568z"></path>
-                                  <path fill="currentColor" d="M1.533 2.568 8 11.193V0H2.812C1.042 0 .474 1.156 1.533 2.568z"></path>
-                                </svg>
-                              )}
+                    return (
+                      <Fragment key={msg.id || index}>
+                        {showDateSeparator && (
+                          <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+                            <span style={{ background: 'rgba(255,255,255,0.95)', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#54656f', boxShadow: '0 1px 2px rgba(11,20,26,0.1)' }}>
+                              {dateLabel}
+                            </span>
+                          </div>
+                        )}
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom: showTail ? '0.5rem' : '1px', width: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexDirection: isMe ? 'row-reverse' : 'row', maxWidth: '85%' }}>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                              <div 
+                                style={{
+                                  position: 'relative',
+                                  background: isMe ? '#dcf8c6' : 'white',
+                                  color: '#111b21',
+                                  padding: '0.4rem 0.5rem 0.4rem 0.6rem',
+                                  borderRadius: '7.5px',
+                                  borderTopRightRadius: isMe && showTail ? 0 : '7.5px',
+                                  borderTopLeftRadius: !isMe && showTail ? 0 : '7.5px',
+                                  maxWidth: '100%',
+                                  width: 'fit-content',
+                                  boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
+                                  display: 'flex',
+                                  flexDirection: 'column'
+                                }}
+                              >
+                                {showTail && isMe && (
+                                  <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, right: '-8px', color: '#dcf8c6' }}>
+                                    <path opacity=".13" d="M5.188 1H0v11.193l6.467-8.625C7.526 2.156 6.958 1 5.188 1z"></path>
+                                    <path fill="currentColor" d="M5.188 0H0v11.193l6.467-8.625C7.526 1.156 6.958 0 5.188 0z"></path>
+                                  </svg>
+                                )}
+                                {showTail && !isMe && (
+                                  <svg viewBox="0 0 8 13" width="8" height="13" style={{ position: 'absolute', top: 0, left: '-8px', color: 'white' }}>
+                                    <path opacity=".13" fill="#0000000" d="M1.533 3.568 8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568z"></path>
+                                    <path fill="currentColor" d="M1.533 2.568 8 11.193V0H2.812C1.042 0 .474 1.156 1.533 2.568z"></path>
+                                  </svg>
+                                )}
 
-                              {/* Media Render */}
-                              {msg.mediaUrl && (
-                                <div style={{ marginBottom: '0.25rem' }}>
-                                  {msg.mediaMimeType?.startsWith('audio') || msg.mediaUrl.match(/\.(webm|mp3|ogg|wav|m4a)$/i) ? (
-                                    <AudioPlayer src={msg.mediaUrl} isIncoming={!isMe} />
-                                  ) : msg.mediaMimeType?.startsWith('image') || msg.mediaUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                                    <img src={msg.mediaUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.mediaUrl, '_blank')} />
-                                  ) : (
-                                    <a href={msg.mediaUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit' }}>
-                                      <FileText size={20} />
-                                      <span style={{ fontSize: '0.85rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Arquivo Anexo</span>
-                                    </a>
-                                  )}
-                                </div>
-                              )}
+                                {/* Media Render */}
+                                {msg.mediaUrl && (
+                                  <div style={{ marginBottom: '0.25rem' }}>
+                                    {msg.mediaMimeType?.startsWith('audio') || msg.mediaUrl.match(/\.(webm|mp3|ogg|wav|m4a)$/i) ? (
+                                      <AudioPlayer src={msg.mediaUrl} isIncoming={!isMe} />
+                                    ) : msg.mediaMimeType?.startsWith('image') || msg.mediaUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                      <img src={msg.mediaUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.mediaUrl, '_blank')} />
+                                    ) : (
+                                      <a href={msg.mediaUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit' }}>
+                                        <FileText size={20} />
+                                        <span style={{ fontSize: '0.85rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Arquivo Anexo</span>
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
 
-                              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                <span style={{ fontSize: '0.9rem', lineHeight: '1.4', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                                  {msg.content}
-                                </span>
-                                <div style={{ display: 'flex', alignItems: 'center', color: '#667781', fontSize: '0.65rem', marginBottom: '-2px', minWidth: isMe ? '45px' : 'auto', flexShrink: 0 }}>
-                                  <span style={{ marginTop: '2px' }}>{formatTime(msg.timestamp)}</span>
-                                  {isMe && <CheckCheck size={14} color="#3b82f6" style={{ marginLeft: '4px' }} />}
+                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.9rem', lineHeight: '1.4', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                                    {msg.content}
+                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'center', color: '#667781', fontSize: '0.65rem', marginBottom: '-2px', minWidth: isMe ? '45px' : 'auto', flexShrink: 0 }}>
+                                    <span style={{ marginTop: '2px' }}>{formatTime(msg.timestamp)}</span>
+                                    {isMe && <CheckCheck size={14} color="#3b82f6" style={{ marginLeft: '4px' }} />}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
 
+                          </div>
                         </div>
-                      </div>
-                    </Fragment>
-                  );
-                })}
+                      </Fragment>
+                    );
+                  });
+                })()}
                 <div ref={messagesEndRef} />
               </div>
 

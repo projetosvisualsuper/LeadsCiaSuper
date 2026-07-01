@@ -834,8 +834,8 @@ export const d1Api = {
 
     const messageId = message.id || Math.random().toString(36).substr(2, 9);
     const sqlMsg = `
-      INSERT INTO messages (id, chatId, senderId, senderName, content, timestamp, type, status, isIncoming, mediaUrl, mediaMimeType, quotedMessageId, quotedMessageSender, quotedMessageContent)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (id, chatId, senderId, senderName, content, timestamp, type, status, isIncoming, mediaUrl, mediaMimeType, quotedMessageId, quotedMessageSender, quotedMessageContent, connectionId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const paramsMsg = [
       messageId,
@@ -851,7 +851,8 @@ export const d1Api = {
       message.mediaMimeType || null,
       message.quotedMessageId || null,
       message.quotedMessageSender || null,
-      message.quotedMessageContent || null
+      message.quotedMessageContent || null,
+      message.connectionId || null
     ];
     await executeRun(sqlMsg, paramsMsg);
 
