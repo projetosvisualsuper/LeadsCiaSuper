@@ -426,6 +426,11 @@ export async function POST(req: NextRequest) {
           dataCriacao: timestampIso
         };
         await d1Api.saveChatSession(newChat);
+
+        // Também salvar o avatar na tabela de leads
+        if (leadAvatar) {
+          await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [leadAvatar, leadId]);
+        }
       } else {
         // Atualizar sessão existente
         let unreadCount = isFromMe ? 0 : (matchedChat.unreadCount || 0) + 1;
@@ -455,6 +460,8 @@ export async function POST(req: NextRequest) {
                 const picData = await picRes.json();
                 if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
                   leadAvatar = picData.profilePictureUrl;
+                  // Atualizar avatar na tabela de leads
+                  await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [leadAvatar, matchedChat.leadId]);
                 }
               }
             }

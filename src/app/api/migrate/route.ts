@@ -231,6 +231,54 @@ export async function GET() {
         console.error('Erro ao sincronizar nomes de leads nas sessões de chat:', err);
       }
 
+      // Tentar restaurar avatares ausentes chamando a API do Evolution para todos os chats ativos
+      try {
+        console.log('Iniciando restauração de avatares ausentes via Evolution API...');
+        const settingsQuery = await db.prepare(`SELECT valueJson FROM settings WHERE key = 'omnichannel'`).first();
+        const settings = settingsQuery ? JSON.parse(settingsQuery.valueJson) : {};
+        const apiUrl = settings?.evolutionApiUrl || '';
+        const apiKey = settings?.evolutionApiKey || '';
+        
+        if (apiUrl && apiKey) {
+          const connectionsQuery = await db.prepare(`SELECT id, name, evolutionInstanceName FROM whatsapp_connections`).all();
+          const connections = connectionsQuery.results || [];
+          
+          const chatsQuery = await db.prepare(`SELECT id, leadId, connectionId, connectionName FROM chats WHERE id LIKE 'whatsapp_%' AND (leadAvatar IS NULL OR leadAvatar = '')`).all();
+          const chatsToRestore = chatsQuery.results || [];
+          
+          console.log(`Restaurando fotos de perfil para ${chatsToRestore.length} chats...`);
+          
+          for (const chat of chatsToRestore) {
+            const rawPhone = chat.id.substring('whatsapp_'.length);
+            const conn = connections.find(c => c.id === chat.connectionId || c.name === chat.connectionName);
+            const instanceName = conn ? conn.evolutionInstanceName : (chat.connectionName || '');
+            
+            if (instanceName) {
+              try {
+                const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                  body: JSON.stringify({ number: rawPhone })
+                });
+                if (picRes.ok) {
+                  const picData = await picRes.json();
+                  if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
+                    const avatarUrl = picData.profilePictureUrl;
+                    await db.prepare(`UPDATE chats SET leadAvatar = ? WHERE id = ?`).bind(avatarUrl, chat.id).run();
+                    await db.prepare(`UPDATE leads SET avatar = ? WHERE id = ?`).bind(avatarUrl, chat.leadId).run();
+                    console.log(`Foto de perfil restaurada para ${chat.id}: ${avatarUrl}`);
+                  }
+                }
+              } catch (e) {
+                console.log(`Erro ao restaurar avatar para o chat ${chat.id}:`, e);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao restaurar avatares ausentes:', err);
+      }
+
     } catch (e: any) {
       console.error('Erro na normalização/mesclagem de leads/chats:', e);
     }
