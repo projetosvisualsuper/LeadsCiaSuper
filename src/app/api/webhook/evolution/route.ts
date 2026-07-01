@@ -396,7 +396,7 @@ export async function POST(req: NextRequest) {
               const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                body: JSON.stringify({ number: with9 }) // Usar o número limpo com 9
+                body: JSON.stringify({ number: `${with9}@s.whatsapp.net` }) // Usar o JID completo com 9
               });
               if (picRes.ok) {
                 const picData = await picRes.json();
@@ -454,7 +454,7 @@ export async function POST(req: NextRequest) {
               const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                body: JSON.stringify({ number: with9 }) // Usar o número limpo com 9
+                body: JSON.stringify({ number: `${with9}@s.whatsapp.net` }) // Usar o JID completo com 9
               });
               if (picRes.ok) {
                 const picData = await picRes.json();

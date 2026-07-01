@@ -258,7 +258,7 @@ export async function GET() {
                 const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                  body: JSON.stringify({ number: rawPhone })
+                  body: JSON.stringify({ number: `${rawPhone}@s.whatsapp.net` })
                 });
                 if (picRes.ok) {
                   const picData = await picRes.json();
