@@ -375,8 +375,8 @@ export default function BioLinksPage() {
           transform: `translateX(-${currentIndex * 100}%)`,
         }}>
           {images.map((img, idx) => (
-            <div key={idx} style={{ width: '100%', flexShrink: 0, aspectRatio: '1/1' }}>
-              <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Carousel" />
+            <div key={idx} style={{ width: '100%', flexShrink: 0, aspectRatio: '1/1', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src={img} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Carousel" />
             </div>
           ))}
         </div>
