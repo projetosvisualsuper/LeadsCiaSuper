@@ -62,7 +62,7 @@ export default function ChatInternoPage() {
   const [loading, setLoading] = useState(true);
 
   // Estados para WhatsApp Interno
-  const [activeTab, setActiveTab] = useState<'system' | 'whatsapp'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'whatsapp'>('whatsapp');
   const [whatsappChats, setWhatsappChats] = useState<any[]>([]);
   const [selectedWhatsappChat, setSelectedWhatsappChat] = useState<any | null>(null);
   const [whatsappMessages, setWhatsappMessages] = useState<any[]>([]);
@@ -858,22 +858,6 @@ export default function ChatInternoPage() {
         {/* Tab Buttons Selector */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: '#f8fafc' }}>
           <button 
-            onClick={() => { setActiveTab('system'); setSelectedWhatsappChat(null); }}
-            style={{ 
-              flex: 1, 
-              padding: '0.75rem', 
-              border: 'none', 
-              background: activeTab === 'system' ? 'white' : 'transparent',
-              borderBottom: activeTab === 'system' ? '2px solid var(--primary)' : 'none',
-              fontWeight: activeTab === 'system' ? 'bold' : 'normal',
-              color: activeTab === 'system' ? 'var(--primary)' : '#64748b',
-              cursor: 'pointer',
-              fontSize: '0.85rem'
-            }}
-          >
-            Chat do Sistema
-          </button>
-          <button 
             onClick={() => { setActiveTab('whatsapp'); setSelectedChat(null); }}
             style={{ 
               flex: 1, 
@@ -888,6 +872,22 @@ export default function ChatInternoPage() {
             }}
           >
             WhatsApp Interno
+          </button>
+          <button 
+            onClick={() => { setActiveTab('system'); setSelectedWhatsappChat(null); }}
+            style={{ 
+              flex: 1, 
+              padding: '0.75rem', 
+              border: 'none', 
+              background: activeTab === 'system' ? 'white' : 'transparent',
+              borderBottom: activeTab === 'system' ? '2px solid var(--primary)' : 'none',
+              fontWeight: activeTab === 'system' ? 'bold' : 'normal',
+              color: activeTab === 'system' ? 'var(--primary)' : '#64748b',
+              cursor: 'pointer',
+              fontSize: '0.85rem'
+            }}
+          >
+            Chat do Sistema
           </button>
         </div>
 
@@ -1149,9 +1149,9 @@ export default function ChatInternoPage() {
                     return msgConnId === selectedConnectionId;
                   });
                   return visibleWaMessages.map((msg, index) => {
-                    const isMe = msg.isIncoming === 0;
+                    const isMe = !msg.isIncoming || msg.isIncoming === 0;
                     const prevMsg = visibleWaMessages[index - 1];
-                    const showTail = !prevMsg || (prevMsg.isIncoming === 0) !== isMe;
+                    const showTail = !prevMsg || (!prevMsg.isIncoming || prevMsg.isIncoming === 0) !== isMe;
                     const showDateSeparator = !prevMsg || new Date(prevMsg.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
                     const dateLabel = showDateSeparator ? formatMessageDate(msg.timestamp) : '';
 
