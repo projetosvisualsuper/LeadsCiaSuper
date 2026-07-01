@@ -12,6 +12,7 @@ import {
   Paperclip, 
   MessageCircle, 
   User, 
+  Users,
   CheckCheck, 
   Clock, 
   Hash, 
@@ -734,6 +735,30 @@ function AtendimentoContent() {
     }
   };
 
+  const handleToggleInternalContact = async () => {
+    if (!selectedChatId || !activeChat) return;
+    const newIsInternal = activeChat.isInternal === 1 ? 0 : 1;
+    try {
+      // Optimistically update frontend state
+      setChats(prev => prev.map(chat => 
+        chat.id === selectedChatId 
+          ? { ...chat, isInternal: newIsInternal } 
+          : chat
+      ));
+      
+      await fetch('/api/chats', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedChatId, isInternal: newIsInternal })
+      });
+      setShowChatMenu(false);
+      showAlert(newIsInternal === 1 ? 'Contato marcado como interno!' : 'Contato marcado como externo!', 'success');
+    } catch (err) {
+      console.error('Erro ao alternar tipo de contato:', err);
+      showAlert('Erro ao alterar tipo do contato.', 'error');
+    }
+  };
+
   const handleChangeChatConnection = async (connId: string) => {
     if (!selectedChatId) return;
     const conn = connections.find((c: any) => c.id === connId);
@@ -1287,7 +1312,14 @@ function AtendimentoContent() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', alignItems: 'center' }}>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, color: (chat.unreadCount || 0) > 0 ? '#1e293b' : 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.leadName}</h4>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, color: (chat.unreadCount || 0) > 0 ? '#1e293b' : 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      {chat.leadName}
+                      {chat.isInternal === 1 && (
+                        <span style={{ fontSize: '0.6rem', background: '#dbeafe', color: '#1e40af', padding: '0px 3px', borderRadius: '3px', fontWeight: 600, lineHeight: 1 }}>
+                          Int
+                        </span>
+                      )}
+                    </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                       <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400, color: (chat.unreadCount || 0) > 0 ? '#22c55e' : 'inherit' }}>
                         {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -1434,7 +1466,14 @@ function AtendimentoContent() {
                   )}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <h3 className="chat-lead-name">{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <h3 className="chat-lead-name" style={{ margin: 0 }}>{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
+                    {activeChat?.isInternal === 1 && (
+                      <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                        Interno
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
@@ -1506,6 +1545,13 @@ function AtendimentoContent() {
                           <CheckCheck size={14} color="#10b981" /> Marcar como Respondido
                         </button>
                       )}
+                      <button 
+                        onClick={handleToggleInternalContact}
+                        style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: activeChat?.isInternal === 1 ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
+                      >
+                        <Users size={14} color={activeChat?.isInternal === 1 ? '#3b82f6' : '#64748b'} />
+                        {activeChat?.isInternal === 1 ? 'Marcar como Externo' : 'Marcar como Interno'}
+                      </button>
                       <button 
                         onClick={handleArchiveChat}
                         style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}

@@ -380,6 +380,7 @@ export interface ChatSession {
   lastVideoId?: string; // ID do vídeo (para o YouTube)
   dataCriacao: string;
   lastMessageIsIncoming?: number;
+  isInternal?: number;
 }
 
 export interface InternalChat {

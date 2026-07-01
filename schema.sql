@@ -154,7 +154,8 @@ CREATE TABLE IF NOT EXISTS chats (
   assignedTo TEXT,
   lastPlatformMessageId TEXT,
   lastVideoId TEXT,
-  dataCriacao TEXT NOT NULL
+  dataCriacao TEXT NOT NULL,
+  isInternal INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS messages (

@@ -104,6 +104,9 @@ export default function Dashboard() {
     system: 0
   });
 
+  // Filtro de tempo de resposta: 'all' | 'external' | 'internal'
+  const [responseTimeFilter, setResponseTimeFilter] = useState<'all' | 'external' | 'internal'>('all');
+
   // Estado para métricas de tempo de resposta
   const [responseTimeStats, setResponseTimeStats] = useState({
     avgResponseMs: 0,         // Média em milissegundos
@@ -159,12 +162,19 @@ export default function Dashboard() {
         });
 
         // --- Calcular Tempo de Resposta ---
+        let filterCond = '';
+        if (responseTimeFilter === 'external') {
+          filterCond = 'AND (c.isInternal IS NULL OR c.isInternal = 0)';
+        } else if (responseTimeFilter === 'internal') {
+          filterCond = 'AND c.isInternal = 1';
+        }
+
         // Busca a primeira mensagem de saída (isIncoming=0) por chat
         const { results: responseData } = await api.runQuery(
           `SELECT m.chatId, MIN(m.timestamp) as firstResponseAt, c.dataCriacao as chatCreatedAt, c.leadName
            FROM messages m
            JOIN chats c ON c.id = m.chatId
-           WHERE m.isIncoming = 0
+           WHERE m.isIncoming = 0 ${filterCond}
            GROUP BY m.chatId`
         );
 
@@ -172,7 +182,7 @@ export default function Dashboard() {
         const { results: noResponseData } = await api.runQuery(
           `SELECT c.id, c.leadName, c.dataCriacao
            FROM chats c
-           WHERE c.status = 'active'
+           WHERE c.status = 'active' ${filterCond}
            AND c.id NOT IN (
              SELECT DISTINCT chatId FROM messages WHERE isIncoming = 0
            )
@@ -213,7 +223,7 @@ export default function Dashboard() {
     };
 
     fetchLPData();
-  }, [isChannelsModalOpen]);
+  }, [isChannelsModalOpen, responseTimeFilter]);
 
   // Carregar estatísticas com suporte a Cache (TTL de 2 minutos)
   const fetchAll = async (forceRefresh = false) => {
@@ -1026,9 +1036,30 @@ export default function Dashboard() {
                       position: 'relative',
                       overflow: 'hidden'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                        <span style={{ fontSize: '0.9rem' }}>⚡</span>
-                        <h5 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', letterSpacing: '0.05em' }}>Tempo Médio de Resposta</h5>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontSize: '0.9rem' }}>⚡</span>
+                          <h5 style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', letterSpacing: '0.05em', margin: 0 }}>Tempo Médio de Resposta</h5>
+                        </div>
+                        <select 
+                          value={responseTimeFilter}
+                          onChange={(e) => setResponseTimeFilter(e.target.value as any)}
+                          style={{
+                            background: '#1f2937',
+                            border: '1px solid #374151',
+                            color: '#f3f4f6',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            borderRadius: '6px',
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                            outline: 'none'
+                          }}
+                        >
+                          <option value="all">Todos</option>
+                          <option value="external">Externos</option>
+                          <option value="internal">Internos</option>
+                        </select>
                       </div>
                       <p style={{ fontSize: '1.75rem', fontWeight: 800, color: responseTimeStats.avgResponseMs === 0 ? '#6b7280' : '#10b981', lineHeight: '1.1' }}>
                         {formatDuration(responseTimeStats.avgResponseMs)}

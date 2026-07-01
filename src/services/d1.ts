@@ -888,13 +888,13 @@ export const d1Api = {
 
   saveChatSession: async (session: any): Promise<any> => {
     const sql = `
-      INSERT INTO chats (id, leadId, leadName, leadAvatar, channel, connectionId, connectionName, lastMessage, lastTimestamp, unreadCount, status, dataCriacao)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO chats (id, leadId, leadName, leadAvatar, channel, connectionId, connectionName, lastMessage, lastTimestamp, unreadCount, status, dataCriacao, isInternal)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         leadName = excluded.leadName, leadAvatar = excluded.leadAvatar, channel = excluded.channel,
         connectionId = excluded.connectionId, connectionName = excluded.connectionName,
         lastMessage = excluded.lastMessage, lastTimestamp = excluded.lastTimestamp,
-        unreadCount = excluded.unreadCount, status = excluded.status
+        unreadCount = excluded.unreadCount, status = excluded.status, isInternal = excluded.isInternal
     `;
     const params = [
       session.id,
@@ -908,7 +908,8 @@ export const d1Api = {
       session.lastTimestamp || null,
       session.unreadCount || 0,
       session.status || 'active',
-      session.dataCriacao || new Date().toISOString()
+      session.dataCriacao || new Date().toISOString(),
+      session.isInternal || 0
     ];
     await executeRun(sql, params);
     return session;

@@ -87,6 +87,10 @@ export async function GET() {
       await db.prepare(`ALTER TABLE users ADD COLUMN avatarUrl TEXT`).run();
     } catch (e) { console.log('Coluna avatarUrl em users já existe ou erro:', e); }
 
+    try {
+      await db.prepare(`ALTER TABLE chats ADD COLUMN isInternal INTEGER DEFAULT 0`).run();
+    } catch (e) { console.log('Coluna isInternal em chats já existe ou erro:', e); }
+
     // Limpeza de chats de teste anteriores a hoje (30 de Junho de 2026)
     try {
       await db.prepare(`UPDATE messages SET isIncoming = 0 WHERE timestamp < '2026-06-30T00:00:00'`).run();
