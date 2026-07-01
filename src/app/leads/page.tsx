@@ -105,6 +105,10 @@ function LeadsContent() {
       }));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -473,10 +477,10 @@ function LeadsContent() {
       (lead.celular || '').includes(searchTerm);
 
     // Filtros
-    const matchesStatus = !filters.status || lead.status === filters.status;
-    const matchesOrigem = !filters.origem || lead.origem === filters.origem;
-    const matchesEstado = !filters.estado || lead.estado === filters.estado;
-    const matchesTag = !filters.tag || (lead.tags && lead.tags.includes(filters.tag));
+    const matchesStatus = !filters.status || String(lead.status || '').toLowerCase() === filters.status.toLowerCase();
+    const matchesOrigem = !filters.origem || String(lead.origem || '').toLowerCase() === filters.origem.toLowerCase();
+    const matchesEstado = !filters.estado || String(lead.estado || '').toLowerCase() === filters.estado.toLowerCase();
+    const matchesTag = !filters.tag || (lead.tags && lead.tags.some(t => String(t || '').toLowerCase() === filters.tag.toLowerCase()));
 
     // Filtro por canal de entrada
     let matchesCanal = true;

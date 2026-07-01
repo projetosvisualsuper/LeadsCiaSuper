@@ -152,7 +152,9 @@ function AtendimentoContent() {
   const [filterChannel, setFilterChannel] = useState<string>('all');
   const [filterUnread, setFilterUnread] = useState<boolean>(false);
   const [filterStatus, setFilterStatus] = useState<string>('active'); // active | archived | all
-  const [filterPeriod, setFilterPeriod] = useState<string>('all'); // all | today | 7d | 30d
+  const [filterPeriod, setFilterPeriod] = useState<string>('all'); // all | today | 7d | 30d | custom
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [filterConnection, setFilterConnection] = useState<string>('all');
   const [filterResponseTime, setFilterResponseTime] = useState<string>('all');
 
@@ -848,6 +850,17 @@ function AtendimentoContent() {
         limitDate.setDate(now.getDate() - 30);
         return chatDate >= limitDate;
       }
+      if (filterPeriod === 'custom') {
+        if (customStartDate) {
+          const start = new Date(customStartDate + 'T00:00:00');
+          if (chatDate < start) return false;
+        }
+        if (customEndDate) {
+          const end = new Date(customEndDate + 'T23:59:59');
+          if (chatDate > end) return false;
+        }
+        return true;
+      }
       return true;
     })();
 
@@ -1155,6 +1168,7 @@ function AtendimentoContent() {
               <option value="today">Hoje</option>
               <option value="7d">Últimos 7 dias</option>
               <option value="30d">Últimos 30 dias</option>
+              <option value="custom">Período personalizado</option>
             </select>
 
             <button
@@ -1199,6 +1213,44 @@ function AtendimentoContent() {
               )}
             </button>
           </div>
+
+          {filterPeriod === 'custom' && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
+              <input 
+                type="date" 
+                value={customStartDate}
+                onChange={e => setCustomStartDate(e.target.value)}
+                style={{ 
+                  flex: 1, 
+                  padding: '0.45rem 0.5rem', 
+                  borderRadius: '8px', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '0.8rem', 
+                  color: '#475569',
+                  background: '#f8fafc',
+                  height: '34px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>até</span>
+              <input 
+                type="date" 
+                value={customEndDate}
+                onChange={e => setCustomEndDate(e.target.value)}
+                style={{ 
+                  flex: 1, 
+                  padding: '0.45rem 0.5rem', 
+                  borderRadius: '8px', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '0.8rem', 
+                  color: '#475569',
+                  background: '#f8fafc',
+                  height: '34px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          )}
         </header>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
