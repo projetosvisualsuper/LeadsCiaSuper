@@ -255,8 +255,9 @@ export async function GET() {
           
           for (const chat of chatsToRestore) {
             const rawPhone = chat.id.substring('whatsapp_'.length);
-            const conn = connections.find(c => c.id === chat.connectionId || c.name === chat.connectionName);
-            const instanceName = conn ? conn.evolutionInstanceName : (chat.connectionName || '');
+            const defaultConn = connections.find((c: any) => c.isDefault === 1 || c.isDefault === true) || connections[0];
+            const conn = connections.find((c: any) => c.id === chat.connectionId || c.name === chat.connectionName) || defaultConn;
+            const instanceName = conn ? conn.evolutionInstanceName : '';
             
             if (instanceName) {
               try {
