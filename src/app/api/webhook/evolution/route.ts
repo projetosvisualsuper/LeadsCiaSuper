@@ -324,22 +324,46 @@ export async function POST(req: NextRequest) {
       }
       const agora = new Date().toISOString();
 
+      let existingLeadAvatar = null;
+
       if (existingLeads && existingLeads.length > 0) {
         const lead = existingLeads[0];
         leadId = lead.id;
-        leadName = lead.nome && lead.nome !== 'Você' ? lead.nome : leadName; // Prefere o nome salvo no CRM se válido
+        existingLeadAvatar = lead.avatar || null;
         
-        // Se o lead não tinha o número com 9 dígitos, atualiza para o padrão com 9
-        if (!lead.telefone || !lead.telefone.includes('9')) {
-          await d1Api.executeRun(
-            `UPDATE leads SET telefone = ?, celular = ?, dataUltimaAtividade = ? WHERE id = ?`,
-            [with9, with9, agora, leadId]
-          );
+        // Se o nome do lead for genérico (como 'Contato WhatsApp' ou 'Desconhecido') e recebermos um nome real do cliente, atualizamos no CRM!
+        const isGenericName = !lead.nome || lead.nome === 'Contato WhatsApp' || lead.nome === 'Desconhecido' || lead.nome.startsWith('Lead via');
+        const hasRealNewName = pushName && pushName !== 'Você' && pushName !== 'Contato WhatsApp';
+
+        if (isGenericName && hasRealNewName && !isFromMe) {
+          leadName = pushName;
+          const needsPhoneUpdate = !lead.telefone || !lead.telefone.includes('9');
+          if (needsPhoneUpdate) {
+            await d1Api.executeRun(
+              `UPDATE leads SET nome = ?, telefone = ?, celular = ?, dataUltimaAtividade = ? WHERE id = ?`,
+              [pushName, with9, with9, agora, leadId]
+            );
+          } else {
+            await d1Api.executeRun(
+              `UPDATE leads SET nome = ?, dataUltimaAtividade = ? WHERE id = ?`,
+              [pushName, agora, leadId]
+            );
+          }
         } else {
-          await d1Api.executeRun(
-            `UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`,
-            [agora, leadId]
-          );
+          leadName = lead.nome && lead.nome !== 'Você' ? lead.nome : leadName; // Prefere o nome salvo no CRM se válido
+          
+          // Se o lead não tinha o número com 9 dígitos, atualiza para o padrão com 9
+          if (!lead.telefone || !lead.telefone.includes('9')) {
+            await d1Api.executeRun(
+              `UPDATE leads SET telefone = ?, celular = ?, dataUltimaAtividade = ? WHERE id = ?`,
+              [with9, with9, agora, leadId]
+            );
+          } else {
+            await d1Api.executeRun(
+              `UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`,
+              [agora, leadId]
+            );
+          }
         }
       } else {
         // Cria um lead novo
@@ -434,7 +458,7 @@ export async function POST(req: NextRequest) {
       } else {
         // Atualizar sessão existente
         let unreadCount = isFromMe ? 0 : (matchedChat.unreadCount || 0) + 1;
-        let leadAvatar = matchedChat.leadAvatar || null;
+        let leadAvatar = matchedChat.leadAvatar || existingLeadAvatar || null;
 
         // Preserva o nome do chat anterior se ele for válido e o novo nome for genérico ou se for mensagem enviada por nós
         let finalLeadName = matchedChat.leadName;
