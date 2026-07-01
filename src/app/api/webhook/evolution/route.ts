@@ -294,10 +294,27 @@ export async function POST(req: NextRequest) {
         connectionName = connection.name;
       }
 
-      // 3. Procurar se já existe um Lead com esse telefone
+      // 2. Normalizar número de telefone BR (com/sem 9 dígitos)
+      const normalizeBRNumber = (phone: string) => {
+        let normalized = phone.replace(/\D/g, '');
+        if (normalized.startsWith('55') && normalized.length === 12) {
+          const ddd = normalized.substring(2, 4);
+          const num = normalized.substring(4);
+          return { with9: `55${ddd}9${num}`, without9: normalized };
+        } else if (normalized.startsWith('55') && normalized.length === 13) {
+          const ddd = normalized.substring(2, 4);
+          const num = normalized.substring(5);
+          return { with9: normalized, without9: `55${ddd}${num}` };
+        }
+        return { with9: normalized, without9: normalized };
+      };
+
+      const { with9, without9 } = normalizeBRNumber(phoneNumber);
+
+      // 3. Procurar se já existe um Lead com esse telefone por ambos os formatos (com/sem 9)
       const { results: existingLeads } = await d1Api.runQuery(
-        `SELECT * FROM leads WHERE telefone = ? OR celular = ? LIMIT 1`,
-        [phoneNumber, phoneNumber]
+        `SELECT * FROM leads WHERE telefone = ? OR celular = ? OR telefone = ? OR celular = ? LIMIT 1`,
+        [with9, with9, without9, without9]
       );
 
       let leadId = '';
@@ -312,18 +329,26 @@ export async function POST(req: NextRequest) {
         leadId = lead.id;
         leadName = lead.nome && lead.nome !== 'Você' ? lead.nome : leadName; // Prefere o nome salvo no CRM se válido
         
-        await d1Api.executeRun(
-          `UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`,
-          [agora, leadId]
-        );
+        // Se o lead não tinha o número com 9 dígitos, atualiza para o padrão com 9
+        if (!lead.telefone || !lead.telefone.includes('9')) {
+          await d1Api.executeRun(
+            `UPDATE leads SET telefone = ?, celular = ?, dataUltimaAtividade = ? WHERE id = ?`,
+            [with9, with9, agora, leadId]
+          );
+        } else {
+          await d1Api.executeRun(
+            `UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`,
+            [agora, leadId]
+          );
+        }
       } else {
         // Cria um lead novo
         leadId = Math.random().toString(36).substr(2, 9);
         await d1Api.saveLead({
           id: leadId,
           nome: leadName,
-          telefone: phoneNumber,
-          celular: phoneNumber,
+          telefone: with9, // Sempre salva no padrão com 9 para manter consistência
+          celular: with9,
           origem: `WhatsApp (${connectionName})`,
           status: 'novo',
           dataCriacao: agora,
@@ -333,15 +358,36 @@ export async function POST(req: NextRequest) {
         } as any);
       }
 
-      // 4. Identificador Único do Chat
-      const chatId = `whatsapp_${phoneNumber}`;
-      const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
-      const timestampIso = new Date().toISOString();
-      const hasChat = chatResults && chatResults.length > 0;
+      // 4. Identificador Único do Chat (normalizado sempre com 9 dígitos)
+      const chatId = `whatsapp_${with9}`;
+      const oldChatId = `whatsapp_${without9}`;
 
-      if (!hasChat) {
+      // Buscar o chat existente por qualquer um dos formatos (com ou sem 9)
+      const { results: chatResults } = await d1Api.runQuery(
+        `SELECT * FROM chats WHERE id = ? OR id = ? LIMIT 1`,
+        [chatId, oldChatId]
+      );
+      
+      const hasChat = chatResults && chatResults.length > 0;
+      let matchedChat = hasChat ? chatResults[0] : null;
+
+      // Se o chat foi encontrado no formato antigo (sem o 9), migramos as tabelas para o formato novo (com 9)
+      if (matchedChat && matchedChat.id === oldChatId && oldChatId !== chatId) {
+        try {
+          await d1Api.executeRun(`UPDATE chats SET id = ? WHERE id = ?`, [chatId, oldChatId]);
+          await d1Api.executeRun(`UPDATE messages SET chatId = ? WHERE chatId = ?`, [chatId, oldChatId]);
+          matchedChat.id = chatId;
+        } catch (e) {
+          console.error('Erro ao migrar tabelas para o novo chatId:', e);
+        }
+      }
+
+      const timestampIso = new Date().toISOString();
+
+      if (!matchedChat) {
         let leadAvatar = null;
-        if (!isFromMe) {
+        // Não buscar avatar se for mensagem enviada por nós (isFromMe) ou se for um LID não resolvido
+        if (!isFromMe && !isLid) {
           try {
             const settings = await d1Api.getSettings();
             const apiUrl = settings?.omnichannel?.evolutionApiUrl || 'http://localhost:8080';
@@ -350,11 +396,11 @@ export async function POST(req: NextRequest) {
               const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                body: JSON.stringify({ number: remoteJid })
+                body: JSON.stringify({ number: with9 }) // Usar o número limpo com 9
               });
               if (picRes.ok) {
                 const picData = await picRes.json();
-                if (picData && picData.profilePictureUrl) {
+                if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
                   leadAvatar = picData.profilePictureUrl;
                 }
               }
@@ -382,20 +428,19 @@ export async function POST(req: NextRequest) {
         await d1Api.saveChatSession(newChat);
       } else {
         // Atualizar sessão existente
-        const currentData = chatResults[0];
-        let unreadCount = isFromMe ? 0 : (currentData.unreadCount || 0) + 1;
-        let leadAvatar = currentData.leadAvatar || null;
+        let unreadCount = isFromMe ? 0 : (matchedChat.unreadCount || 0) + 1;
+        let leadAvatar = matchedChat.leadAvatar || null;
 
         // Preserva o nome do chat anterior se ele for válido e o novo nome for genérico ou se for mensagem enviada por nós
-        let finalLeadName = currentData.leadName;
+        let finalLeadName = matchedChat.leadName;
         if (!finalLeadName || finalLeadName === 'Contato WhatsApp' || finalLeadName === 'Desconhecido') {
           finalLeadName = leadName || 'Contato WhatsApp';
         } else if (!isFromMe && leadName && leadName !== 'Contato WhatsApp') {
           finalLeadName = leadName;
         }
 
-        // Tentar buscar foto de perfil de forma assíncrona se não existir
-        if (!isFromMe && !leadAvatar) {
+        // Tentar buscar foto de perfil de forma assíncrona se não existir, ignorando se for LID ou fromMe
+        if (!isFromMe && !leadAvatar && !isLid) {
           try {
             const settings = await d1Api.getSettings();
             const apiUrl = settings?.omnichannel?.evolutionApiUrl || 'http://localhost:8080';
@@ -404,11 +449,11 @@ export async function POST(req: NextRequest) {
               const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                body: JSON.stringify({ number: remoteJid })
+                body: JSON.stringify({ number: with9 }) // Usar o número limpo com 9
               });
               if (picRes.ok) {
                 const picData = await picRes.json();
-                if (picData && picData.profilePictureUrl) {
+                if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
                   leadAvatar = picData.profilePictureUrl;
                 }
               }

@@ -91,6 +91,123 @@ export async function GET() {
       await db.prepare(`ALTER TABLE chats ADD COLUMN isInternal INTEGER DEFAULT 0`).run();
     } catch (e) { console.log('Coluna isInternal em chats já existe ou erro:', e); }
 
+    // NORMALIZAÇÃO E MESCLAGEM DE LEADS E CHATS DUPLICADOS (FIX 9º DÍGITO E COLONS)
+    try {
+      console.log('Iniciando normalização de leads e chats...');
+      const allLeadsQuery = await db.prepare(`SELECT * FROM leads`).all();
+      const allLeads = allLeadsQuery.results || [];
+      
+      const normalizeBRNumber = (phone: string) => {
+        let normalized = phone.replace(/\D/g, '');
+        if (normalized.startsWith('55') && normalized.length === 12) {
+          const ddd = normalized.substring(2, 4);
+          const num = normalized.substring(4);
+          return { with9: `55${ddd}9${num}`, without9: normalized };
+        } else if (normalized.startsWith('55') && normalized.length === 13) {
+          const ddd = normalized.substring(2, 4);
+          const num = normalized.substring(5);
+          return { with9: normalized, without9: `55${ddd}${num}` };
+        }
+        return { with9: normalized, without9: normalized };
+      };
+
+      const leadGroups: Record<string, any[]> = {};
+      for (const lead of allLeads) {
+        const phone = lead.telefone || lead.celular || '';
+        if (phone) {
+          const cleanPhone = phone.split(':')[0].replace(/\D/g, '');
+          if (cleanPhone) {
+            const { with9 } = normalizeBRNumber(cleanPhone);
+            if (!leadGroups[with9]) leadGroups[with9] = [];
+            leadGroups[with9].push(lead);
+          }
+        }
+      }
+
+      for (const [normPhone, group] of Object.entries(leadGroups)) {
+        if (group.length > 1) {
+          group.sort((a, b) => {
+            const nameA = a.nome || '';
+            const nameB = b.nome || '';
+            if (nameA.startsWith('Contato') && !nameB.startsWith('Contato')) return 1;
+            if (!nameA.startsWith('Contato') && nameB.startsWith('Contato')) return -1;
+            return (b.totalConversoes || 0) - (a.totalConversoes || 0);
+          });
+
+          const primaryLead = group[0];
+          const duplicateLeads = group.slice(1);
+
+          for (const dup of duplicateLeads) {
+            console.log(`Mesclando lead duplicado ${dup.nome} (${dup.id}) no principal ${primaryLead.nome} (${primaryLead.id})`);
+            await db.prepare(`UPDATE queue SET leadId = ? WHERE leadId = ?`).bind(primaryLead.id, dup.id).run();
+            await db.prepare(`UPDATE chats SET leadId = ? WHERE leadId = ?`).bind(primaryLead.id, dup.id).run();
+            await db.prepare(`DELETE FROM leads WHERE id = ?`).bind(dup.id).run();
+          }
+
+          await db.prepare(`UPDATE leads SET telefone = ?, celular = ? WHERE id = ?`).bind(normPhone, normPhone, primaryLead.id).run();
+        } else {
+          await db.prepare(`UPDATE leads SET telefone = ?, celular = ? WHERE id = ?`).bind(normPhone, normPhone, group[0].id).run();
+        }
+      }
+
+      const allChatsQuery = await db.prepare(`SELECT * FROM chats`).all();
+      const allChats = allChatsQuery.results || [];
+      
+      const chatGroups: Record<string, any[]> = {};
+      for (const chat of allChats) {
+        if (chat.id.startsWith('whatsapp_')) {
+          const rawPhone = chat.id.substring('whatsapp_'.length).split(':')[0].replace(/\D/g, '');
+          const { with9 } = normalizeBRNumber(rawPhone);
+          const targetId = `whatsapp_${with9}`;
+          if (!chatGroups[targetId]) chatGroups[targetId] = [];
+          chatGroups[targetId].push(chat);
+        }
+      }
+
+      for (const [targetChatId, group] of Object.entries(chatGroups)) {
+        if (group.length > 1) {
+          group.sort((a, b) => {
+            if (a.isInternal !== b.isInternal) {
+              return (b.isInternal || 0) - (a.isInternal || 0);
+            }
+            return new Date(b.lastTimestamp || 0).getTime() - new Date(a.lastTimestamp || 0).getTime();
+          });
+
+          const primaryChat = group[0];
+          const duplicateChats = group.slice(1);
+
+          if (primaryChat.id !== targetChatId) {
+            try {
+              await db.prepare(`UPDATE chats SET id = ? WHERE id = ?`).bind(targetChatId, primaryChat.id).run();
+              await db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, primaryChat.id).run();
+              primaryChat.id = targetChatId;
+            } catch (err) {
+              console.log('Erro ao atualizar ID do chat principal:', err);
+            }
+          }
+
+          for (const dup of duplicateChats) {
+            console.log(`Mesclando chat duplicado ${dup.id} no principal ${targetChatId}`);
+            await db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, dup.id).run();
+            await db.prepare(`DELETE FROM chats WHERE id = ?`).bind(dup.id).run();
+          }
+        } else {
+          const chat = group[0];
+          if (chat.id !== targetChatId) {
+            try {
+              await db.prepare(`UPDATE chats SET id = ? WHERE id = ?`).bind(targetChatId, chat.id).run();
+              await db.prepare(`UPDATE messages SET chatId = ? WHERE chatId = ?`).bind(targetChatId, chat.id).run();
+            } catch (err) {
+              console.log(`Erro ao renomear chatId unico ${chat.id} para ${targetChatId}:`, err);
+            }
+          }
+        }
+      }
+
+    } catch (e: any) {
+      console.log('Erro na normalização/mesclagem de leads/chats:', e);
+    }
+
     // Limpeza de chats de teste anteriores a hoje (30 de Junho de 2026)
     try {
       await db.prepare(`UPDATE messages SET isIncoming = 0 WHERE timestamp < '2026-06-30T00:00:00'`).run();
