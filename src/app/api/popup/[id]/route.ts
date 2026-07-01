@@ -154,9 +154,9 @@ export async function GET(
             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
             <p style="opacity: 0.7; margin-bottom: 1.5rem;">\${popupData.subtitle || ''}</p>
             <form onsubmit="event.preventDefault(); window.location.href='\${popupData.buttonLink}'" style="display: grid; gap: 0.75rem;">
-              <input required placeholder="Seu Nome" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <input required type="email" placeholder="Seu E-mail" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <input required type="tel" placeholder="Seu WhatsApp" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <input required placeholder="Seu Nome" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
+              <input required type="email" placeholder="Seu E-mail" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
+              <input required type="tel" placeholder="Seu WhatsApp" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
               <button type="submit" class="gl-popup-btn" style="border:none; cursor:pointer;">\${popupData.buttonText}</button>
             </form>
           </div>
