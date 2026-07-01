@@ -167,6 +167,8 @@ export default function ChatInternoPage() {
           setMe(data.user);
         }
       });
+    // Garantir que as migrações de banco rodem
+    fetch('/api/migrate').catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -1146,7 +1148,14 @@ export default function ChatInternoPage() {
                   const visibleWaMessages = whatsappMessages.filter(m => {
                     if (!selectedConnectionId) return true;
                     if (!m.connectionId) return true;
-                    return m.connectionId === selectedConnectionId;
+                    const selectedConn = connections.find(c => c.id === selectedConnectionId);
+                    if (!selectedConn) return true;
+                    const msgConnLower = m.connectionId.toLowerCase();
+                    return (
+                      msgConnLower === selectedConn.id.toLowerCase() ||
+                      msgConnLower === selectedConn.name.toLowerCase() ||
+                      msgConnLower === selectedConn.evolutionInstanceName?.toLowerCase()
+                    );
                   });
                   return visibleWaMessages.map((msg, index) => {
                     const isMe = !msg.isIncoming || msg.isIncoming === 0;

@@ -284,7 +284,7 @@ export async function POST(req: NextRequest) {
 
       // 1. Buscar a conexão que recebeu essa mensagem
       const connections = await d1Api.getWhatsappConnections();
-      const connection = connections.find(c => c.evolutionInstanceName === instanceName);
+      const connection = connections.find(c => c.evolutionInstanceName?.toLowerCase() === instanceName?.toLowerCase() || c.name?.toLowerCase() === instanceName?.toLowerCase());
       
       let connectionId = '';
       let connectionName = 'WhatsApp';
