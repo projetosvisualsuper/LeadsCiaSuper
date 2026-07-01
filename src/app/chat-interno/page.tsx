@@ -1147,10 +1147,13 @@ export default function ChatInternoPage() {
                 {(() => {
                   const visibleWaMessages = whatsappMessages.filter(m => {
                     if (!selectedConnectionId) return true;
-                    if (!m.connectionId) return true;
+                    const msgConnId = m.connectionId || selectedWhatsappChat.connectionId;
+                    if (!msgConnId) return true;
+                    
                     const selectedConn = connections.find(c => c.id === selectedConnectionId);
                     if (!selectedConn) return true;
-                    const msgConnLower = m.connectionId.toLowerCase();
+                    
+                    const msgConnLower = msgConnId.toLowerCase();
                     return (
                       msgConnLower === selectedConn.id.toLowerCase() ||
                       msgConnLower === selectedConn.name.toLowerCase() ||
