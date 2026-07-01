@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       let remoteJid = data.key.remoteJid;
       
       // Lógica para lidar com LIDs (WhatsApp novos/privacidade)
-      let phoneNumber = remoteJid.split('@')[0];
+      let phoneNumber = remoteJid.split('@')[0].split(':')[0];
       const isLid = remoteJid.includes('@lid');
 
       // Se for @lid, tentamos resolver para o número real chamando a API da Evolution
@@ -386,6 +386,14 @@ export async function POST(req: NextRequest) {
         let unreadCount = isFromMe ? 0 : (currentData.unreadCount || 0) + 1;
         let leadAvatar = currentData.leadAvatar || null;
 
+        // Preserva o nome do chat anterior se ele for válido e o novo nome for genérico ou se for mensagem enviada por nós
+        let finalLeadName = currentData.leadName;
+        if (!finalLeadName || finalLeadName === 'Contato WhatsApp' || finalLeadName === 'Desconhecido') {
+          finalLeadName = leadName || 'Contato WhatsApp';
+        } else if (!isFromMe && leadName && leadName !== 'Contato WhatsApp') {
+          finalLeadName = leadName;
+        }
+
         // Tentar buscar foto de perfil de forma assíncrona se não existir
         if (!isFromMe && !leadAvatar) {
           try {
@@ -412,7 +420,7 @@ export async function POST(req: NextRequest) {
 
         await d1Api.executeRun(
           `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ?, leadAvatar = ? WHERE id = ?`,
-          [messageText, timestampIso, unreadCount, connectionId, connectionName, leadName, leadAvatar, chatId]
+          [messageText, timestampIso, unreadCount, connectionId, connectionName, finalLeadName, leadAvatar, chatId]
         );
       }
 
