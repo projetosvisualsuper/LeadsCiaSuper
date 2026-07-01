@@ -158,6 +158,7 @@ function AtendimentoContent() {
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [filterConnection, setFilterConnection] = useState<string>('all');
   const [filterResponseTime, setFilterResponseTime] = useState<string>('all');
+  const [filterContactType, setFilterContactType] = useState<string>('all'); // all | external | internal
 
   // Estados para Exclusão Customizada e Notificações no Sistema
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -892,7 +893,13 @@ function AtendimentoContent() {
     // 6. Filtro por Conexão de WhatsApp
     const matchesConnection = filterConnection === 'all' || chat.connectionId === filterConnection;
 
-    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection;
+    // 7. Filtro por Tipo de Contato (Interno vs. Externo)
+    const matchesContactType = 
+      filterContactType === 'all' ||
+      (filterContactType === 'internal' && chat.isInternal === 1) ||
+      (filterContactType === 'external' && chat.isInternal !== 1);
+
+    return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection && matchesContactType;
   });
 
   const getMaxUnansweredTime = () => {
@@ -1237,6 +1244,31 @@ function AtendimentoContent() {
                 </span>
               )}
             </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
+            <select 
+              value={filterContactType}
+              onChange={e => setFilterContactType(e.target.value)}
+              style={{ 
+                flex: 1, 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                color: '#475569',
+                background: '#f8fafc',
+                cursor: 'pointer',
+                outline: 'none',
+                height: '34px',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="all">Todos os Contatos</option>
+              <option value="external">Contatos Externos (Clientes)</option>
+              <option value="internal">Contatos Internos</option>
+            </select>
           </div>
 
           {filterPeriod === 'custom' && (
