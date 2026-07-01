@@ -334,7 +334,7 @@ export default function ChatInternoPage() {
     if (whatsappMessages.length > 0) {
       scrollToBottom();
     }
-  }, [whatsappMessages.length]);
+  }, [whatsappMessages.length, selectedConnectionId]);
 
   const handleSendWhatsappMessage = async (mediaUrl?: string, mediaMimeType?: string) => {
     if ((!newMessage.trim() && !mediaUrl) || !selectedWhatsappChat || !me) return;
