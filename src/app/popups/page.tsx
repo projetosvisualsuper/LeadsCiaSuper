@@ -450,36 +450,34 @@ export default function PopupsPage() {
                   </div>
                 </div>
 
-                {formData.templateId === 'coupon' && (
-                  <div style={{ background: 'rgba(251, 191, 36, 0.05)', padding: '1.25rem', borderRadius: '8px', border: '1px dashed #fbbf24' }}>
-                     <div style={{ display: 'grid', gap: '1rem' }}>
-                        <div>
-                          <label style={{ fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block', color: '#b45309', fontWeight: 600 }}>Código do Cupom</label>
-                          <input 
-                            className="btn-outline" style={{ width: '100%', height: '42px', padding: '0 1rem', background: 'white', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '1px' }}
-                            placeholder="EX: PROMO10"
-                            value={formData.couponCode || ''}
-                            onChange={e => setFormData({...formData, couponCode: e.target.value.toUpperCase()})}
-                          />
-                        </div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                          <input 
-                            type="checkbox" 
-                            style={{ width: '18px', height: '18px' }}
-                            checked={formData.theme?.sendCouponEmail || false}
-                            onChange={e => setFormData({
-                              ...formData, 
-                              theme: {
-                                ...formData.theme,
-                                sendCouponEmail: e.target.checked
-                              }
-                            })}
-                          />
-                          <span>Enviar código automaticamente por e-mail</span>
-                        </label>
-                     </div>
-                  </div>
-                )}
+                <div style={{ background: 'rgba(251, 191, 36, 0.05)', padding: '1.25rem', borderRadius: '8px', border: '1px dashed #fbbf24' }}>
+                   <div style={{ display: 'grid', gap: '1rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block', color: '#b45309', fontWeight: 600 }}>Código do Cupom</label>
+                        <input 
+                          className="btn-outline" style={{ width: '100%', height: '42px', padding: '0 1rem', background: 'white', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '1px' }}
+                          placeholder="EX: PROMO10"
+                          value={formData.couponCode || ''}
+                          onChange={e => setFormData({...formData, couponCode: e.target.value.toUpperCase()})}
+                        />
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input 
+                          type="checkbox" 
+                          style={{ width: '18px', height: '18px' }}
+                          checked={formData.theme?.sendCouponEmail || false}
+                          onChange={e => setFormData({
+                            ...formData, 
+                            theme: {
+                              ...formData.theme,
+                              sendCouponEmail: e.target.checked
+                            }
+                          })}
+                        />
+                        <span>Enviar código automaticamente por e-mail</span>
+                      </label>
+                   </div>
+                </div>
 
                 {formData.templateId !== 'simple' && formData.templateId !== 'lead-form' && (
                   <div>
@@ -566,7 +564,7 @@ export default function PopupsPage() {
                     <div style={{ padding: '1.75rem', flex: 1, textAlign: ['image-left', 'image-right', 'horizontal-banner'].includes(formData.templateId!) ? 'left' : 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       {formData.templateId === 'image-top' && formData.imageUrl && <img src={formData.imageUrl} style={{ width: 'calc(100% + 3.5rem)', margin: '-1.75rem -1.75rem 1.25rem', height: '120px', objectFit: 'cover' }} />}
                       
-                      {formData.templateId === 'coupon' && <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎁</div>}
+                      {(formData.templateId === 'coupon' || formData.couponCode) && <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎁</div>}
                       
                       <h5 style={{ fontWeight: '800', fontSize: '1.2rem', marginBottom: '0.5rem', lineHeight: 1.2 }}>{formData.title || 'Título'}</h5>
                       <p style={{ fontSize: '0.9rem', opacity: 0.7, marginBottom: '1.5rem', lineHeight: 1.4 }}>{formData.subtitle || 'Descrição'}</p>
@@ -579,9 +577,9 @@ export default function PopupsPage() {
                         </div>
                       )}
 
-                      {formData.templateId === 'coupon' && (
+                      {formData.couponCode && (
                         <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '10px', border: '2px dashed #e2e8f0', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 900, color: formData.theme?.buttonColor, textAlign: 'center' }}>
-                          {formData.couponCode || 'PROMO10'}
+                          {formData.couponCode}
                         </div>
                       )}
 

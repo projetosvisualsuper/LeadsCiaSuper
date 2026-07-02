@@ -67,6 +67,35 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
     setTimeout(() => setCopying(false), 2000);
   };
 
+  const renderCouponSuccessInner = () => {
+    return (
+      <div style={{ width: '100%', textAlign: 'center' }}>
+         <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎁</div>
+         <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup?.title}</h2>
+         <p style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '1.5rem' }}>Seu cupom de desconto foi gerado com sucesso!</p>
+         <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '2px dashed #e2e8f0', marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.25rem' }}>Seu Cupom</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '1px', color: theme.buttonColor }}>{currentPopup?.couponCode}</div>
+         </div>
+         
+         <div style={{ display: 'grid', gap: '0.5rem' }}>
+           <button onClick={handleCopyCoupon} style={{ width: '100%', height: '42px', borderRadius: '8px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+              {copying ? '✓ Copiado!' : 'Copiar Código'}
+           </button>
+           {currentPopup?.buttonLink && (
+             <a href={currentPopup.buttonLink} className="popup-btn" style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.75rem', fontSize: '0.9rem', borderRadius: '8px' }}>{currentPopup.buttonText}</a>
+           )}
+         </div>
+
+         {theme.sendCouponEmail && (
+           <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#10b981', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+              ✓ Enviamos uma cópia para seu e-mail
+           </div>
+         )}
+      </div>
+    );
+  };
+
   useEffect(() => {
     const fetchPopups = async () => {
       try {
@@ -203,16 +232,22 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
               <img src={currentPopup.imageUrl || 'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&q=80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div style={{ flex: 1.2, padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
-              <p style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '1.5rem' }}>{currentPopup.subtitle}</p>
-              <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-                <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
-                <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} />
-                <button type="submit" disabled={submitting} style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                  {submitting ? 'Enviando...' : currentPopup.buttonText}
-                </button>
-              </form>
+              {currentPopup.couponCode && formSubmitted ? (
+                renderCouponSuccessInner()
+              ) : (
+                <>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
+                  <p style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '1.5rem' }}>{currentPopup.subtitle}</p>
+                  <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+                    <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
+                    <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} />
+                    <button type="submit" disabled={submitting} style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                      {submitting ? 'Enviando...' : currentPopup.buttonText}
+                    </button>
+                  </form>
+                </>
+              )}
             </div>
           </div>
         );
@@ -220,16 +255,22 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
       case 'lead-form':
         return (
           <div style={{ padding: '2.5rem', textAlign: 'center' }}>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
-            <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>{currentPopup.subtitle}</p>
-            <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-              <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
-              <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-              <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} />
-              <button type="submit" disabled={submitting} style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.85rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                {submitting ? 'Enviando...' : currentPopup.buttonText}
-              </button>
-            </form>
+            {currentPopup.couponCode && formSubmitted ? (
+              renderCouponSuccessInner()
+            ) : (
+              <>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
+                <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>{currentPopup.subtitle}</p>
+                <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+                  <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
+                  <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                  <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} />
+                  <button type="submit" disabled={submitting} style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.85rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                    {submitting ? 'Enviando...' : currentPopup.buttonText}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         );
 
@@ -290,6 +331,14 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
             <div style={{ flex: 1 }}>
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, lineHeight: 1.2 }}>{currentPopup.title}</h2>
               {currentPopup.subtitle && <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>{currentPopup.subtitle}</p>}
+              {currentPopup.couponCode && (
+                 <div style={{ background: '#f8fafc', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px dashed #e2e8f0', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '1px', color: theme.buttonColor }}>{currentPopup.couponCode}</span>
+                    <button onClick={handleCopyCoupon} style={{ background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', padding: '0.2rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                      {copying ? '✓ Copiado!' : 'Copiar'}
+                    </button>
+                 </div>
+              )}
             </div>
             <a href={currentPopup.buttonLink} className="popup-btn" style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.6rem 1.5rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
               {currentPopup.buttonText}
@@ -310,6 +359,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
               />
             )}
             <div style={{ padding: '2.5rem', textAlign: 'center' }}>
+              {currentPopup.couponCode && <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎁</div>}
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '1rem', lineHeight: 1.2 }}>
                 {currentPopup.title}
               </h2>
@@ -318,13 +368,30 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
                   {currentPopup.subtitle}
                 </p>
               )}
-              <a 
-                href={currentPopup.buttonLink} 
-                className="popup-btn"
-                style={{ background: theme.buttonColor, color: theme.buttonTextColor }}
-              >
-                {currentPopup.buttonText}
-              </a>
+              {currentPopup.couponCode && (
+                 <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '2px dashed #e2e8f0', marginBottom: '2rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem' }}>Seu Cupom</div>
+                    <div style={{ fontSize: '2.25rem', fontWeight: 900, letterSpacing: '2px', color: theme.buttonColor }}>{currentPopup.couponCode}</div>
+                 </div>
+              )}
+              {currentPopup.couponCode ? (
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <button onClick={handleCopyCoupon} style={{ width: '100%', height: '50px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+                     {copying ? '✓ Copiado!' : 'Copiar Código'}
+                  </button>
+                  {currentPopup.buttonLink && (
+                    <a href={currentPopup.buttonLink} className="popup-btn" style={{ background: theme.buttonColor, color: theme.buttonTextColor }}>{currentPopup.buttonText}</a>
+                  )}
+                </div>
+              ) : (
+                <a 
+                  href={currentPopup.buttonLink} 
+                  className="popup-btn"
+                  style={{ background: theme.buttonColor, color: theme.buttonTextColor }}
+                >
+                  {currentPopup.buttonText}
+                </a>
+              )}
             </div>
           </>
         );

@@ -49,7 +49,7 @@ export async function POST(
     const leadId = Math.random().toString(36).substr(2, 9);
     const agora = new Date().toISOString();
     const tags = ['popup', popup.name];
-    if (popup.templateId === 'coupon') {
+    if (popup.templateId === 'coupon' || popup.couponCode) {
       tags.push('cupom');
     }
 
@@ -67,8 +67,8 @@ export async function POST(
       observacoes: `[POPUP CAPTURE] Convertido via pop-up "${popup.name}" (modelo: ${popup.templateId}).`
     } as any);
 
-    // 2. Se for cupom e tiver configurado para enviar e-mail
-    if (popup.templateId === 'coupon' && popup.couponCode && popup.theme?.sendCouponEmail && email) {
+    // 2. Se tiver configurado cupom e e-mail automático
+    if (popup.couponCode && popup.theme?.sendCouponEmail && email) {
       const globalSettings = await api.getSettings();
       if (globalSettings?.brevoApiKey) {
         const remetenteNome = globalSettings.remetenteNome || 'Visual Super';
@@ -182,7 +182,7 @@ export async function GET(
       if (!res.ok) throw new Error('Erro na requisição');
       const data = await res.json();
 
-      if (template === 'coupon') {
+      if (popupData.couponCode) {
         const contentContainer = formElement.closest('.gl-popup-content');
         const overlay = contentContainer.closest('.gl-popup-overlay');
         
@@ -193,7 +193,7 @@ export async function GET(
              <p style="opacity: 0.7; margin-bottom: 2rem;">Seu cupom de desconto foi gerado com sucesso!</p>
              <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 2rem; position: relative;">
                 <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.5rem;">Seu Cupom</div>
-                <div style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px; color: \\\${theme.buttonColor || '#3b82f6'};" id="gl-coupon-code">\\\${data.couponCode || popupData.couponCode || 'PROMO10'}</div>
+                <div style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px; color: \\\${theme.buttonColor || '#3b82f6'};" id="gl-coupon-code">\\\${data.couponCode || popupData.couponCode}</div>
              </div>
              
              <div style="display: grid; gap: 0.75rem;">
@@ -223,7 +223,7 @@ export async function GET(
 
         const copyBtn = contentContainer.querySelector('#gl-copy-btn');
         copyBtn.onclick = () => {
-          navigator.clipboard.writeText(data.couponCode || popupData.couponCode || 'PROMO10');
+          navigator.clipboard.writeText(data.couponCode || popupData.couponCode);
           copyBtn.innerText = '✓ Copiado!';
           setTimeout(() => { copyBtn.innerText = 'Copiar Código'; }, 2000);
         };
@@ -348,6 +348,12 @@ export async function GET(
           <div style="flex: 1;">
             <h2 style="margin:0; font-size: 1.1rem; font-weight: 800;">\${popupData.title}</h2>
             <p style="margin:0; font-size: 0.85rem; opacity: 0.7;">\${popupData.subtitle || ''}</p>
+            \${popupData.couponCode ? \`
+               <div style="background: #f8fafc; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px dashed #e2e8f0; margin-top: 0.4rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; font-weight: 900; letter-spacing: 1px; color: \${theme.buttonColor || '#3b82f6'};\u0060">\${popupData.couponCode}</span>
+                  <button id="gl-copy-btn" style="background: #1e293b; color: white; border: none; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; cursor: pointer; font-weight: bold;">Copiar</button>
+               </div>
+            \` : ''}
           </div>
           <a href="\${popupData.buttonLink}" class="gl-popup-btn" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">\${popupData.buttonText}</a>
         </div>
@@ -393,10 +399,23 @@ export async function GET(
         <div style="display: flex; min-height: 350px; flex-direction: \${window.innerWidth < 640 ? 'column' : (template === 'image-right' ? 'row-reverse' : (isSide ? 'row' : 'column'))}">
           \${isSide || template === 'image-top' ? \`<div style="flex: 1; min-height:200px;"><img src="\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\` : ''}
           <div style="flex: 1; padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: \${isSide ? 'left' : 'center'};">
-            \${template === 'simple' ? renderImage : ''}
+            \${popupData.couponCode ? '<div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎁</div>' : (template === 'simple' ? renderImage : '')}
             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 1rem;">\${popupData.title}</h2>
             <p style="opacity: 0.8; margin-bottom: 2rem;">\${popupData.subtitle || ''}</p>
-            <a href="\${popupData.buttonLink}" class="gl-popup-btn">\${popupData.buttonText}</a>
+            \${popupData.couponCode ? \`
+               <div style="background: #f8fafc; padding: 1.25rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 1.5rem; text-align: center;">
+                  <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.25rem;">Seu Cupom</div>
+                  <div style="font-size: 1.75rem; font-weight: 900; letter-spacing: 1px; color: \${theme.buttonColor || '#3b82f6'};\u0060">\${popupData.couponCode}</div>
+               </div>
+               <div style="display: grid; gap: 0.5rem; width: 100%;">
+                 <button id="gl-copy-btn" style="width: 100%; height: 42px; border-radius: 8px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem;">
+                    Copiar Código
+                 </button>
+                 \${popupData.buttonLink ? \\\`<a href="\${popupData.buttonLink}" class="gl-popup-btn">\${popupData.buttonText}</a>\\\` : ''}
+               </div>
+            \` : \`
+               <a href="\${popupData.buttonLink}" class="gl-popup-btn">\${popupData.buttonText}</a>
+            \`}
           </div>
         </div>
        \`;
@@ -416,6 +435,17 @@ export async function GET(
 
     const closeBtn = overlay.querySelector('.gl-popup-close');
     closeBtn.onclick = () => overlay.classList.remove('gl-popup-show');
+
+    // Vincular cópia se houver botão estático de cópia
+    const staticCopyBtn = overlay.querySelector('#gl-copy-btn');
+    if (staticCopyBtn && popupData.couponCode) {
+      staticCopyBtn.onclick = () => {
+        navigator.clipboard.writeText(popupData.couponCode);
+        const originalText = staticCopyBtn.innerText;
+        staticCopyBtn.innerText = '✓ Copiado!';
+        setTimeout(() => { staticCopyBtn.innerText = originalText; }, 2000);
+      };
+    }
     
     const show = () => {
       const isDebug = window.location.search.includes('debug_popup=true') || window.location.search.includes('preview=true');
