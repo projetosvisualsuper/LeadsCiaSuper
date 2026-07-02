@@ -215,20 +215,24 @@ export async function GET(
         const contentContainer = formElement.closest('.gl-popup-content');
         const overlay = contentContainer.closest('.gl-popup-overlay');
         
+        // Mudar fundo do container para branco, igual ao card da página de captura
+        contentContainer.style.background = '#ffffff';
+        contentContainer.style.color = '#1e293b';
+
         let successHtml = \`
-          <div style="padding: 2.5rem; text-align: center;">
-             <div style="width: 64px; height: 64px; border-radius: 50%; background: #fef3c7; border: 3px solid #f59e0b; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 1.75rem;">✓</div>
-             <h2 style="font-size: 1.5rem; font-weight: 800; margin: 0 0 0.5rem; color: \${theme.textColor || '#1e293b'};">Sucesso!</h2>
-             <p style="font-size: 0.95rem; opacity: 0.7; margin: 0 0 1.5rem; color: \${theme.textColor || '#1e293b'};">Seu cadastro foi realizado e seu cupom de desconto foi liberado.</p>
-             <div style="background: rgba(255,255,255,0.15); padding: 1.25rem; border-radius: 16px; border: 2px dashed rgba(255,255,255,0.4); margin-bottom: 1.25rem;">
-                <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; margin-bottom: 0.5rem; color: \${theme.textColor || '#1e293b'};">Código do Cupom</div>
-                <div style="font-size: 2rem; font-weight: 900; letter-spacing: 3px; color: \${theme.buttonColor || '#f59e0b'};" id="gl-coupon-code">\${data.couponCode || popupData.couponCode}</div>
+          <div style="padding: 2.5rem 2rem; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+             <div style="width: 68px; height: 68px; border-radius: 50%; background: #fef3c7; border: 3px solid #f59e0b; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 1.75rem; line-height: 1; color: #f59e0b;">✓</div>
+             <h2 style="font-size: 1.5rem; font-weight: 800; margin: 0 0 0.5rem; color: #1e293b;">Sucesso!</h2>
+             <p style="font-size: 0.9rem; color: #64748b; margin: 0 0 1.75rem; line-height: 1.5;">Seu cadastro foi realizado e seu cupom de desconto foi liberado.</p>
+             <div style="background: #f8fafc; padding: 1.25rem 1.5rem; border-radius: 14px; border: 1.5px dashed #cbd5e1; margin-bottom: 1.25rem;">
+                <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 0.5rem;">Código do Cupom</div>
+                <div style="font-size: 1.75rem; font-weight: 900; letter-spacing: 3px; color: #1e40af;" id="gl-coupon-code">\${data.couponCode || popupData.couponCode}</div>
              </div>
              <div style="display: grid; gap: 0.75rem;">
-               <button id="gl-copy-btn" style="width: 100%; height: 48px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.95rem;">
-                  <span>📋</span> Copiar Código
+               <button id="gl-copy-btn" style="width: 100%; height: 50px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.6rem; font-size: 0.95rem;">
+                  <span style="font-size: 1rem;">📋</span> Copiar Código
                </button>
-               \${popupData.buttonLink ? \`<a href="\${popupData.buttonLink}" class="gl-popup-btn" style="background: \${theme.buttonColor || '#3b82f6'}; color: \${theme.buttonTextColor || '#fff'}; display:block; padding:0.85rem; border-radius:12px; font-weight:700; text-align:center; text-decoration:none; font-size:0.95rem;">\${popupData.buttonText}</a>\` : ''}
+               \${popupData.buttonLink ? \`<a href="\${popupData.buttonLink}" style="display:block; width:100%; padding:0.85rem; border-radius:12px; background:\${theme.buttonColor || '#3b82f6'}; color:\${theme.buttonTextColor || '#fff'}; font-weight:700; text-align:center; text-decoration:none; font-size:0.95rem; box-sizing:border-box;">\${popupData.buttonText}</a>\` : ''}
              </div>
              \${theme.sendCouponEmail ? \`
                <div style="margin-top: 1.25rem; font-size: 0.82rem; color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
@@ -238,10 +242,10 @@ export async function GET(
           </div>
         \`;
         contentContainer.innerHTML = \`
-          <button class="gl-popup-close">✕</button>
+          <button class="gl-popup-close" style="background: rgba(0,0,0,0.1); color: #1e293b;">✕</button>
           \${successHtml}
-          <div style="padding: 0 2.5rem 1.5rem; text-align: center;">
-            <button style="background:none; border:none; opacity:0.5; font-size:0.8rem; cursor:pointer;" class="gl-popup-decline-success">Fechar</button>
+          <div style="padding: 0 2rem 1.5rem; text-align: center;">
+            <button style="background:none; border:none; color: #94a3b8; font-size:0.8rem; cursor:pointer;" class="gl-popup-decline-success">Fechar</button>
           </div>
         \`;
 
@@ -256,9 +260,10 @@ export async function GET(
         const copyBtn = contentContainer.querySelector('#gl-copy-btn');
         copyBtn.onclick = () => {
           navigator.clipboard.writeText(data.couponCode || popupData.couponCode);
-          copyBtn.innerText = '✓ Copiado!';
-          setTimeout(() => { copyBtn.innerText = 'Copiar Código'; }, 2000);
+          copyBtn.innerHTML = '<span>✓</span> Copiado!';
+          setTimeout(() => { copyBtn.innerHTML = '<span>📋</span> Copiar Código'; }, 2000);
         };
+
 
       } else {
         if (popupData.buttonLink) {
