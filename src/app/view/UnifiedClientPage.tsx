@@ -565,34 +565,49 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
 
     // Enviar e-mail de cupom se configurado
     const shouldSendEmail = config.sendCouponEmail !== false;
-    if (page.templateId === 'coupon' && config.couponCode && shouldSendEmail) {
-      try {
-        const settings = globalSettings || await api.getSettings();
-        if (settings?.brevoApiKey) {
-          const html = `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; borderRadius: 12px;">
-              <h2 style="color: #4f46e5; text-align: center;">Seu Cupom Chegou! 🎁</h2>
-              <p>Olá <strong>${formData.nome || 'Cliente'}</strong>,</p>
-              <p>Parabéns! Você acaba de resgatar seu cupom de desconto exclusivo da <strong>${settings.remetenteNome || 'nossa loja'}</strong>.</p>
-              <div style="background: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; border: 2px dashed #cbd5e1;">
-                <span style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #1e293b;">${config.couponCode}</span>
+    if (page.templateId === 'coupon') {
+      if (!config.couponCode) {
+        console.warn("Cupom não configurado na página. E-mail não enviado.");
+      } else if (!shouldSendEmail) {
+        console.warn("Envio de e-mail desativado nas configurações da página.");
+      } else {
+        try {
+          const settings = globalSettings || await api.getSettings();
+          if (!settings?.brevoApiKey) {
+            console.warn("Chave do Brevo não configurada no painel de configurações gerais.");
+            alert("Aviso: Chave de integração com Brevo não encontrada. O e-mail não foi enviado.");
+          } else {
+            const html = `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; borderRadius: 12px;">
+                <h2 style="color: #4f46e5; text-align: center;">Seu Cupom Chegou! 🎁</h2>
+                <p>Olá <strong>${formData.nome || 'Cliente'}</strong>,</p>
+                <p>Parabéns! Você acaba de resgatar seu cupom de desconto exclusivo da <strong>${settings.remetenteNome || 'nossa loja'}</strong>.</p>
+                <div style="background: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; border: 2px dashed #cbd5e1;">
+                  <span style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #1e293b;">${config.couponCode}</span>
+                </div>
+                <p>Queremos oferecer a você um desconto especial. Use o código: <strong>${config.couponCode}</strong> e aplique o cupom para obter seu desconto exclusivo!</p>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                <p style="font-size: 12px; color: #64748b; text-align: center;">Este e-mail foi enviado automaticamente após seu cadastro em nossa página de captura.</p>
               </div>
-              <p>Queremos oferecer a você um desconto especial. Use o código: <strong>${config.couponCode}</strong> e aplique o cupom para obter seu desconto exclusivo!</p>
-              <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-              <p style="font-size: 12px; color: #64748b; text-align: center;">Este e-mail foi enviado automaticamente após seu cadastro em nossa página de captura.</p>
-            </div>
-          `;
-          
-          await sendEmailBrevoAction({
-            apiKey: settings.brevoApiKey,
-            sender: { name: settings.remetenteNome || 'Contato', email: settings.remetenteEmail || 'contato@visualsuper.com.br' },
-            to: [{ email: formData.email, name: formData.nome || 'Cliente' }],
-            subject: `🎁 Seu Cupom de Desconto: ${config.couponCode}`,
-            htmlContent: html
-          });
+            `;
+            
+            const res = await sendEmailBrevoAction({
+              apiKey: settings.brevoApiKey,
+              sender: { name: settings.remetenteNome || 'Contato', email: settings.remetenteEmail || 'contato@visualsuper.com.br' },
+              to: [{ email: formData.email, name: formData.nome || 'Cliente' }],
+              subject: `🎁 Seu Cupom de Desconto: ${config.couponCode}`,
+              htmlContent: html
+            });
+
+            if (!res.success) {
+              alert("Aviso do Sistema: Erro ao disparar o e-mail pelo Brevo: " + res.message);
+              console.error("Brevo Error:", res);
+            }
+          }
+        } catch (err: any) {
+          alert("Aviso do Sistema: Erro interno ao tentar disparar e-mail: " + err.message);
+          console.error("Erro ao enviar e-mail de cupom:", err);
         }
-      } catch (err) {
-        console.error("Erro ao enviar e-mail de cupom:", err);
       }
     }
 
