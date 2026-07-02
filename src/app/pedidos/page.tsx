@@ -10,6 +10,23 @@ export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPedidoId, setExpandedPedidoId] = useState<string | null>(null);
+  const [observacoesInput, setObservacoesInput] = useState<Record<string, string>>({});
+  const [savingObs, setSavingObs] = useState<string | null>(null);
+
+  const handleSaveObservacao = async (pedidoId: string) => {
+    const obs = observacoesInput[pedidoId] || '';
+    setSavingObs(pedidoId);
+    try {
+      await api.updatePedidoObservacao(pedidoId, obs);
+      setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, observacao: obs } : p));
+      alert('Observação salva com sucesso!');
+    } catch (err) {
+      console.error('Erro ao salvar observação:', err);
+      alert('Erro ao salvar observação.');
+    } finally {
+      setSavingObs(null);
+    }
+  };
 
   const fetchPedidos = async () => {
     setLoading(true);
@@ -34,6 +51,7 @@ export default function PedidosPage() {
     }
     
     setExpandedPedidoId(pedido.id);
+    setObservacoesInput(prev => ({ ...prev, [pedido.id]: pedido.observacao || '' }));
 
     if (!pedido.isRead) {
       try {
@@ -303,6 +321,45 @@ export default function PedidosPage() {
                               Sincronizando...
                             </span>
                           )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Observações Internas
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <textarea
+                            className="btn-outline"
+                            style={{ 
+                              width: '100%', 
+                              height: '80px', 
+                              padding: '0.5rem', 
+                              fontSize: '0.85rem', 
+                              borderRadius: '8px',
+                              resize: 'vertical',
+                              backgroundColor: '#ffffff'
+                            }}
+                            placeholder="Adicione observações internas sobre este pedido..."
+                            value={observacoesInput[pedido.id] || ''}
+                            onChange={(e) => setObservacoesInput(prev => ({ ...prev, [pedido.id]: e.target.value }))}
+                          />
+                          <button
+                            className="btn-outline"
+                            onClick={() => handleSaveObservacao(pedido.id)}
+                            disabled={savingObs === pedido.id}
+                            style={{ 
+                              alignSelf: 'flex-end', 
+                              padding: '0.4rem 1rem', 
+                              fontSize: '0.8rem', 
+                              backgroundColor: '#0ea5e9', 
+                              color: '#ffffff', 
+                              borderColor: '#0ea5e9',
+                              fontWeight: '600'
+                            }}
+                          >
+                            {savingObs === pedido.id ? 'Salvando...' : 'Salvar Observação'}
+                          </button>
                         </div>
                       </div>
 

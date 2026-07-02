@@ -441,4 +441,5 @@ export interface Pedido {
   dataCriacao: string;
   leadNome?: string;
   leadCelular?: string;
+  observacao?: string;
 }

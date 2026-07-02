@@ -1415,6 +1415,10 @@ export const d1Api = {
     await executeRun(`UPDATE pedidos SET status = ? WHERE id = ?`, [status, pedidoId]);
   },
 
+  updatePedidoObservacao: async (pedidoId: string, observacao: string): Promise<void> => {
+    await executeRun(`UPDATE pedidos SET observacao = ? WHERE id = ?`, [observacao, pedidoId]);
+  },
+
   getUnreadPedidosCount: async (): Promise<number> => {
     const { results } = await runQuery(`SELECT COUNT(id) as count FROM pedidos WHERE isRead = 0`);
     return results && results.length > 0 ? results[0].count : 0;
