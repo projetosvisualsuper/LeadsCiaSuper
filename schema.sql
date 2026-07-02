@@ -228,3 +228,13 @@ CREATE TABLE IF NOT EXISTS internal_messages (
   quotedMessageSender TEXT,
   quotedMessageContent TEXT
 );
+
+CREATE TABLE IF NOT EXISTS system_logs (
+  id TEXT PRIMARY KEY,
+  level TEXT NOT NULL,
+  source TEXT NOT NULL,
+  message TEXT NOT NULL,
+  details TEXT,
+  dataCriacao TEXT NOT NULL,
+  isRead INTEGER DEFAULT 0
+);

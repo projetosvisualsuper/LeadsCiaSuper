@@ -544,8 +544,7 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
     try {
       await api.saveLead(newLead);
     } catch (err: any) {
-      alert("Erro ao salvar lead: " + err.message);
-      console.error(err);
+      console.error("Erro ao salvar lead no CRM:", err.message);
     }
     api.incrementLandingPageClick(page.id).catch(err => console.error("Erro ao contar captura LP:", err));
 
@@ -603,12 +602,12 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
             const data = await res.json();
 
             if (!data.success) {
-              alert("Aviso do Sistema: Erro ao disparar o e-mail pelo Brevo: " + data.message);
+              console.error("Aviso do Sistema: Erro ao disparar o e-mail pelo Brevo: " + data.message);
               console.error("Brevo Error:", data);
             }
           }
         } catch (err: any) {
-          alert("Aviso do Sistema: Erro de rede ao tentar disparar e-mail: " + err.message);
+          console.error("Aviso do Sistema: Erro de rede ao tentar disparar e-mail: " + err.message);
           console.error("Erro ao enviar e-mail de cupom:", err);
         }
       }

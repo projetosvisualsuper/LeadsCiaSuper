@@ -413,3 +413,13 @@ export interface InternalMessage {
   quotedMessageSender?: string | null;
   quotedMessageContent?: string | null;
 }
+
+export interface SystemLog {
+  id: string;
+  level: 'info' | 'warning' | 'error';
+  source: string;
+  message: string;
+  details?: string;
+  dataCriacao: string;
+  isRead: boolean;
+}

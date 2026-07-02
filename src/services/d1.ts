@@ -1359,6 +1359,30 @@ export const d1Api = {
     await executeRun(`DELETE FROM internal_messages WHERE chatId = ?`, [chatId]);
   },
 
+  // --- SYSTEM LOGS ---
+  saveSystemLog: async (log: Omit<SystemLog, 'id' | 'dataCriacao' | 'isRead'>): Promise<void> => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const dataCriacao = new Date().toISOString();
+    await executeRun(
+      `INSERT INTO system_logs (id, level, source, message, details, dataCriacao, isRead) VALUES (?, ?, ?, ?, ?, ?, 0)`,
+      [id, log.level, log.source, log.message, log.details || null, dataCriacao]
+    );
+  },
+
+  getSystemLogs: async (): Promise<SystemLog[]> => {
+    const { results } = await runQuery(`SELECT * FROM system_logs ORDER BY dataCriacao DESC LIMIT 100`);
+    return (results || []) as SystemLog[];
+  },
+
+  markSystemLogAsRead: async (logId: string): Promise<void> => {
+    await executeRun(`UPDATE system_logs SET isRead = 1 WHERE id = ?`, [logId]);
+  },
+
+  getUnreadLogsCount: async (): Promise<number> => {
+    const { results } = await runQuery(`SELECT COUNT(id) as count FROM system_logs WHERE isRead = 0`);
+    return results && results.length > 0 ? results[0].count : 0;
+  },
+
   // Database Execution Helpers
   runQuery: async (sql: string, params: any[] = []): Promise<any> => {
     return runQuery(sql, params);

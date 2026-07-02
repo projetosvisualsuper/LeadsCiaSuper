@@ -32,14 +32,15 @@ import {
   User,
   Camera,
   Phone,
-  Mic
+  Mic,
+  AlertTriangle
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
 const rolePermissions: Record<string, string[]> = {
   basico: ['/', '/leads', '/atendimento', '/chat-interno'],
   intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups'],
-  master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios']
+  master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios', '/logs']
 };
 
 export default function ClientLayout({
@@ -67,7 +68,8 @@ export default function ClientLayout({
     '/atendimento',
     '/chat-interno',
     '/bots',
-    '/conexoes'
+    '/conexoes',
+    '/logs'
   ];
 
   // Se a rota NÃO estiver na lista acima, consideramos que é uma Página de Captura pública
@@ -84,6 +86,7 @@ export default function ClientLayout({
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [whatsappUnreadCount, setWhatsappUnreadCount] = useState(0);
+  const [unreadLogsCount, setUnreadLogsCount] = useState(0);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [disconnectedConnections, setDisconnectedConnections] = useState<any[]>([]);
 
@@ -767,6 +770,9 @@ export default function ClientLayout({
         const users = await api.getAllUserProfiles();
         const pending = users.filter(u => u.status === 'pending');
         setPendingUsersCount(pending.length);
+        
+        const logsCount = await api.getUnreadLogsCount();
+        setUnreadLogsCount(logsCount);
       } catch (e) {
         console.error(e);
       }
@@ -774,6 +780,14 @@ export default function ClientLayout({
 
     checkPendingUsers();
   }, [userProfile?.role]);
+
+  useEffect(() => {
+    const handleLogsRead = () => {
+      api.getUnreadLogsCount().then(setUnreadLogsCount).catch(console.error);
+    };
+    window.addEventListener('logs-read', handleLogsRead);
+    return () => window.removeEventListener('logs-read', handleLogsRead);
+  }, []);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -934,6 +948,7 @@ export default function ClientLayout({
             {renderNavLink('/chat-interno', 'Chat Interno', <MessageSquare size={sidebarIconSize} />, unreadChatCount > 0 ? unreadChatCount : undefined)}
             {renderNavLink('/bots', 'Bots e Automações', <Bot size={sidebarIconSize} />)}
             {renderNavLink('/conexoes', 'Conexões WhatsApp', <MessageSquare size={sidebarIconSize} />)}
+            {renderNavLink('/logs', 'Logs do Sistema', <AlertTriangle size={sidebarIconSize} />, unreadLogsCount > 0 ? unreadLogsCount : undefined)}
             {renderNavLink('/configuracoes', 'Configurações', <SettingsIcon size={sidebarIconSize} />)}
             {renderNavLink('/usuarios', 'Usuários', <ShieldCheck size={sidebarIconSize} />, pendingUsersCount)}
           </nav>

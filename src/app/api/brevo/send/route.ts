@@ -36,12 +36,26 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
     if (!response.ok) {
-      return NextResponse.json({ success: false, message: data.message || 'Erro na API do Brevo' }, { status: 400 });
+      const errorMessage = data.message || 'Erro na API do Brevo';
+      await d1Api.saveSystemLog({
+        level: 'error',
+        source: 'Brevo Email API',
+        message: `Falha ao enviar e-mail para ${to.map((t: any) => t.email).join(', ')}`,
+        details: errorMessage
+      });
+      return NextResponse.json({ success: false, message: errorMessage }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Erro no disparador de email da landing page:', error);
+    await d1Api.saveSystemLog({
+      level: 'error',
+      source: 'Brevo Email API',
+      message: 'Erro interno ao tentar disparar e-mail de cupom',
+      details: error.message || String(error)
+    }).catch(err => console.error("Falha ao salvar log do sistema:", err));
+
     return NextResponse.json({ success: false, message: error.message || 'Erro interno' }, { status: 500 });
   }
 }
