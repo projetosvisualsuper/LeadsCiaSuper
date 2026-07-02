@@ -591,21 +591,24 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
               </div>
             `;
             
-            const res = await sendEmailBrevoAction({
-              apiKey: settings.brevoApiKey,
-              sender: { name: settings.remetenteNome || 'Contato', email: settings.remetenteEmail || 'contato@visualsuper.com.br' },
-              to: [{ email: formData.email, name: formData.nome || 'Cliente' }],
-              subject: `🎁 Seu Cupom de Desconto: ${config.couponCode}`,
-              htmlContent: html
+            const res = await fetch('/api/brevo/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: [{ email: formData.email, name: formData.nome || 'Cliente' }],
+                subject: `🎁 Seu Cupom de Desconto: ${config.couponCode}`,
+                htmlContent: html
+              })
             });
+            const data = await res.json();
 
-            if (!res.success) {
-              alert("Aviso do Sistema: Erro ao disparar o e-mail pelo Brevo: " + res.message);
-              console.error("Brevo Error:", res);
+            if (!data.success) {
+              alert("Aviso do Sistema: Erro ao disparar o e-mail pelo Brevo: " + data.message);
+              console.error("Brevo Error:", data);
             }
           }
         } catch (err: any) {
-          alert("Aviso do Sistema: Erro interno ao tentar disparar e-mail: " + err.message);
+          alert("Aviso do Sistema: Erro de rede ao tentar disparar e-mail: " + err.message);
           console.error("Erro ao enviar e-mail de cupom:", err);
         }
       }
