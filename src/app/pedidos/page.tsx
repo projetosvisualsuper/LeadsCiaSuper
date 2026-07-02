@@ -97,17 +97,18 @@ export default function PedidosPage() {
   };
 
   const getStatusBadge = (status: string) => {
+    const safeStatus = status || 'pendente';
     let bg = '#f1f5f9';
     let color = '#475569';
     let icon = null;
 
-    if (status === 'pendente') {
+    if (safeStatus === 'pendente') {
       bg = '#fef3c7'; color = '#b45309'; icon = <Clock size={12}/>;
-    } else if (status === 'em_atendimento') {
+    } else if (safeStatus === 'em_atendimento') {
       bg = '#dbeafe'; color = '#1d4ed8'; icon = <RefreshCw size={12}/>;
-    } else if (status === 'finalizado') {
+    } else if (safeStatus === 'finalizado') {
       bg = '#d1fae5'; color = '#047857'; icon = <Check size={12}/>;
-    } else if (status === 'cancelado') {
+    } else if (safeStatus === 'cancelado') {
       bg = '#fee2e2'; color = '#b91c1c'; icon = <XCircle size={12}/>;
     }
 
@@ -125,7 +126,7 @@ export default function PedidosPage() {
         textTransform: 'uppercase'
       }}>
         {icon}
-        {status.replace('_', ' ')}
+        {safeStatus.replace('_', ' ')}
       </span>
     );
   };
@@ -218,7 +219,7 @@ export default function PedidosPage() {
                       {pedido.valor ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: '600', color: '#059669' }}>
                           <DollarSign size={14} />
-                          R$ {pedido.valor.toFixed(2)}
+                          R$ {Number(pedido.valor).toFixed(2)}
                         </span>
                       ) : null}
                     </div>
