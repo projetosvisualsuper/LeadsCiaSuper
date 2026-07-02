@@ -215,36 +215,40 @@ export async function GET(
         const contentContainer = formElement.closest('.gl-popup-content');
         const overlay = contentContainer.closest('.gl-popup-overlay');
 
-        // Resetar fundo para branco exatamente como o card da página de captura
+        // Resetar fundo para branco exatamente como o card da página de captura e definir largura para 420px
         contentContainer.style.background = 'white';
         contentContainer.style.color = '#1e293b';
         contentContainer.style.border = 'none';
         contentContainer.style.boxShadow = '0 25px 50px -12px rgba(0,0,0,0.5)';
         contentContainer.style.borderRadius = '24px';
+        contentContainer.style.maxWidth = '420px';
+        contentContainer.style.width = '100%';
 
         const couponCode = data.couponCode || popupData.couponCode;
         const sendEmail = ${JSON.stringify(!!popup.sendCouponEmail)};
 
         contentContainer.innerHTML = \`
-          <button class="gl-popup-close" style="background: rgba(0,0,0,0.08); color: #64748b; border: none; cursor: pointer; position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px; border-radius: 50%; font-size: 1rem; display: flex; align-items: center; justify-content: center;">✕</button>
-          <div style="max-width: 420px; width: 100%; text-align: center; padding: 2.5rem 2rem; background: white; color: #1e293b;">
-            <div style="width: 80px; height: 80px; background: rgba(251,191,36,0.1); color: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.5rem; line-height: 1;">✓</div>
-            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem; color: #1e293b;">Sucesso!</h2>
-            <p style="opacity: 0.7; margin-bottom: 2rem; color: #1e293b; font-size: 1rem;">Seu cadastro foi realizado e seu cupom de desconto foi liberado.</p>
-            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 1.5rem;">
-              <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.5rem; color: #1e293b;">Código do Cupom</div>
-              <div id="gl-coupon-code" style="font-size: 2rem; font-weight: 900; letter-spacing: 2px; color: #1e3a8a;">\${couponCode}</div>
+          <button class="gl-popup-close" style="background: rgba(0,0,0,0.08); color: #64748b; border: none; cursor: pointer; position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px; border-radius: 50%; font-size: 1rem; display: flex; align-items: center; justify-content: center; z-index: 10;">✕</button>
+          <div style="text-align: center; padding: 2.5rem 2rem; background: white; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; box-sizing: border-box; width: 100%;">
+            <div style="width: 80px; height: 80px; background: rgba(251,191,36,0.1); color: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.5rem; line-height: 1;">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block; margin: auto;"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
-            <div style="display: grid; gap: 0.75rem;">
-              <button id="gl-copy-btn" style="width: 100%; height: 54px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-size: 1rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <h2 style="font-size: 1.75rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.2;">Sucesso!</h2>
+            <p style="opacity: 0.7; margin: 0 0 2rem 0; color: #1e293b; font-size: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5;">Seu cadastro foi realizado e seu cupom de desconto foi liberado.</p>
+            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 1.5rem; box-sizing: border-box;">
+              <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.5rem; color: #64748b; letter-spacing: 0.5px;">Código do Cupom</div>
+              <div id="gl-coupon-code" style="font-size: 2rem; font-weight: 900; letter-spacing: 2px; color: #1e3a8a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">\${couponCode}</div>
+            </div>
+            <div style="display: grid; gap: 0.75rem; width: 100%;">
+              <button id="gl-copy-btn" style="width: 100%; height: 54px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-size: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; transition: background 0.2s;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 Copiar Código
               </button>
-              \${popupData.buttonLink ? \`<a href="\${popupData.buttonLink}" style="display:flex; align-items:center; justify-content:center; width:100%; height:54px; border-radius:12px; background:\${theme.buttonColor || '#fbbf24'}; color:\${theme.buttonTextColor || '#1e293b'}; font-weight:700; text-align:center; text-decoration:none; font-size:1rem; box-sizing:border-box;">\${popupData.buttonText || 'OK, Continuar'}</a>\` : ''}
+              \${popupData.buttonLink ? \`<a href="\${popupData.buttonLink}" style="display:flex; align-items:center; justify-content:center; width:100%; height:54px; border-radius:12px; background:\${theme.buttonColor || '#fbbf24'}; color:\${theme.buttonTextColor || '#1e293b'}; font-weight:700; text-align:center; text-decoration:none; font-size:1rem; box-sizing:border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">\${popupData.buttonText || 'OK, Continuar'}</a>\` : ''}
             </div>
             \${sendEmail ? \`
-              <div style="margin-top: 1.5rem; font-size: 0.85rem; color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,12 2,6"></polyline></svg>
+              <div style="margin-top: 1.5rem; font-size: 0.85rem; color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,12 2,6"></polyline></svg>
                 Enviamos uma cópia para seu e-mail
               </div>
             \` : ''}
@@ -257,9 +261,9 @@ export async function GET(
         const copyBtn = contentContainer.querySelector('#gl-copy-btn');
         copyBtn.onclick = () => {
           navigator.clipboard.writeText(couponCode);
-          copyBtn.innerHTML = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Copiado!\`;
+          copyBtn.innerHTML = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;"><polyline points="20 6 9 17 4 12"></polyline></svg> Copiado!\`;
           setTimeout(() => {
-            copyBtn.innerHTML = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar Código\`;
+            copyBtn.innerHTML = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar Código\`;
           }, 2000);
         };
       } else {
