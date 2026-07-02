@@ -20,6 +20,21 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
   const [submitting, setSubmitting] = useState(false);
   const [copying, setCopying] = useState(false);
 
+  const getPopupVersion = (popup: PopupConfig) => {
+    return [
+      popup.title,
+      popup.subtitle || '',
+      popup.imageUrl || '',
+      popup.buttonText,
+      popup.buttonLink,
+      popup.couponCode || '',
+      popup.trigger,
+      popup.triggerValue || 0,
+      popup.isActive,
+      JSON.stringify(popup.theme || {})
+    ].join('|');
+  };
+
   useEffect(() => {
     setFormSubmitted(false);
     setFormData({ nome: '', email: '', telefone: '' });
@@ -38,7 +53,13 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
       if (!res.ok) throw new Error('Erro ao salvar lead');
       
       const data = await res.json();
-      if (currentPopup.templateId === 'coupon') {
+      
+      // Salvar versão dismiss no localStorage após enviar formulário com sucesso
+      const version = getPopupVersion(currentPopup);
+      localStorage.setItem('gl-popup-dismissed-' + currentPopup.id, version);
+      setClosedPopups(prev => [...prev, currentPopup.id]);
+
+      if (currentPopup.couponCode) {
         setFormSubmitted(true);
       } else {
         if (currentPopup.buttonLink) {
@@ -100,10 +121,17 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
     const fetchPopups = async () => {
       try {
         const allPopups = await api.getPopups();
-        // Filtrar apenas popups ativos e que devem aparecer nesta página
-        const filtered = allPopups.filter(p => 
-          p.isActive && (p.pages?.length === 0 || p.pages?.includes(slug))
-        );
+        // Filtrar apenas popups ativos, permitidos na página e que não foram dispensados na versão atual
+        const filtered = allPopups.filter(p => {
+          if (!p.isActive) return false;
+          if (p.pages?.length !== 0 && !p.pages?.includes(slug)) return false;
+          
+          const version = getPopupVersion(p);
+          const savedVersion = localStorage.getItem('gl-popup-dismissed-' + p.id);
+          if (savedVersion === version) return false;
+          
+          return true;
+        });
         setActivePopups(filtered);
       } catch (error) {
         console.error('Erro ao carregar pop-ups:', error);
@@ -118,7 +146,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
     setCurrentPopup(popup);
     setIsVisible(true);
     
-    // Marcar como fechado na sessão para não mostrar de novo na mesma navegação
+    // Marcar como fechado temporariamente na navegação atual
     setClosedPopups(prev => [...prev, popup.id]);
   }, [closedPopups]);
 
@@ -184,6 +212,11 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
   }, [activePopups, isVisible, showPopup, closedPopups]);
 
   const handleClose = () => {
+    if (currentPopup) {
+      const version = getPopupVersion(currentPopup);
+      localStorage.setItem('gl-popup-dismissed-' + currentPopup.id, version);
+      setClosedPopups(prev => [...prev, currentPopup.id]);
+    }
     setIsVisible(false);
     setTimeout(() => setCurrentPopup(null), 300);
   };

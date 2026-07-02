@@ -159,6 +159,19 @@ export async function GET(
   const theme = popupData.theme || {};
   const template = popupData.templateId || 'simple';
 
+  const popupVersion = [
+    popupData.title,
+    popupData.subtitle || '',
+    popupData.imageUrl || '',
+    popupData.buttonText,
+    popupData.buttonLink,
+    popupData.couponCode || '',
+    popupData.trigger,
+    popupData.triggerValue || 0,
+    popupData.isActive,
+    JSON.stringify(theme)
+  ].join('|');
+
   const glHandleFormSubmit = async (event, formElement) => {
     event.preventDefault();
     const submitBtn = formElement.querySelector('button[type="submit"]');
@@ -181,6 +194,9 @@ export async function GET(
 
       if (!res.ok) throw new Error('Erro na requisição');
       const data = await res.json();
+
+      // Salvar versão dismiss no localStorage após enviar formulário com sucesso
+      localStorage.setItem('gl-popup-dismissed-' + popupData.id, popupVersion);
 
       if (popupData.couponCode) {
         const contentContainer = formElement.closest('.gl-popup-content');
@@ -214,12 +230,17 @@ export async function GET(
           <button class="gl-popup-close">✕</button>
           \\\${successHtml}
           <div style="padding: 0 2.5rem 1.5rem; text-align: center;">
-            <button style="background:none; border:none; opacity:0.5; font-size:0.8rem; cursor:pointer;" onclick="this.closest('.gl-popup-overlay').classList.remove('gl-popup-show')">Fechar</button>
+            <button style="background:none; border:none; opacity:0.5; font-size:0.8rem; cursor:pointer;" class="gl-popup-decline-success">Fechar</button>
           </div>
         \\\`;
 
         const newCloseBtn = contentContainer.querySelector('.gl-popup-close');
         newCloseBtn.onclick = () => overlay.classList.remove('gl-popup-show');
+
+        const successDeclineBtn = contentContainer.querySelector('.gl-popup-decline-success');
+        if (successDeclineBtn) {
+          successDeclineBtn.onclick = () => overlay.classList.remove('gl-popup-show');
+        }
 
         const copyBtn = contentContainer.querySelector('#gl-copy-btn');
         copyBtn.onclick = () => {
@@ -344,18 +365,18 @@ export async function GET(
     if (template === 'horizontal-banner') {
        contentHtml = \`
         <div style="display: flex; align-items: center; gap: 1.5rem; padding: 1rem 2rem; width: 100%;">
-          \${popupData.imageUrl ? \`<div style="width: 80px; height: 50px; border-radius: 8px; overflow: hidden; flex-shrink: 0;"><img src="\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\` : ''}
+          \\\${popupData.imageUrl ? \\\`<div style="width: 80px; height: 50px; border-radius: 8px; overflow: hidden; flex-shrink: 0;"><img src="\\\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\\\` : ''}
           <div style="flex: 1;">
-            <h2 style="margin:0; font-size: 1.1rem; font-weight: 800;">\${popupData.title}</h2>
-            <p style="margin:0; font-size: 0.85rem; opacity: 0.7;">\${popupData.subtitle || ''}</p>
-            \${popupData.couponCode ? \`
+            <h2 style="margin:0; font-size: 1.1rem; font-weight: 800;">\\\${popupData.title}</h2>
+            <p style="margin:0; font-size: 0.85rem; opacity: 0.7;">\\\${popupData.subtitle || ''}</p>
+            \\\${popupData.couponCode ? \\\`
                <div style="background: #f8fafc; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px dashed #e2e8f0; margin-top: 0.4rem; display: inline-flex; align-items: center; gap: 0.5rem;">
-                  <span style="font-size: 0.8rem; font-weight: 900; letter-spacing: 1px; color: \${theme.buttonColor || '#3b82f6'};\u0060">\${popupData.couponCode}</span>
+                  <span style="font-size: 0.8rem; font-weight: 900; letter-spacing: 1px; color: \\\${theme.buttonColor || '#3b82f6'};">\\\${popupData.couponCode}</span>
                   <button id="gl-copy-btn" style="background: #1e293b; color: white; border: none; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; cursor: pointer; font-weight: bold;">Copiar</button>
                </div>
-            \` : ''}
+            \\\` : ''}
           </div>
-          <a href="\${popupData.buttonLink}" class="gl-popup-btn" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">\${popupData.buttonText}</a>
+          <a href="\\\${popupData.buttonLink}" class="gl-popup-btn" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">\\\${popupData.buttonText}</a>
         </div>
        \`;
     } else if (template === 'coupon') {
@@ -363,13 +384,13 @@ export async function GET(
         <div style="display: flex; min-height: 350px; flex-direction: column;">
           <div style="padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: center; width: 100%; box-sizing: border-box;">
             <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎁</div>
-            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
-            <p style="opacity: 0.7; margin-bottom: 1.5rem;">\${popupData.subtitle || ''}</p>
+            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\\\${popupData.title}</h2>
+            <p style="opacity: 0.7; margin-bottom: 1.5rem;">\\\${popupData.subtitle || ''}</p>
             <form onsubmit="glHandleFormSubmit(event, this)" style="display: grid; gap: 0.75rem; width: 100%;">
               <input required placeholder="Seu Nome" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff; width: 100%; box-sizing: border-box;">
               <input required type="email" placeholder="Seu E-mail" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff; width: 100%; box-sizing: border-box;">
               <input required type="tel" placeholder="Seu WhatsApp" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff; width: 100%; box-sizing: border-box;">
-              <button type="submit" class="gl-popup-btn" style="border:none; cursor:pointer; width: 100%;">\${popupData.buttonText}</button>
+              <button type="submit" class="gl-popup-btn" style="border:none; cursor:pointer; width: 100%;">\\\${popupData.buttonText}</button>
             </form>
           </div>
         </div>
@@ -378,17 +399,17 @@ export async function GET(
        const isSide = template.includes('form-');
        const isImgLeft = template === 'image-form-left';
        contentHtml = \`
-        <div style="display: flex; min-height: 350px; flex-direction: \${window.innerWidth < 640 ? 'column' : (isImgLeft ? 'row' : (template === 'image-form-right' ? 'row-reverse' : 'column'))}">
-          \${isSide ? \`<div style="flex: 1; min-height:200px;"><img src="\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\` : ''}
+        <div style="display: flex; min-height: 350px; flex-direction: \\\${window.innerWidth < 640 ? 'column' : (isImgLeft ? 'row' : (template === 'image-form-right' ? 'row-reverse' : 'column'))}">
+          \\\${isSide ? \\\`<div style="flex: 1; min-height:200px;"><img src="\\\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\\\` : ''}
           <div style="flex: 1.2; padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: center;">
-            \${!isSide ? renderImage : ''}
-            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
-            <p style="opacity: 0.7; margin-bottom: 1.5rem;">\${popupData.subtitle || ''}</p>
+            \\\${!isSide ? renderImage : ''}
+            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\\\${popupData.title}</h2>
+            <p style="opacity: 0.7; margin-bottom: 1.5rem;">\\\${popupData.subtitle || ''}</p>
             <form onsubmit="glHandleFormSubmit(event, this)" style="display: grid; gap: 0.75rem;">
               <input required placeholder="Seu Nome" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
               <input required type="email" placeholder="Seu E-mail" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
               <input required type="tel" placeholder="Seu WhatsApp" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
-              <button type="submit" class="gl-popup-btn" style="border:none; cursor:pointer;">\${popupData.buttonText}</button>
+              <button type="submit" class="gl-popup-btn" style="border:none; cursor:pointer;">\\\${popupData.buttonText}</button>
             </form>
           </div>
         </div>
@@ -396,26 +417,26 @@ export async function GET(
     } else {
        const isSide = template === 'image-left' || template === 'image-right';
        contentHtml = \`
-        <div style="display: flex; min-height: 350px; flex-direction: \${window.innerWidth < 640 ? 'column' : (template === 'image-right' ? 'row-reverse' : (isSide ? 'row' : 'column'))}">
-          \${isSide || template === 'image-top' ? \`<div style="flex: 1; min-height:200px;"><img src="\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\` : ''}
-          <div style="flex: 1; padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: \${isSide ? 'left' : 'center'};">
-            \${popupData.couponCode ? '<div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎁</div>' : (template === 'simple' ? renderImage : '')}
-            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 1rem;">\${popupData.title}</h2>
-            <p style="opacity: 0.8; margin-bottom: 2rem;">\${popupData.subtitle || ''}</p>
-            \${popupData.couponCode ? \`
+        <div style="display: flex; min-height: 350px; flex-direction: \\\${window.innerWidth < 640 ? 'column' : (template === 'image-right' ? 'row-reverse' : (isSide ? 'row' : 'column'))}">
+          \\\${isSide || template === 'image-top' ? \\\`<div style="flex: 1; min-height:200px;"><img src="\\\${popupData.imageUrl}" style="width:100%; height:100%; object-fit:cover;"></div>\\\` : ''}
+          <div style="flex: 1; padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: \\\${isSide ? 'left' : 'center'};">
+            \\\${popupData.couponCode ? '<div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎁</div>' : (template === 'simple' ? renderImage : '')}
+            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 1rem;">\\\${popupData.title}</h2>
+            <p style="opacity: 0.8; margin-bottom: 2rem;">\\\${popupData.subtitle || ''}</p>
+            \\\${popupData.couponCode ? \\\`
                <div style="background: #f8fafc; padding: 1.25rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 1.5rem; text-align: center;">
                   <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.25rem;">Seu Cupom</div>
-                  <div style="font-size: 1.75rem; font-weight: 900; letter-spacing: 1px; color: \${theme.buttonColor || '#3b82f6'};\u0060">\${popupData.couponCode}</div>
+                  <div style="font-size: 1.75rem; font-weight: 900; letter-spacing: 1px; color: \\\${theme.buttonColor || '#3b82f6'};">\\\${popupData.couponCode}</div>
                </div>
                <div style="display: grid; gap: 0.5rem; width: 100%;">
                  <button id="gl-copy-btn" style="width: 100%; height: 42px; border-radius: 8px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem;">
                     Copiar Código
                  </button>
-                 \${popupData.buttonLink ? \\\`<a href="\${popupData.buttonLink}" class="gl-popup-btn">\${popupData.buttonText}</a>\\\` : ''}
+                 \\\${popupData.buttonLink ? \\\`<a href="\\\${popupData.buttonLink}" class="gl-popup-btn" style="background: \\\${theme.buttonColor || '#3b82f6'}; color: \\\${theme.buttonTextColor || '#fff'};">\\\${popupData.buttonText}</a>\\\` : ''}
                </div>
-            \` : \`
-               <a href="\${popupData.buttonLink}" class="gl-popup-btn">\${popupData.buttonText}</a>
-            \`}
+            \\\` : \\\`
+               <a href="\\\${popupData.buttonLink}" class="gl-popup-btn">\\\${popupData.buttonText}</a>
+            \\\`}
           </div>
         </div>
        \`;
@@ -426,15 +447,23 @@ export async function GET(
         <button class="gl-popup-close">✕</button>
         \${contentHtml}
         <div style="padding: 0 2.5rem 1.5rem; text-align: center;">
-          <button style="background:none; border:none; opacity:0.5; font-size:0.8rem; cursor:pointer;" onclick="this.closest('.gl-popup-overlay').classList.remove('gl-popup-show')">Não, obrigado.</button>
+          <button style="background:none; border:none; opacity:0.5; font-size:0.8rem; cursor:pointer;" class="gl-popup-decline">Não, obrigado.</button>
         </div>
       </div>
     \`;
 
     document.body.appendChild(overlay);
 
+    const dismissPopup = () => {
+      localStorage.setItem('gl-popup-dismissed-' + popupData.id, popupVersion);
+      overlay.classList.remove('gl-popup-show');
+    };
+
     const closeBtn = overlay.querySelector('.gl-popup-close');
-    closeBtn.onclick = () => overlay.classList.remove('gl-popup-show');
+    if (closeBtn) closeBtn.onclick = dismissPopup;
+
+    const declineBtn = overlay.querySelector('.gl-popup-decline');
+    if (declineBtn) declineBtn.onclick = dismissPopup;
 
     // Vincular cópia se houver botão estático de cópia
     const staticCopyBtn = overlay.querySelector('#gl-copy-btn');
@@ -449,14 +478,12 @@ export async function GET(
     
     const show = () => {
       const isDebug = window.location.search.includes('debug_popup=true') || window.location.search.includes('preview=true');
-      if (!isDebug && sessionStorage.getItem('gl-popup-closed-' + popupData.id)) {
-        console.log('GerencyLeads Popup: Ignorado porque já foi fechado nesta sessão.');
+      const savedVersion = localStorage.getItem('gl-popup-dismissed-' + popupData.id);
+      if (!isDebug && savedVersion === popupVersion) {
+        console.log('GerencyLeads Popup: Ignorado porque já foi fechado/enviado nesta versão.');
         return;
       }
       overlay.classList.add('gl-popup-show');
-      if (!isDebug) {
-        sessionStorage.setItem('gl-popup-closed-' + popupData.id, 'true');
-      }
       console.log('GerencyLeads Popup: Exibido com sucesso!');
     };
 
