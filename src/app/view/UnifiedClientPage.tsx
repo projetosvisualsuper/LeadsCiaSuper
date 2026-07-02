@@ -607,7 +607,7 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
             <button onClick={handleCopyCoupon} style={{ width: '100%', height: '58px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', fontSize: '1.15rem' }}>
                {copying ? <><Check size={22} /> Copiado!</> : <><Copy size={22} /> Copiar Código</>}
             </button>
-            <button onClick={() => handleFinalAction()} style={{ width: '100%', height: '58px', borderRadius: '12px', background: config.botaoColor || '#fbbf24', color: getContrastColor(config.botaoColor || '#fbbf24'), fontWeight: 800, fontSize: '1.15rem' }}>OK, Continuar</button>
+            <button onClick={() => handleFinalAction()} style={{ width: '100%', height: '64px', borderRadius: '12px', background: config.botaoColor || '#fbbf24', color: '#0f172a', fontWeight: 900, fontSize: '1.35rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quero aproveitar!</button>
           </div>
 
           {config.sendCouponEmail && (
