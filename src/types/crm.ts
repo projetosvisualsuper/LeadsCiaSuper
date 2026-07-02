@@ -303,6 +303,7 @@ export interface PopupConfig {
     buttonColor?: string;
     buttonTextColor?: string;
     overlayColor?: string;
+    sendCouponEmail?: boolean;
   };
 }
 

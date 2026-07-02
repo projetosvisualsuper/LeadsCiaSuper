@@ -441,25 +441,42 @@ export default function PopupsPage() {
                       value={formData.buttonText} onChange={e => setFormData({...formData, buttonText: e.target.value})}
                     />
                   </div>
-                  {formData.templateId === 'coupon' ? (
+                  <div>
+                    <label className="label">Link do Botão</label>
+                    <input 
+                      type="text" className="btn-outline" style={{ width: '100%' }} 
+                      value={formData.buttonLink} onChange={e => setFormData({...formData, buttonLink: e.target.value || ''})}
+                    />
+                  </div>
+                </div>
+
+                {formData.templateId === 'coupon' && (
+                  <div style={{ background: 'rgba(251, 191, 36, 0.05)', padding: '1rem', borderRadius: '8px', border: '1px dashed #fbbf24', display: 'grid', gap: '0.75rem' }}>
                     <div>
-                      <label className="label">Código do Cupom</label>
+                      <label className="label" style={{ marginBottom: '0.25rem' }}>Código do Cupom</label>
                       <input 
-                        type="text" className="btn-outline" style={{ width: '100%', fontWeight: 'bold', textTransform: 'uppercase' }} 
+                        type="text" className="btn-outline" style={{ width: '100%', fontWeight: 'bold', textTransform: 'uppercase', background: 'white' }} 
                         value={formData.couponCode} onChange={e => setFormData({...formData, couponCode: e.target.value})}
                         placeholder="EX: PROMO10"
                       />
                     </div>
-                  ) : (
-                    <div>
-                      <label className="label">Link do Botão</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
                       <input 
-                        type="text" className="btn-outline" style={{ width: '100%' }} 
-                        value={formData.buttonLink} onChange={e => setFormData({...formData, buttonLink: e.target.value})}
+                        type="checkbox" 
+                        style={{ width: '16px', height: '16px' }}
+                        checked={formData.theme?.sendCouponEmail || false}
+                        onChange={e => setFormData({
+                          ...formData, 
+                          theme: {
+                            ...formData.theme,
+                            sendCouponEmail: e.target.checked
+                          }
+                        })}
                       />
-                    </div>
-                  )}
-                </div>
+                      <span>Enviar código automaticamente por e-mail</span>
+                    </label>
+                  </div>
+                )}
 
                 {formData.templateId !== 'simple' && formData.templateId !== 'lead-form' && (
                   <div>

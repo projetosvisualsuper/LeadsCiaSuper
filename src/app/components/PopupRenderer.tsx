@@ -15,6 +15,58 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [closedPopups, setClosedPopups] = useState<string[]>([]);
 
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formData, setFormData] = useState({ nome: '', email: '', telefone: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [copying, setCopying] = useState(false);
+
+  useEffect(() => {
+    setFormSubmitted(false);
+    setFormData({ nome: '', email: '', telefone: '' });
+  }, [currentPopup]);
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPopup) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/popup/${currentPopup.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (!res.ok) throw new Error('Erro ao salvar lead');
+      
+      const data = await res.json();
+      if (currentPopup.templateId === 'coupon') {
+        setFormSubmitted(true);
+      } else {
+        if (currentPopup.buttonLink) {
+          window.location.href = currentPopup.buttonLink;
+        } else {
+          alert('Dados enviados com sucesso!');
+          handleClose();
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      if (currentPopup.buttonLink) {
+        window.location.href = currentPopup.buttonLink;
+      } else {
+        alert('Erro ao processar dados. Tente novamente.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCopyCoupon = () => {
+    if (!currentPopup?.couponCode) return;
+    navigator.clipboard.writeText(currentPopup.couponCode);
+    setCopying(true);
+    setTimeout(() => setCopying(false), 2000);
+  };
+
   useEffect(() => {
     const fetchPopups = async () => {
       try {
@@ -153,12 +205,12 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
             <div style={{ flex: 1.2, padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
               <p style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '1.5rem' }}>{currentPopup.subtitle}</p>
-              <form onSubmit={(e) => { e.preventDefault(); window.location.href = currentPopup.buttonLink; }} style={{ display: 'grid', gap: '0.75rem' }}>
-                <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} />
-                <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} />
-                <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} />
-                <button type="submit" style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                  {currentPopup.buttonText}
+              <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+                <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
+                <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.875rem' }} value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} />
+                <button type="submit" disabled={submitting} style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                  {submitting ? 'Enviando...' : currentPopup.buttonText}
                 </button>
               </form>
             </div>
@@ -170,28 +222,60 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
           <div style={{ padding: '2.5rem', textAlign: 'center' }}>
             <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
             <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>{currentPopup.subtitle}</p>
-            <form onSubmit={(e) => { e.preventDefault(); window.location.href = currentPopup.buttonLink; }} style={{ display: 'grid', gap: '0.75rem' }}>
-              <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-              <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-              <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-              <button type="submit" style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.85rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                {currentPopup.buttonText}
+            <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+              <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
+              <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} />
+              <button type="submit" disabled={submitting} style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.85rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                {submitting ? 'Enviando...' : currentPopup.buttonText}
               </button>
             </form>
           </div>
         );
 
       case 'coupon':
+        if (formSubmitted) {
+          return (
+            <div style={{ padding: '3rem', textAlign: 'center' }}>
+               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎁</div>
+               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
+               <p style={{ opacity: 0.7, marginBottom: '2rem' }}>Seu cupom de desconto foi gerado com sucesso!</p>
+               <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '2px dashed #e2e8f0', marginBottom: '2rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem' }}>Seu Cupom</div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 900, letterSpacing: '2px', color: theme.buttonColor }}>{currentPopup.couponCode || 'PROMO10'}</div>
+               </div>
+               
+               <div style={{ display: 'grid', gap: '0.75rem' }}>
+                 <button onClick={handleCopyCoupon} style={{ width: '100%', height: '50px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+                    {copying ? '✓ Copiado!' : 'Copiar Código'}
+                 </button>
+                 {currentPopup.buttonLink && (
+                   <a href={currentPopup.buttonLink} className="popup-btn" style={{ background: theme.buttonColor, color: theme.buttonTextColor }}>{currentPopup.buttonText}</a>
+                 )}
+               </div>
+
+               {theme.sendCouponEmail && (
+                 <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+                    ✓ Enviamos uma cópia para seu e-mail
+                 </div>
+               )}
+            </div>
+          );
+        }
+
         return (
           <div style={{ padding: '3rem', textAlign: 'center' }}>
              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎁</div>
              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>{currentPopup.title}</h2>
              <p style={{ opacity: 0.7, marginBottom: '2rem' }}>{currentPopup.subtitle}</p>
-             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '2px dashed #e2e8f0', marginBottom: '2rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem' }}>Seu Cupom</div>
-                <div style={{ fontSize: '2.25rem', fontWeight: 900, letterSpacing: '2px', color: theme.buttonColor }}>{currentPopup.couponCode || 'PROMO10'}</div>
-             </div>
-             <a href={currentPopup.buttonLink} className="popup-btn" style={{ background: theme.buttonColor, color: theme.buttonTextColor }}>{currentPopup.buttonText}</a>
+             <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+               <input required placeholder="Seu Nome" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
+               <input required type="email" placeholder="Seu Melhor E-mail" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+               <input required type="tel" placeholder="Seu WhatsApp" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }} value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} />
+               <button type="submit" disabled={submitting} style={{ background: theme.buttonColor, color: theme.buttonTextColor, padding: '0.85rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                 {submitting ? 'Enviando...' : currentPopup.buttonText}
+               </button>
+             </form>
           </div>
         );
 

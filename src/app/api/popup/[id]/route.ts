@@ -7,10 +7,125 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const body = await request.json();
+    const { nome, email, telefone } = body;
+
+    if (!email && !telefone) {
+      return new NextResponse(JSON.stringify({ error: 'E-mail ou telefone obrigatório' }), {
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    const allPopups = await api.getPopups();
+    const popup = allPopups.find(p => p.id === id);
+
+    if (!popup) {
+      return new NextResponse(JSON.stringify({ error: 'Pop-up não encontrado' }), {
+        status: 404,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // 1. Salvar Lead no D1
+    const leadId = Math.random().toString(36).substr(2, 9);
+    const agora = new Date().toISOString();
+    const tags = ['popup', popup.name];
+    if (popup.templateId === 'coupon') {
+      tags.push('cupom');
+    }
+
+    await api.saveLead({
+      id: leadId,
+      nome: nome || 'Lead de Pop-up',
+      email: email || null,
+      celular: telefone || null,
+      origem: `Popup: ${popup.name}`,
+      status: 'novo',
+      tags: tags,
+      consentimentoLGPD: true,
+      dataCriacao: agora,
+      dataUltimaAtividade: agora,
+      observacoes: `[POPUP CAPTURE] Convertido via pop-up "${popup.name}" (modelo: ${popup.templateId}).`
+    } as any);
+
+    // 2. Se for cupom e tiver configurado para enviar e-mail
+    if (popup.templateId === 'coupon' && popup.couponCode && popup.theme?.sendCouponEmail && email) {
+      const globalSettings = await api.getSettings();
+      if (globalSettings?.brevoApiKey) {
+        const remetenteNome = globalSettings.remetenteNome || 'Visual Super';
+        const remetenteEmail = globalSettings.remetenteEmail || 'contato@visualsuper.com.br';
+        
+        const html = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #4f46e5; text-align: center;">Seu Cupom Chegou! 🎁</h2>
+            <p>Olá <strong>${nome || 'Cliente'}</strong>,</p>
+            <p>Parabéns! Você acaba de resgatar seu cupom de desconto exclusivo da <strong>${remetenteNome}</strong>.</p>
+            <div style="background: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; border: 2px dashed #cbd5e1;">
+              <span style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #1e293b;">${popup.couponCode}</span>
+            </div>
+            <p>Aproveite seu cupom exclusivo de desconto em nosso site. Use o código: <strong>${popup.couponCode}</strong> no carrinho de compras!</p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #64748b; text-align: center;">Este e-mail foi enviado automaticamente após seu cadastro em nosso pop-up.</p>
+          </div>
+        `;
+
+        try {
+          await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+              'accept': 'application/json',
+              'api-key': globalSettings.brevoApiKey,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              sender: { name: remetenteNome, email: remetenteEmail },
+              to: [{ email, name: nome || 'Cliente' }],
+              subject: `🎁 Seu Cupom de Desconto: ${popup.couponCode}`,
+              htmlContent: html
+            })
+          });
+        } catch (mailErr) {
+          console.error('Erro ao disparar email pelo Brevo na API do Popup:', mailErr);
+        }
+      }
+    }
+
+    return new NextResponse(JSON.stringify({ success: true, couponCode: popup.couponCode }), {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Erro ao processar post de popup:', error);
+    return new NextResponse(JSON.stringify({ error: error.message || 'Erro interno' }), {
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      }
+    });
+  }
 }
 
 export async function GET(
@@ -43,6 +158,100 @@ export async function GET(
   const popupData = ${JSON.stringify(popup)};
   const theme = popupData.theme || {};
   const template = popupData.templateId || 'simple';
+
+  const glHandleFormSubmit = async (event, formElement) => {
+    event.preventDefault();
+    const submitBtn = formElement.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerText;
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Enviando...';
+
+    const inputs = formElement.querySelectorAll('input');
+    const nome = inputs[0].value;
+    const email = inputs[1].value;
+    const telefone = inputs[2].value;
+
+    const baseUrl = '${typeof window !== 'undefined' ? window.location.origin : ''}';
+    try {
+      const res = await fetch(baseUrl + '/api/popup/' + popupData.id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, telefone })
+      });
+
+      if (!res.ok) throw new Error('Erro na requisição');
+      const data = await res.json();
+
+      if (template === 'coupon') {
+        const contentContainer = formElement.closest('.gl-popup-content');
+        const overlay = contentContainer.closest('.gl-popup-overlay');
+        
+        let successHtml = \`
+          <div style="padding: 3rem; text-align: center;">
+             <div style="font-size: 3rem; margin-bottom: 1rem;">🎁</div>
+             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\\\${popupData.title}</h2>
+             <p style="opacity: 0.7; margin-bottom: 2rem;">Seu cupom de desconto foi gerado com sucesso!</p>
+             <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 2rem; position: relative;">
+                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.5rem;">Seu Cupom</div>
+                <div style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px; color: \\\${theme.buttonColor || '#3b82f6'};" id="gl-coupon-code">\\\${data.couponCode || popupData.couponCode || 'PROMO10'}</div>
+             </div>
+             
+             <div style="display: grid; gap: 0.75rem;">
+               <button id="gl-copy-btn" style="width: 100%; height: 50px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                  Copiar Código
+               </button>
+               \\\${popupData.buttonLink ? \\\`<a href="\\\${popupData.buttonLink}" class="gl-popup-btn" style="background: \\\${theme.buttonColor || '#3b82f6'}; color: \\\${theme.buttonTextColor || '#fff'};">\\\${popupData.buttonText}</a>\\\` : ''}
+             </div>
+             
+             \\\${theme.sendCouponEmail ? \\\`
+               <div style="margin-top: 1.5rem; font-size: 0.85rem; color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                  ✓ Enviamos uma cópia para seu e-mail
+               </div>
+             \\\` : ''}
+          </div>
+        \`;
+        contentContainer.innerHTML = \\\`
+          <button class="gl-popup-close">✕</button>
+          \\\${successHtml}
+          <div style="padding: 0 2.5rem 1.5rem; text-align: center;">
+            <button style="background:none; border:none; opacity:0.5; font-size:0.8rem; cursor:pointer;" onclick="this.closest('.gl-popup-overlay').classList.remove('gl-popup-show')">Fechar</button>
+          </div>
+        \\\`;
+
+        const newCloseBtn = contentContainer.querySelector('.gl-popup-close');
+        newCloseBtn.onclick = () => overlay.classList.remove('gl-popup-show');
+
+        const copyBtn = contentContainer.querySelector('#gl-copy-btn');
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(data.couponCode || popupData.couponCode || 'PROMO10');
+          copyBtn.innerText = '✓ Copiado!';
+          setTimeout(() => { copyBtn.innerText = 'Copiar Código'; }, 2000);
+        };
+
+      } else {
+        if (popupData.buttonLink) {
+          window.location.href = popupData.buttonLink;
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.innerText = originalBtnText;
+          alert('Dados enviados com sucesso!');
+        }
+      }
+
+    } catch (err) {
+      console.error('Erro na submissão do pop-up:', err);
+      if (popupData.buttonLink) {
+        window.location.href = popupData.buttonLink;
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.innerText = originalBtnText;
+        alert('Erro ao enviar dados. Tente novamente.');
+      }
+    }
+  };
+
+  // Expor a função no escopo global
+  window.glHandleFormSubmit = glHandleFormSubmit;
 
   const init = () => {
     if (document.getElementById('gl-popup-' + popupData.id)) {
@@ -143,6 +352,22 @@ export async function GET(
           <a href="\${popupData.buttonLink}" class="gl-popup-btn" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">\${popupData.buttonText}</a>
         </div>
        \`;
+    } else if (template === 'coupon') {
+       contentHtml = \`
+        <div style="display: flex; min-height: 350px; flex-direction: column;">
+          <div style="padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: center; width: 100%; box-sizing: border-box;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎁</div>
+            <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
+            <p style="opacity: 0.7; margin-bottom: 1.5rem;">\${popupData.subtitle || ''}</p>
+            <form onsubmit="glHandleFormSubmit(event, this)" style="display: grid; gap: 0.75rem; width: 100%;">
+              <input required placeholder="Seu Nome" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff; width: 100%; box-sizing: border-box;">
+              <input required type="email" placeholder="Seu E-mail" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff; width: 100%; box-sizing: border-box;">
+              <input required type="tel" placeholder="Seu WhatsApp" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff; width: 100%; box-sizing: border-box;">
+              <button type="submit" class="gl-popup-btn" style="border:none; cursor:pointer; width: 100%;">\${popupData.buttonText}</button>
+            </form>
+          </div>
+        </div>
+       \`;
     } else if (template === 'lead-form' || template.includes('form')) {
        const isSide = template.includes('form-');
        const isImgLeft = template === 'image-form-left';
@@ -153,7 +378,7 @@ export async function GET(
             \${!isSide ? renderImage : ''}
             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
             <p style="opacity: 0.7; margin-bottom: 1.5rem;">\${popupData.subtitle || ''}</p>
-            <form onsubmit="event.preventDefault(); window.location.href='\${popupData.buttonLink}'" style="display: grid; gap: 0.75rem;">
+            <form onsubmit="glHandleFormSubmit(event, this)" style="display: grid; gap: 0.75rem;">
               <input required placeholder="Seu Nome" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
               <input required type="email" placeholder="Seu E-mail" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
               <input required type="tel" placeholder="Seu WhatsApp" style="padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #1e293b; background-color: #ffffff;">
@@ -269,4 +494,3 @@ export async function GET(
     });
   }
 }
-
