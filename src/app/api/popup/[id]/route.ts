@@ -205,34 +205,34 @@ export async function GET(
         let successHtml = \`
           <div style="padding: 3rem; text-align: center;">
              <div style="font-size: 3rem; margin-bottom: 1rem;">🎁</div>
-             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\\\${popupData.title}</h2>
+             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
              <p style="opacity: 0.7; margin-bottom: 2rem;">Seu cupom de desconto foi gerado com sucesso!</p>
              <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 2rem; position: relative;">
                 <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.5rem;">Seu Cupom</div>
-                <div style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px; color: \\\${theme.buttonColor || '#3b82f6'};" id="gl-coupon-code">\\\${data.couponCode || popupData.couponCode}</div>
+                <div style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px; color: \${theme.buttonColor || '#3b82f6'};" id="gl-coupon-code">\${data.couponCode || popupData.couponCode}</div>
              </div>
              
              <div style="display: grid; gap: 0.75rem;">
                <button id="gl-copy-btn" style="width: 100%; height: 50px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                   Copiar Código
                </button>
-               \\\${popupData.buttonLink ? \\\`<a href="\\\${popupData.buttonLink}" class="gl-popup-btn" style="background: \\\${theme.buttonColor || '#3b82f6'}; color: \\\${theme.buttonTextColor || '#fff'};">\\\${popupData.buttonText}</a>\\\` : ''}
+               \${popupData.buttonLink ? \`<a href="\${popupData.buttonLink}" class="gl-popup-btn" style="background: \${theme.buttonColor || '#3b82f6'}; color: \${theme.buttonTextColor || '#fff'};">\${popupData.buttonText}</a>\` : ''}
              </div>
              
-             \\\${theme.sendCouponEmail ? \\\`
+             \${theme.sendCouponEmail ? \`
                <div style="margin-top: 1.5rem; font-size: 0.85rem; color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                   ✓ Enviamos uma cópia para seu e-mail
                </div>
-             \\\` : ''}
+             \` : ''}
           </div>
         \`;
-        contentContainer.innerHTML = \\\`
+        contentContainer.innerHTML = \`
           <button class="gl-popup-close">✕</button>
-          \\\${successHtml}
+          \${successHtml}
           <div style="padding: 0 2.5rem 1.5rem; text-align: center;">
             <button style="background:none; border:none; opacity:0.5; font-size:0.8rem; cursor:pointer;" class="gl-popup-decline-success">Fechar</button>
           </div>
-        \\\`;
+        \`;
 
         const newCloseBtn = contentContainer.querySelector('.gl-popup-close');
         newCloseBtn.onclick = () => overlay.classList.remove('gl-popup-show');
