@@ -525,6 +525,9 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
     if (page.templateId === 'offers') {
       tags.push('ofertas');
     }
+    if (page.templateId === 'coupon' || config.couponCode) {
+      tags.push('cupom captura');
+    }
 
     let observacoes = '';
     if (page.templateId === 'lead-magnet' && formData.catalogType) {
@@ -538,7 +541,12 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
       origem: page.slug, dataCriacao: new Date().toISOString(), status: 'novo', tags: tags, consentimentoLGPD: true, utm_source: searchParams.get('utm_source') || undefined,
       observacoes: observacoes
     };
-    await api.saveLead(newLead);
+    try {
+      await api.saveLead(newLead);
+    } catch (err: any) {
+      alert("Erro ao salvar lead: " + err.message);
+      console.error(err);
+    }
     api.incrementLandingPageClick(page.id).catch(err => console.error("Erro ao contar captura LP:", err));
 
     // GTM Event
@@ -556,29 +564,36 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
     }
 
     // Enviar e-mail de cupom se configurado
-    if (page.templateId === 'coupon' && config.couponCode && config.sendCouponEmail && globalSettings?.brevoApiKey) {
-      const html = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; borderRadius: 12px;">
-          <h2 style="color: #4f46e5; text-align: center;">Seu Cupom Chegou! 🎁</h2>
-          <p>Olá <strong>${formData.nome}</strong>,</p>
-          <p>Parabéns! Você acaba de resgatar seu cupom de desconto exclusivo da <strong>${globalSettings.remetenteNome}</strong>.</p>
-          <div style="background: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; border: 2px dashed #cbd5e1;">
-            <span style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #1e293b;">${config.couponCode}</span>
-          </div>
-          <p>Queremos oferecer a você um desconto especial de 10% na sua primeira compra em nosso site. Acreditamos que nossas soluções em precificações ajudarão a impulsionar suas vendas no PDV.</p>
-          <p>Use o código: <strong>${config.couponCode}</strong> e aplique o cupom para obter seu desconto exclusivo!</p>
-          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #64748b; text-align: center;">Este e-mail foi enviado automaticamente após seu cadastro em nossa página de captura.</p>
-        </div>
-      `;
-      
-      sendEmailBrevoAction({
-        apiKey: globalSettings.brevoApiKey,
-        sender: { name: globalSettings.remetenteNome || '', email: globalSettings.remetenteEmail || '' },
-        to: [{ email: formData.email, name: formData.nome }],
-        subject: `🎁 Seu Cupom de Desconto: ${config.couponCode}`,
-        htmlContent: html
-      }).catch(err => console.error("Erro ao enviar e-mail de cupom:", err));
+    const shouldSendEmail = config.sendCouponEmail !== false;
+    if (page.templateId === 'coupon' && config.couponCode && shouldSendEmail) {
+      try {
+        const settings = globalSettings || await api.getSettings();
+        if (settings?.brevoApiKey) {
+          const html = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; borderRadius: 12px;">
+              <h2 style="color: #4f46e5; text-align: center;">Seu Cupom Chegou! 🎁</h2>
+              <p>Olá <strong>${formData.nome || 'Cliente'}</strong>,</p>
+              <p>Parabéns! Você acaba de resgatar seu cupom de desconto exclusivo da <strong>${settings.remetenteNome || 'nossa loja'}</strong>.</p>
+              <div style="background: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; border: 2px dashed #cbd5e1;">
+                <span style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #1e293b;">${config.couponCode}</span>
+              </div>
+              <p>Queremos oferecer a você um desconto especial. Use o código: <strong>${config.couponCode}</strong> e aplique o cupom para obter seu desconto exclusivo!</p>
+              <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p style="font-size: 12px; color: #64748b; text-align: center;">Este e-mail foi enviado automaticamente após seu cadastro em nossa página de captura.</p>
+            </div>
+          `;
+          
+          await sendEmailBrevoAction({
+            apiKey: settings.brevoApiKey,
+            sender: { name: settings.remetenteNome || 'Contato', email: settings.remetenteEmail || 'contato@visualsuper.com.br' },
+            to: [{ email: formData.email, name: formData.nome || 'Cliente' }],
+            subject: `🎁 Seu Cupom de Desconto: ${config.couponCode}`,
+            htmlContent: html
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao enviar e-mail de cupom:", err);
+      }
     }
 
     if (page.templateId === 'coupon' && config.couponCode) {
