@@ -569,7 +569,7 @@ export default function PopupsPage() {
                       <h5 style={{ fontWeight: '800', fontSize: '1.2rem', marginBottom: '0.5rem', lineHeight: 1.2 }}>{formData.title || 'Título'}</h5>
                       <p style={{ fontSize: '0.9rem', opacity: 0.7, marginBottom: '1.5rem', lineHeight: 1.4 }}>{formData.subtitle || 'Descrição'}</p>
                       
-                      {['lead-form', 'image-form-left', 'image-form-right'].includes(formData.templateId!) && (
+                      {['coupon', 'lead-form', 'image-form-left', 'image-form-right'].includes(formData.templateId!) && (
                         <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1.25rem' }}>
                           <input disabled placeholder="Seu Nome" style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem' }} />
                           <input disabled placeholder="Seu E-mail" style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem' }} />
@@ -577,7 +577,7 @@ export default function PopupsPage() {
                         </div>
                       )}
 
-                      {formData.couponCode && (
+                      {!['coupon', 'lead-form', 'image-form-left', 'image-form-right'].includes(formData.templateId!) && formData.couponCode && (
                         <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '10px', border: '2px dashed #e2e8f0', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 900, color: formData.theme?.buttonColor, textAlign: 'center' }}>
                           {formData.couponCode}
                         </div>
