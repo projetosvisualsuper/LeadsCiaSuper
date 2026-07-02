@@ -525,7 +525,8 @@ export const d1Api = {
         omnichannel: settings.omnichannel || {},
         appUrl: settings.appUrl || '',
         autoresponder: settings.autoresponder || { enabled: false, message: '' },
-        gtmId: settings.gtmId || ''
+        gtmId: settings.gtmId || '',
+        woocommerce: settings.woocommerce || { url: '', consumerKey: '', consumerSecret: '', syncEnabled: false }
       } as Settings;
     } catch (error) {
       console.error('Erro ao carregar configurações do D1:', error);
