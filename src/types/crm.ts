@@ -198,6 +198,12 @@ export interface Settings {
     message: string;
   };
   gtmId?: string; // ID do Google Tag Manager
+  woocommerce?: {
+    url: string;
+    consumerKey: string;
+    consumerSecret: string;
+    syncEnabled: boolean;
+  };
 }
 
 // --- LINK NA BIO ---

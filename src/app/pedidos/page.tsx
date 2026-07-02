@@ -48,13 +48,33 @@ export default function PedidosPage() {
     }
   };
 
+  const [syncingStatus, setSyncingStatus] = useState<string | null>(null);
+
   const handleStatusChange = async (pedidoId: string, newStatus: string) => {
+    setSyncingStatus(pedidoId);
     try {
-      await api.updatePedidoStatus(pedidoId, newStatus);
+      const res = await fetch('/api/pedidos/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pedidoId, status: newStatus })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao sincronizar pedido');
+      }
+
       setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, status: newStatus as any } : p));
+      
+      if (data.wooError) {
+        alert('O status foi atualizado no CRM, mas houve um erro ao enviar para a loja WooCommerce. Verifique os logs do sistema.');
+      }
     } catch (err) {
       console.error('Erro ao atualizar status:', err);
       alert('Erro ao atualizar o status do pedido.');
+    } finally {
+      setSyncingStatus(null);
     }
   };
 
@@ -244,35 +264,45 @@ export default function PedidosPage() {
                         <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           Mudar Status
                         </h4>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button 
                             className="btn-outline"
                             onClick={() => handleStatusChange(pedido.id, 'pendente')} 
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'pendente' ? '#fef3c7' : '#ffffff', borderColor: pedido.status === 'pendente' ? '#f59e0b' : '#cbd5e1' }}
+                            disabled={syncingStatus === pedido.id}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'pendente' ? '#fef3c7' : '#ffffff', borderColor: pedido.status === 'pendente' ? '#f59e0b' : '#cbd5e1', opacity: syncingStatus === pedido.id ? 0.5 : 1 }}
                           >
                             Pendente
                           </button>
                           <button 
                             className="btn-outline"
                             onClick={() => handleStatusChange(pedido.id, 'em_atendimento')} 
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'em_atendimento' ? '#dbeafe' : '#ffffff', borderColor: pedido.status === 'em_atendimento' ? '#3b82f6' : '#cbd5e1' }}
+                            disabled={syncingStatus === pedido.id}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'em_atendimento' ? '#dbeafe' : '#ffffff', borderColor: pedido.status === 'em_atendimento' ? '#3b82f6' : '#cbd5e1', opacity: syncingStatus === pedido.id ? 0.5 : 1 }}
                           >
                             Em Atendimento
                           </button>
                           <button 
                             className="btn-outline"
                             onClick={() => handleStatusChange(pedido.id, 'finalizado')} 
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'finalizado' ? '#d1fae5' : '#ffffff', borderColor: pedido.status === 'finalizado' ? '#10b981' : '#cbd5e1' }}
+                            disabled={syncingStatus === pedido.id}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'finalizado' ? '#d1fae5' : '#ffffff', borderColor: pedido.status === 'finalizado' ? '#10b981' : '#cbd5e1', opacity: syncingStatus === pedido.id ? 0.5 : 1 }}
                           >
                             Finalizado
                           </button>
                           <button 
                             className="btn-outline"
                             onClick={() => handleStatusChange(pedido.id, 'cancelado')} 
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'cancelado' ? '#fee2e2' : '#ffffff', borderColor: pedido.status === 'cancelado' ? '#ef4444' : '#cbd5e1' }}
+                            disabled={syncingStatus === pedido.id}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'cancelado' ? '#fee2e2' : '#ffffff', borderColor: pedido.status === 'cancelado' ? '#ef4444' : '#cbd5e1', opacity: syncingStatus === pedido.id ? 0.5 : 1 }}
                           >
                             Cancelado
                           </button>
+                          {syncingStatus === pedido.id && (
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '0.5rem' }}>
+                              <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                              Sincronizando...
+                            </span>
+                          )}
                         </div>
                       </div>
 

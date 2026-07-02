@@ -19,7 +19,8 @@ import {
   Plus,
   MessageSquare,
   Eye,
-  EyeOff
+  EyeOff,
+  ShoppingBag
 } from 'lucide-react';
 
 export default function ConfigPage() {
@@ -59,6 +60,12 @@ export default function ConfigPage() {
       instagram: '',
       linkedin: '',
       youtube: ''
+    },
+    woocommerce: {
+      url: '',
+      consumerKey: '',
+      consumerSecret: '',
+      syncEnabled: false
     }
   });
   const [loading, setLoading] = useState(true);
@@ -687,6 +694,85 @@ export default function ConfigPage() {
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
                 Importante: Use este campo para definir o domínio real do seu CRM. Isso garante que integrações com Google e Meta funcionem corretamente.
               </p>
+            </div>
+          </div>
+        </section>
+
+        {/* WOOCOMMERCE */}
+        <section style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', paddingBottom: '3rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flex: '1 1 300px', maxWidth: '350px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <ShoppingBag className="color-primary" size={20} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>WooCommerce (Loja)</h3>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>
+              Integre com sua loja WooCommerce para sincronizar o status dos pedidos bidirecionalmente.
+            </p>
+          </div>
+          
+          <div className="card" style={{ flex: '2 1 500px', margin: 0, display: 'grid', gap: '1.25rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Sincronizar Automaticamente</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input 
+                  type="checkbox" 
+                  checked={settings.woocommerce?.syncEnabled || false}
+                  onChange={e => setSettings({
+                    ...settings, 
+                    woocommerce: { ...settings.woocommerce, syncEnabled: e.target.checked } as any
+                  })}
+                />
+                <span style={{ fontSize: '0.875rem', color: '#475569' }}>
+                  Atualizar o pedido no WooCommerce quando alterar o status no CRM
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>URL da Loja</label>
+              <input 
+                type="text" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem' }} 
+                placeholder="Ex: https://minhaloja.com.br"
+                value={settings.woocommerce?.url || ''}
+                onChange={e => setSettings({
+                  ...settings, 
+                  woocommerce: { ...settings.woocommerce, url: e.target.value } as any
+                })}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Consumer Key (CK)</label>
+              <input 
+                type="text" 
+                className="btn-outline" 
+                style={{ width: '100%', height: '42px', padding: '0 1rem' }} 
+                placeholder="ck_..."
+                value={settings.woocommerce?.consumerKey || ''}
+                onChange={e => setSettings({
+                  ...settings, 
+                  woocommerce: { ...settings.woocommerce, consumerKey: e.target.value } as any
+                })}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Consumer Secret (CS)</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type={showEvolutionKey ? "text" : "password"} 
+                  className="btn-outline" 
+                  style={{ width: '100%', height: '42px', padding: '0 1rem', paddingRight: '40px' }} 
+                  placeholder="cs_..."
+                  value={settings.woocommerce?.consumerSecret || ''}
+                  onChange={e => setSettings({
+                    ...settings, 
+                    woocommerce: { ...settings.woocommerce, consumerSecret: e.target.value } as any
+                  })}
+                />
+              </div>
             </div>
           </div>
         </section>
