@@ -451,30 +451,33 @@ export default function PopupsPage() {
                 </div>
 
                 {formData.templateId === 'coupon' && (
-                  <div style={{ background: 'rgba(251, 191, 36, 0.05)', padding: '1rem', borderRadius: '8px', border: '1px dashed #fbbf24', display: 'grid', gap: '0.75rem' }}>
-                    <div>
-                      <label className="label" style={{ marginBottom: '0.25rem' }}>Código do Cupom</label>
-                      <input 
-                        type="text" className="btn-outline" style={{ width: '100%', fontWeight: 'bold', textTransform: 'uppercase', background: 'white' }} 
-                        value={formData.couponCode} onChange={e => setFormData({...formData, couponCode: e.target.value})}
-                        placeholder="EX: PROMO10"
-                      />
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
-                      <input 
-                        type="checkbox" 
-                        style={{ width: '16px', height: '16px' }}
-                        checked={formData.theme?.sendCouponEmail || false}
-                        onChange={e => setFormData({
-                          ...formData, 
-                          theme: {
-                            ...formData.theme,
-                            sendCouponEmail: e.target.checked
-                          }
-                        })}
-                      />
-                      <span>Enviar código automaticamente por e-mail</span>
-                    </label>
+                  <div style={{ background: 'rgba(251, 191, 36, 0.05)', padding: '1.25rem', borderRadius: '8px', border: '1px dashed #fbbf24' }}>
+                     <div style={{ display: 'grid', gap: '1rem' }}>
+                        <div>
+                          <label style={{ fontSize: '0.875rem', marginBottom: '0.5rem', display: 'block', color: '#b45309', fontWeight: 600 }}>Código do Cupom</label>
+                          <input 
+                            className="btn-outline" style={{ width: '100%', height: '42px', padding: '0 1rem', background: 'white', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '1px' }}
+                            placeholder="EX: PROMO10"
+                            value={formData.couponCode || ''}
+                            onChange={e => setFormData({...formData, couponCode: e.target.value.toUpperCase()})}
+                          />
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                          <input 
+                            type="checkbox" 
+                            style={{ width: '18px', height: '18px' }}
+                            checked={formData.theme?.sendCouponEmail || false}
+                            onChange={e => setFormData({
+                              ...formData, 
+                              theme: {
+                                ...formData.theme,
+                                sendCouponEmail: e.target.checked
+                              }
+                            })}
+                          />
+                          <span>Enviar código automaticamente por e-mail</span>
+                        </label>
+                     </div>
                   </div>
                 )}
 
