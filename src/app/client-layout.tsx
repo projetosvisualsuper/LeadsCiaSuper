@@ -794,9 +794,17 @@ export default function ClientLayout({
     const handlePedidosRead = () => {
       api.getUnreadPedidosCount().then(setUnreadPedidosCount).catch(console.error);
     };
+    
+    // Poll a cada 30 segundos
+    const interval = setInterval(() => {
+      handleLogsRead();
+      handlePedidosRead();
+    }, 30000);
+
     window.addEventListener('logs-read', handleLogsRead);
     window.addEventListener('pedidos-read', handlePedidosRead);
     return () => {
+      clearInterval(interval);
       window.removeEventListener('logs-read', handleLogsRead);
       window.removeEventListener('pedidos-read', handlePedidosRead);
     };
