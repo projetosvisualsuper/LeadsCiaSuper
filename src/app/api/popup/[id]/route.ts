@@ -197,7 +197,7 @@ export async function GET(
     const email = inputs[1].value;
     const telefone = inputs[2].value;
 
-    const baseUrl = '${typeof window !== 'undefined' ? window.location.origin : ''}';
+    const baseUrl = 'https://leads.ciasuper.com.br';
     try {
       const res = await fetch(baseUrl + '/api/popup/' + popupData.id, {
         method: 'POST',
