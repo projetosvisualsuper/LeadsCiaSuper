@@ -148,14 +148,27 @@ export async function GET(
       });
     }
 
-    const theme = popup.theme || {};
-    const template = popup.templateId || 'simple';
+    const cleanText = (str?: string) => {
+      if (!str) return '';
+      let res = str.replace(/\\text{/g, '').replace(/ext{/g, '');
+      if (str.includes('text{') || str.includes('ext{')) {
+        res = res.replace(/}/g, '');
+      }
+      return res.trim();
+    };
+
+    const cleanedPopup = {
+      ...popup,
+      title: cleanText(popup.title),
+      subtitle: cleanText(popup.subtitle),
+      buttonText: cleanText(popup.buttonText),
+    };
 
     // Gerar o Script Vanilla JS
     const script = `
 (function() {
   console.log('GerencyLeads Popup: Script carregado para o ID ${id}');
-  const popupData = ${JSON.stringify(popup)};
+  const popupData = ${JSON.stringify(cleanedPopup)};
   const theme = popupData.theme || {};
   const template = popupData.templateId || 'simple';
 
