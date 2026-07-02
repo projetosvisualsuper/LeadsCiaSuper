@@ -595,24 +595,24 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
           <div style={{ width: '80px', height: '80px', background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
              <CheckCircle2 size={48} />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>Sucesso!</h2>
-          <p style={{ opacity: 0.7, marginBottom: '2rem' }}>Seu cadastro foi realizado e seu cupom de desconto foi liberado.</p>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: '#1e293b' }}>Sucesso!</h2>
+          <p style={{ opacity: 1, marginBottom: '2rem', fontSize: '1.15rem', color: '#475569', lineHeight: 1.5 }}>Seu cadastro foi realizado e seu cupom de desconto foi liberado.</p>
           
           <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '2px dashed #e2e8f0', marginBottom: '1.5rem', position: 'relative' }}>
-             <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem' }}>Código do Cupom</div>
-             <div style={{ fontSize: '2rem', fontWeight: 900, letterSpacing: '2px', color: '#1e3a8a' }}>{config.couponCode}</div>
+             <div style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.6, marginBottom: '0.5rem', letterSpacing: '0.5px', color: '#64748b' }}>Código do Cupom</div>
+             <div style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '2px', color: '#1e3a8a' }}>{config.couponCode}</div>
           </div>
 
           <div style={{ display: 'grid', gap: '0.75rem' }}>
-            <button onClick={handleCopyCoupon} style={{ width: '100%', height: '54px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
-               {copying ? <><Check size={20} /> Copiado!</> : <><Copy size={20} /> Copiar Código</>}
+            <button onClick={handleCopyCoupon} style={{ width: '100%', height: '58px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', fontSize: '1.15rem' }}>
+               {copying ? <><Check size={22} /> Copiado!</> : <><Copy size={22} /> Copiar Código</>}
             </button>
-            <button onClick={() => handleFinalAction()} style={{ width: '100%', height: '54px', borderRadius: '12px', background: config.botaoColor || '#fbbf24', color: getContrastColor(config.botaoColor || '#fbbf24'), fontWeight: 700 }}>OK, Continuar</button>
+            <button onClick={() => handleFinalAction()} style={{ width: '100%', height: '58px', borderRadius: '12px', background: config.botaoColor || '#fbbf24', color: getContrastColor(config.botaoColor || '#fbbf24'), fontWeight: 800, fontSize: '1.15rem' }}>OK, Continuar</button>
           </div>
 
           {config.sendCouponEmail && (
-            <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-               <Mail size={16} /> Enviamos uma cópia para seu e-mail
+            <div style={{ marginTop: '1.5rem', fontSize: '0.95rem', fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+               <Mail size={18} /> Enviamos uma cópia para seu e-mail
             </div>
           )}
        </div>
