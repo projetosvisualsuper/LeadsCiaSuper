@@ -95,6 +95,8 @@ function LeadsContent() {
     const status = searchParams.get('status');
     const origem = searchParams.get('origem');
     const tag = searchParams.get('tag');
+    const search = searchParams.get('search');
+    
     if (canal || status || origem || tag) {
       setFilters(prev => ({
         ...prev,
@@ -103,6 +105,9 @@ function LeadsContent() {
         origem: origem || '',
         tag: tag || ''
       }));
+    }
+    if (search) {
+      setSearchTerm(search);
     }
   }, [searchParams]);
 
