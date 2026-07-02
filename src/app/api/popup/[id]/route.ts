@@ -50,7 +50,7 @@ export async function POST(
     const agora = new Date().toISOString();
     const tags = ['popup', popup.name];
     if (popup.templateId === 'coupon' || popup.couponCode) {
-      tags.push('cupom');
+      tags.push('cupom pop-up');
     }
 
     await api.saveLead({
@@ -216,25 +216,23 @@ export async function GET(
         const overlay = contentContainer.closest('.gl-popup-overlay');
         
         let successHtml = \`
-          <div style="padding: 3rem; text-align: center;">
-             <div style="font-size: 3rem; margin-bottom: 1rem;">🎁</div>
-             <h2 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem;">\${popupData.title}</h2>
-             <p style="opacity: 0.7; margin-bottom: 2rem;">Seu cupom de desconto foi gerado com sucesso!</p>
-             <div style="background: #f8fafc; padding: 1.5rem; border-radius: 16px; border: 2px dashed #e2e8f0; margin-bottom: 2rem; position: relative;">
-                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.5rem;">Seu Cupom</div>
-                <div style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px; color: \${theme.buttonColor || '#3b82f6'};" id="gl-coupon-code">\${data.couponCode || popupData.couponCode}</div>
+          <div style="padding: 2.5rem; text-align: center;">
+             <div style="width: 64px; height: 64px; border-radius: 50%; background: #fef3c7; border: 3px solid #f59e0b; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 1.75rem;">✓</div>
+             <h2 style="font-size: 1.5rem; font-weight: 800; margin: 0 0 0.5rem; color: \${theme.textColor || '#1e293b'};">Sucesso!</h2>
+             <p style="font-size: 0.95rem; opacity: 0.7; margin: 0 0 1.5rem; color: \${theme.textColor || '#1e293b'};">Seu cadastro foi realizado e seu cupom de desconto foi liberado.</p>
+             <div style="background: rgba(255,255,255,0.15); padding: 1.25rem; border-radius: 16px; border: 2px dashed rgba(255,255,255,0.4); margin-bottom: 1.25rem;">
+                <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; margin-bottom: 0.5rem; color: \${theme.textColor || '#1e293b'};">Código do Cupom</div>
+                <div style="font-size: 2rem; font-weight: 900; letter-spacing: 3px; color: \${theme.buttonColor || '#f59e0b'};" id="gl-coupon-code">\${data.couponCode || popupData.couponCode}</div>
              </div>
-             
              <div style="display: grid; gap: 0.75rem;">
-               <button id="gl-copy-btn" style="width: 100%; height: 50px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                  Copiar Código
+               <button id="gl-copy-btn" style="width: 100%; height: 48px; border-radius: 12px; background: #1e293b; color: white; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.95rem;">
+                  <span>📋</span> Copiar Código
                </button>
-               \${popupData.buttonLink ? \`<a href="\${popupData.buttonLink}" class="gl-popup-btn" style="background: \${theme.buttonColor || '#3b82f6'}; color: \${theme.buttonTextColor || '#fff'};">\${popupData.buttonText}</a>\` : ''}
+               \${popupData.buttonLink ? \`<a href="\${popupData.buttonLink}" class="gl-popup-btn" style="background: \${theme.buttonColor || '#3b82f6'}; color: \${theme.buttonTextColor || '#fff'}; display:block; padding:0.85rem; border-radius:12px; font-weight:700; text-align:center; text-decoration:none; font-size:0.95rem;">\${popupData.buttonText}</a>\` : ''}
              </div>
-             
              \${theme.sendCouponEmail ? \`
-               <div style="margin-top: 1.5rem; font-size: 0.85rem; color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                  ✓ Enviamos uma cópia para seu e-mail
+               <div style="margin-top: 1.25rem; font-size: 0.82rem; color: #10b981; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                  <span>✉️</span> Enviamos uma cópia para seu e-mail
                </div>
              \` : ''}
           </div>
