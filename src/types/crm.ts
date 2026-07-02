@@ -423,3 +423,16 @@ export interface SystemLog {
   dataCriacao: string;
   isRead: boolean;
 }
+
+export interface Pedido {
+  id: string;
+  leadId: string;
+  pedidoReferencia?: string;
+  itens?: string;
+  valor?: number;
+  status: 'pendente' | 'em_atendimento' | 'finalizado' | 'cancelado';
+  isRead: boolean;
+  dataCriacao: string;
+  leadNome?: string;
+  leadCelular?: string;
+}

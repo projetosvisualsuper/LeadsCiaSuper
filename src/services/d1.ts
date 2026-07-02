@@ -1383,6 +1383,42 @@ export const d1Api = {
     return results && results.length > 0 ? results[0].count : 0;
   },
 
+  // --- PEDIDOS ---
+  savePedido: async (pedido: Omit<Pedido, 'id' | 'dataCriacao' | 'isRead' | 'status'>): Promise<void> => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const dataCriacao = new Date().toISOString();
+    await executeRun(
+      `INSERT INTO pedidos (id, leadId, pedidoReferencia, itens, valor, status, isRead, dataCriacao) VALUES (?, ?, ?, ?, ?, 'pendente', 0, ?)`,
+      [id, pedido.leadId, pedido.pedidoReferencia || null, pedido.itens || null, pedido.valor || null, dataCriacao]
+    );
+  },
+
+  getPedidos: async (): Promise<Pedido[]> => {
+    // Fazer JOIN com a tabela de leads para pegar o nome e o celular do lead
+    const query = `
+      SELECT p.*, l.nome as leadNome, l.celular as leadCelular
+      FROM pedidos p
+      LEFT JOIN leads l ON p.leadId = l.id
+      ORDER BY p.dataCriacao DESC
+      LIMIT 100
+    `;
+    const { results } = await runQuery(query);
+    return (results || []) as Pedido[];
+  },
+
+  markPedidoAsRead: async (pedidoId: string): Promise<void> => {
+    await executeRun(`UPDATE pedidos SET isRead = 1 WHERE id = ?`, [pedidoId]);
+  },
+
+  updatePedidoStatus: async (pedidoId: string, status: string): Promise<void> => {
+    await executeRun(`UPDATE pedidos SET status = ? WHERE id = ?`, [status, pedidoId]);
+  },
+
+  getUnreadPedidosCount: async (): Promise<number> => {
+    const { results } = await runQuery(`SELECT COUNT(id) as count FROM pedidos WHERE isRead = 0`);
+    return results && results.length > 0 ? results[0].count : 0;
+  },
+
   // Database Execution Helpers
   runQuery: async (sql: string, params: any[] = []): Promise<any> => {
     return runQuery(sql, params);

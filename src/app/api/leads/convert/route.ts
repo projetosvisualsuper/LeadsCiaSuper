@@ -101,8 +101,12 @@ export async function POST(request: Request) {
       [email || telefone]
     );
 
+    let finalLeadId = '';
+    let actionMessage = '';
+
     if (!checkResults || checkResults.length === 0) {
       // Se não encontrar por celular, tenta por telefone fixo se foi passado telefone
+      let foundByFixo = false;
       if (!email && telefone) {
         const { results: checkResults2 } = await d1Api.runQuery(
           `SELECT * FROM leads WHERE telefone = ? LIMIT 1`,
@@ -111,50 +115,66 @@ export async function POST(request: Request) {
         if (checkResults2 && checkResults2.length > 0) {
           const lead = checkResults2[0];
           await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId);
-          return NextResponse.json({ success: true, message: 'Lead de cotação/venda atualizado via telefone fixo.' });
+          finalLeadId = lead.id;
+          actionMessage = 'Lead de cotação/venda atualizado via telefone fixo.';
+          foundByFixo = true;
         }
       }
 
-      // Criar novo lead
-      const leadId = Math.random().toString(36).substr(2, 9);
-      const agora = new Date().toISOString();
-      
-      const leadStatus = isCotacao ? 'novo' : 'convertido';
-      const leadTags = ['conversao-direta'];
-      if (valor) leadTags.push(`valor-${valor}`);
-      leadTags.push(isCotacao ? 'cotação' : 'venda');
-      
-      let observacao = '';
-      if (isCotacao) {
-        observacao = `[COTAÇÃO RECEBIDA] Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor estimado: R$ ${valor}.` : ''}${pedidoId ? ` ID Cotação: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
-      } else {
-        observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${itensFormatados ? ` Produtos: ${itensFormatados}.` : ''}${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
+      if (!foundByFixo) {
+        // Criar novo lead
+        finalLeadId = Math.random().toString(36).substr(2, 9);
+        const agora = new Date().toISOString();
+        
+        const leadStatus = isCotacao ? 'novo' : 'convertido';
+        const leadTags = ['conversao-direta'];
+        if (valor) leadTags.push(`valor-${valor}`);
+        leadTags.push(isCotacao ? 'cotação' : 'venda');
+        
+        let observacao = '';
+        if (isCotacao) {
+          observacao = `[COTAÇÃO RECEBIDA] Produtos: ${itensFormatados || 'Não informados'}.${valor ? ` Valor estimado: R$ ${valor}.` : ''}${pedidoId ? ` ID Cotação: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
+        } else {
+          observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${itensFormatados ? ` Produtos: ${itensFormatados}.` : ''}${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
+        }
+
+        await d1Api.saveLead({
+          id: finalLeadId,
+          nome: nome || 'Cliente do Site',
+          email: email || null,
+          celular: telefone || null,
+          status: leadStatus,
+          tags: leadTags,
+          origem: isCotacao ? 'Cotação (WooCommerce)' : 'Conversão Direta (Site)',
+          dataCriacao: agora,
+          dataUltimaAtividade: agora,
+          dataUltimaConversao: agora,
+          totalConversoes: 1,
+          consentimentoLGPD: true,
+          observacoes: observacao
+        } as any);
+
+        actionMessage = `Novo lead criado como ${isCotacao ? 'Cotação' : 'Venda'}.`;
       }
-
-      await d1Api.saveLead({
-        id: leadId,
-        nome: nome || 'Cliente do Site',
-        email: email || null,
-        celular: telefone || null,
-        status: leadStatus,
-        tags: leadTags,
-        origem: isCotacao ? 'Cotação (WooCommerce)' : 'Conversão Direta (Site)',
-        dataCriacao: agora,
-        dataUltimaAtividade: agora,
-        dataUltimaConversao: agora,
-        totalConversoes: 1,
-        consentimentoLGPD: true,
-        observacoes: observacao
-      } as any);
-
-      return NextResponse.json({ success: true, message: `Novo lead criado como ${isCotacao ? 'Cotação' : 'Venda'}.`, leadId });
+    } else {
+      // --- Atualizar o primeiro lead encontrado ---
+      const lead = checkResults[0];
+      await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId);
+      finalLeadId = lead.id;
+      actionMessage = `Lead existente atualizado (${isCotacao ? 'Cotação' : 'Venda'}).`;
     }
 
-    // --- Atualizar o primeiro lead encontrado ---
-    const lead = checkResults[0];
-    await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId);
+    // --- CRIAR O REGISTRO DO PEDIDO NO MÓDULO DE PEDIDOS ---
+    if (pedidoId || isCotacao || itensFormatados) {
+      await d1Api.savePedido({
+        leadId: finalLeadId,
+        pedidoReferencia: pedidoId || `P-${Math.floor(Math.random() * 10000)}`,
+        itens: itensFormatados || 'Produtos não informados',
+        valor: valor ? parseFloat(valor) : undefined
+      } as any);
+    }
 
-    return NextResponse.json({ success: true, message: `Lead existente atualizado (${isCotacao ? 'Cotação' : 'Venda'}).`, leadId: lead.id });
+    return NextResponse.json({ success: true, message: actionMessage, leadId: finalLeadId });
 
   } catch (error: any) {
     console.error('Erro na conversão:', error);

@@ -238,3 +238,14 @@ CREATE TABLE IF NOT EXISTS system_logs (
   dataCriacao TEXT NOT NULL,
   isRead INTEGER DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS pedidos (
+  id TEXT PRIMARY KEY,
+  leadId TEXT NOT NULL,
+  pedidoReferencia TEXT,
+  itens TEXT,
+  valor REAL,
+  status TEXT DEFAULT 'pendente',
+  isRead INTEGER DEFAULT 0,
+  dataCriacao TEXT NOT NULL
+);

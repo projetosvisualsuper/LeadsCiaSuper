@@ -33,14 +33,15 @@ import {
   Camera,
   Phone,
   Mic,
-  AlertTriangle
+  AlertTriangle,
+  ShoppingBag
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
 const rolePermissions: Record<string, string[]> = {
   basico: ['/', '/leads', '/atendimento', '/chat-interno'],
-  intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups'],
-  master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios', '/logs']
+  intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/pedidos'],
+  master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios', '/logs', '/pedidos']
 };
 
 export default function ClientLayout({
@@ -69,7 +70,8 @@ export default function ClientLayout({
     '/chat-interno',
     '/bots',
     '/conexoes',
-    '/logs'
+    '/logs',
+    '/pedidos'
   ];
 
   // Se a rota NÃO estiver na lista acima, consideramos que é uma Página de Captura pública
@@ -87,6 +89,7 @@ export default function ClientLayout({
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [whatsappUnreadCount, setWhatsappUnreadCount] = useState(0);
   const [unreadLogsCount, setUnreadLogsCount] = useState(0);
+  const [unreadPedidosCount, setUnreadPedidosCount] = useState(0);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [disconnectedConnections, setDisconnectedConnections] = useState<any[]>([]);
 
@@ -773,6 +776,9 @@ export default function ClientLayout({
         
         const logsCount = await api.getUnreadLogsCount();
         setUnreadLogsCount(logsCount);
+
+        const pedidosCount = await api.getUnreadPedidosCount();
+        setUnreadPedidosCount(pedidosCount);
       } catch (e) {
         console.error(e);
       }
@@ -785,8 +791,15 @@ export default function ClientLayout({
     const handleLogsRead = () => {
       api.getUnreadLogsCount().then(setUnreadLogsCount).catch(console.error);
     };
+    const handlePedidosRead = () => {
+      api.getUnreadPedidosCount().then(setUnreadPedidosCount).catch(console.error);
+    };
     window.addEventListener('logs-read', handleLogsRead);
-    return () => window.removeEventListener('logs-read', handleLogsRead);
+    window.addEventListener('pedidos-read', handlePedidosRead);
+    return () => {
+      window.removeEventListener('logs-read', handleLogsRead);
+      window.removeEventListener('pedidos-read', handlePedidosRead);
+    };
   }, []);
 
   useEffect(() => {
@@ -936,6 +949,7 @@ export default function ClientLayout({
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {renderNavLink('/', 'Dashboard', <LayoutDashboard size={sidebarIconSize} />)}
             {renderNavLink('/leads', 'Leads', <Users size={sidebarIconSize} />)}
+            {renderNavLink('/pedidos', 'Pedidos', <ShoppingBag size={sidebarIconSize} />, unreadPedidosCount > 0 ? unreadPedidosCount : undefined)}
             {renderNavLink('/campanhas', 'Campanhas', <Mail size={sidebarIconSize} />)}
             {renderNavLink('/segmentacoes', 'Segmentações', <Filter size={sidebarIconSize} />)}
             {renderNavLink('/relatorios', 'Relatórios', <BarChart3 size={sidebarIconSize} />)}
