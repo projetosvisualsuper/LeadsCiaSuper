@@ -223,7 +223,7 @@ export async function GET(
         contentContainer.style.borderRadius = '24px';
 
         const couponCode = data.couponCode || popupData.couponCode;
-        const sendEmail = \${JSON.stringify(!!popup.sendCouponEmail)};
+        const sendEmail = ${JSON.stringify(!!popup.sendCouponEmail)};
 
         contentContainer.innerHTML = \`
           <button class="gl-popup-close" style="background: rgba(0,0,0,0.08); color: #64748b; border: none; cursor: pointer; position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px; border-radius: 50%; font-size: 1rem; display: flex; align-items: center; justify-content: center;">✕</button>
