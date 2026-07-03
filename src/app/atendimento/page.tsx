@@ -2331,7 +2331,8 @@ function AtendimentoContent() {
                         // Disparar evento para atualizar a sidebar
                         window.dispatchEvent(new CustomEvent('oportunidades-read'));
                       } else {
-                        showAlert('Erro ao encaminhar lead.', 'error');
+                        const data = await res.json().catch(() => ({}));
+                        showAlert(`Erro: ${data.error || 'Erro desconhecido'}`, 'error');
                       }
                     } catch (err) {
                       showAlert('Erro ao conectar com o servidor.', 'error');
