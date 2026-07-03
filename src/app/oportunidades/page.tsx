@@ -77,6 +77,7 @@ export default function OportunidadesPage() {
   const [savingObs, setSavingObs] = useState<string | null>(null);
   const [chatHistories, setChatHistories] = useState<Record<string, ChatMessage[]>>({});
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
 
   const fetchOpportunities = async () => {
     setLoading(true);
@@ -95,6 +96,9 @@ export default function OportunidadesPage() {
 
   useEffect(() => {
     fetchOpportunities();
+    api.getAllUserProfiles()
+      .then(setSystemUsers)
+      .catch(err => console.error('Erro ao carregar usuários:', err));
   }, []);
 
   const handleToggleOpportunity = async (opp: Opportunity) => {
@@ -483,6 +487,48 @@ export default function OportunidadesPage() {
                             Cancelado
                           </button>
                         </div>
+                      </div>
+
+                      {/* Repassar Oportunidade */}
+                      <div>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Repassar Oportunidade
+                        </h4>
+                        <select
+                          value={opp.assignedTo}
+                          onChange={async (e) => {
+                            const newSellerId = e.target.value;
+                            if (!newSellerId) return;
+                            if (confirm('Deseja realmente repassar esta oportunidade para outro vendedor?')) {
+                              try {
+                                const res = await fetch('/api/opportunities', {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ id: opp.id, assignedTo: newSellerId })
+                                });
+                                if (res.ok) {
+                                  alert('Oportunidade repassada com sucesso!');
+                                  fetchOpportunities();
+                                } else {
+                                  alert('Erro ao repassar oportunidade.');
+                                }
+                              } catch (err) {
+                                console.error(err);
+                                alert('Erro de conexão ao repassar oportunidade.');
+                              }
+                            }
+                          }}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none', backgroundColor: '#ffffff' }}
+                        >
+                          {systemUsers
+                            .filter(u => u.status === 'approved')
+                            .map(u => (
+                              <option key={u.uid} value={u.uid}>
+                                {u.name || u.email} ({u.role === 'admin' ? 'Master' : u.role === 'editor' ? 'Intermediário' : 'Básico'})
+                              </option>
+                            ))
+                          }
+                        </select>
                       </div>
 
                       {/* Observações */}

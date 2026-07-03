@@ -85,7 +85,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id, status, observacao, markRead } = await request.json();
+    const { id, status, observacao, markRead, assignedTo } = await request.json();
     if (!id) {
       return NextResponse.json({ error: 'ID da oportunidade é obrigatório' }, { status: 400 });
     }
@@ -100,6 +100,10 @@ export async function PUT(request: Request) {
 
     if (markRead) {
       await d1Api.markOpportunityAsRead(id);
+    }
+
+    if (assignedTo) {
+      await d1Api.updateOpportunityAssignment(id, assignedTo);
     }
 
     return NextResponse.json({ success: true, message: 'Oportunidade atualizada com sucesso.' });

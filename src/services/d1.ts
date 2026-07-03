@@ -1464,6 +1464,18 @@ export const d1Api = {
     await executeRun(`UPDATE opportunities SET observacao = ? WHERE id = ?`, [observacao, oppId]);
   },
 
+  updateOpportunityAssignment: async (oppId: string, assignedTo: string): Promise<void> => {
+    // Busca o leadId desta oportunidade primeiro
+    const { results } = await runQuery(`SELECT leadId FROM opportunities WHERE id = ? LIMIT 1`, [oppId]);
+    if (results && results.length > 0) {
+      const leadId = results[0].leadId;
+      // Atualiza a atribuição do chat correspondente
+      await executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [assignedTo, leadId]);
+    }
+    // Atualiza a oportunidade
+    await executeRun(`UPDATE opportunities SET assignedTo = ? WHERE id = ?`, [assignedTo, oppId]);
+  },
+
   getUnreadOpportunitiesCount: async (assignedTo?: string): Promise<number> => {
     let query = `SELECT COUNT(id) as count FROM opportunities WHERE isRead = 0`;
     let params: any[] = [];
