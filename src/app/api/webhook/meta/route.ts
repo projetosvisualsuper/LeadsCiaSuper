@@ -30,8 +30,8 @@ async function getMetaProfile(userId: string, channel: string) {
     
     // Fallback: Tentar buscar na raiz ou dentro de omnichannel
     const token = channel === 'instagram' 
-      ? (settings.omnichannel?.instagramAccessToken || settings.instagramAccessToken)
-      : (settings.omnichannel?.messengerAccessToken || settings.messengerAccessToken);
+      ? ((settings as any).omnichannel?.instagramAccessToken || (settings as any).instagramAccessToken)
+      : ((settings as any).omnichannel?.messengerAccessToken || (settings as any).messengerAccessToken);
 
     if (!token) {
       console.error('getMetaProfile: Token não encontrado para o canal', channel);
@@ -73,6 +73,150 @@ async function getMetaProfile(userId: string, channel: string) {
   return null;
 }
 
+// Helper function to process individual Meta messages (DMs or Comments)
+async function processMetaMessage(
+  objectType: string,
+  entryId: string,
+  leadId: string,
+  messageText: string,
+  messageType: 'text' | 'image' | 'video' | 'file',
+  isEcho: boolean,
+  tempLeadName: string,
+  mediaUrl: string | null
+) {
+  if (!leadId || !messageText) return;
+  
+  const channel = objectType === 'instagram' ? 'instagram' : 'facebook';
+  const chatId = `${channel}_${leadId}`;
+
+  let leadName = tempLeadName || ('Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook'));
+  let leadAvatar = null;
+
+  const profile = await getMetaProfile(leadId, channel);
+  if (profile) {
+    leadName = profile.name || leadName;
+    leadAvatar = profile.avatar || leadAvatar;
+  }
+
+  const { results: existingLeads } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
+  const agora = new Date().toISOString();
+
+  if (!existingLeads || existingLeads.length === 0) {
+    await d1Api.saveLead({
+      id: leadId,
+      nome: leadName,
+      origem: channel === 'instagram' ? 'Instagram Direct' : 'Facebook Messenger',
+      status: 'novo',
+      dataCriacao: agora,
+      dataUltimaAtividade: agora,
+      tags: ['omnichannel', channel],
+      avatar: leadAvatar,
+      isMetaLead: true,
+      email: '',
+      consentimentoLGPD: true
+    } as any);
+  } else {
+    const leadData = existingLeads[0];
+    let updatedName = leadData.nome;
+    let updatedAvatar = leadData.avatar;
+
+    if (profile) {
+      if (!leadData.nome || leadData.nome.startsWith('Lead via')) {
+        updatedName = profile.name || leadData.nome;
+      }
+      if (!leadData.avatar) {
+        updatedAvatar = profile.avatar || leadData.avatar;
+      }
+    }
+    await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ?, nome = ?, avatar = ? WHERE id = ?`, [
+      agora, updatedName, updatedAvatar, leadId
+    ]);
+  }
+
+  const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
+  const hasChat = chatResults && chatResults.length > 0;
+
+  if (!hasChat) {
+    const newChat: ChatSession = {
+      id: chatId,
+      leadId: leadId,
+      leadName: leadName,
+      channel: channel as any,
+      lastMessage: messageText,
+      lastTimestamp: agora,
+      unreadCount: isEcho ? 0 : 1,
+      status: 'active',
+      leadAvatar: leadAvatar,
+      dataCriacao: agora
+    };
+    await d1Api.saveChatSession(newChat);
+  } else {
+    const chatData = chatResults[0];
+    const unreadCount = isEcho ? 0 : (chatData.unreadCount || 0) + 1;
+    
+    let updatedLeadName = chatData.leadName;
+    let updatedLeadAvatar = chatData.leadAvatar;
+
+    if (profile) {
+      if (!chatData.leadName || chatData.leadName.startsWith('Lead via')) {
+        updatedLeadName = profile.name || chatData.leadName;
+      }
+      if (!chatData.leadAvatar) {
+        updatedLeadAvatar = profile.avatar || chatData.leadAvatar;
+      }
+    }
+
+    await d1Api.executeRun(`UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, leadName = ?, leadAvatar = ? WHERE id = ?`, [
+      messageText, agora, unreadCount, updatedLeadName, updatedLeadAvatar, chatId
+    ]);
+  }
+
+  let skipSave = false;
+
+  const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const incomingFlag = isEcho ? 0 : 1;
+  const { results: recentMessages } = await d1Api.runQuery(
+    `SELECT id FROM messages WHERE chatId = ? AND content = ? AND isIncoming = ? AND timestamp >= ? LIMIT 1`,
+    [chatId, messageText, incomingFlag, fiveMinsAgo]
+  );
+  if (recentMessages && recentMessages.length > 0) {
+    skipSave = true;
+  }
+
+  if (!skipSave) {
+    await d1Api.sendMessage({
+      id: Math.random().toString(36).substr(2, 9),
+      chatId: chatId,
+      senderId: isEcho ? entryId : leadId,
+      senderName: isEcho ? 'Nossa Conta' : leadName,
+      content: messageText,
+      timestamp: agora,
+      type: messageType,
+      status: 'delivered',
+      isIncoming: !isEcho,
+      channel: channel as any,
+      leadId: leadId,
+      leadName: leadName,
+      mediaUrl: mediaUrl || undefined
+    });
+
+    if (!isEcho && !hasChat) {
+      try {
+        const settings = await d1Api.getSettings();
+        if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
+          sendOmnichannelMessageAction(
+            leadId,
+            channel,
+            settings.autoresponder.message
+          ).catch(err => console.error('Erro no Autoresponder Meta:', err));
+        }
+      } catch (err) {
+        console.error('Falha ao verificar Autoresponder Meta:', err);
+      }
+    }
+  }
+}
+
 // Recebe as notificações de mensagens reais via POST
 export async function POST(req: NextRequest) {
   try {
@@ -86,52 +230,84 @@ export async function POST(req: NextRequest) {
 
     console.log('Webhook Meta recebido:', JSON.stringify(body, null, 2));
 
-
-
     if (body.object === 'instagram' || body.object === 'page') {
-      const entry = body.entry?.[0];
-      const messaging = entry?.messaging?.[0];
-      const changes = entry?.changes?.[0];
-
-      let leadId = '';
-      let messageText = '';
-      let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
-      let isEcho = false;
-      let tempLeadName = '';
-
-      if (messaging && messaging.message) {
-        isEcho = messaging.message.is_echo;
-        leadId = isEcho ? messaging.recipient.id : messaging.sender.id;
-        messageText = messaging.message.text || '';
-        
-        const attachments = messaging.message.attachments;
-        if (attachments && attachments.length > 0) {
-          const attachment = attachments[0];
-          if (attachment.type === 'image') {
-            messageType = 'image';
-            messageText = attachment.payload?.url || messageText;
-          } else if (attachment.type === 'video') {
-            messageType = 'video';
-            messageText = attachment.payload?.url || messageText;
-          } else if (attachment.type === 'audio' || attachment.type === 'file') {
-            messageType = 'file';
-            messageText = attachment.payload?.url || messageText;
+      const entries = body.entry || [];
+      for (const entry of entries) {
+        // 1. Processar Direct Messages (DMs)
+        const messagings = entry.messaging || [];
+        for (const messaging of messagings) {
+          if (!messaging.message) continue;
+          
+          const isEcho = !!messaging.message.is_echo;
+          const leadId = isEcho ? messaging.recipient.id : messaging.sender.id;
+          let messageText = messaging.message.text || '';
+          let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
+          let mediaUrl = null;
+          
+          const attachments = messaging.message.attachments;
+          if (attachments && attachments.length > 0) {
+            const attachment = attachments[0];
+            if (attachment.type === 'image') {
+              messageType = 'image';
+              mediaUrl = attachment.payload?.url || null;
+            } else if (attachment.type === 'video') {
+              messageType = 'video';
+              mediaUrl = attachment.payload?.url || null;
+            } else if (attachment.type === 'audio' || attachment.type === 'file') {
+              messageType = 'file';
+              mediaUrl = attachment.payload?.url || null;
+            }
           }
+          
+          await processMetaMessage(body.object, entry.id, leadId, messageText, messageType, isEcho, '', mediaUrl);
         }
-      } else if (changes && changes.field === 'comments') {
-        const commentValue = changes.value;
-        if (commentValue && commentValue.from && commentValue.text) {
-          messageText = `[Comentário na Postagem]: ${commentValue.text}`;
-          messageType = 'text';
+        
+        // 2. Processar Comentários
+        const changes = entry.changes || [];
+        for (const change of changes) {
+          if (change.field !== 'comments') continue;
+          const commentValue = change.value;
+          if (!commentValue || !commentValue.from || !commentValue.text) continue;
+          
+          let messageText = `[Comentário na Postagem]: ${commentValue.text}`;
+          let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
+          let commentMediaUrl = null;
+          let isEcho = false;
+          let tempLeadName = commentValue.from.username || commentValue.from.name || '';
+          let leadId = commentValue.from.id;
+          
+          // Buscar imagem do post/comentário
+          const mediaId = commentValue.media?.id;
+          if (mediaId) {
+            try {
+              const settings = await d1Api.getSettings();
+              const token = body.object === 'instagram' 
+                ? ((settings as any)?.omnichannel?.instagramAccessToken || (settings as any)?.instagramAccessToken)
+                : ((settings as any)?.omnichannel?.messengerAccessToken || (settings as any)?.messengerAccessToken);
 
+              if (token) {
+                const mediaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}?fields=media_url,thumbnail_url,media_type&access_token=${token}`);
+                if (mediaRes.ok) {
+                  const mediaData = await mediaRes.json();
+                  commentMediaUrl = mediaData.media_url || mediaData.thumbnail_url || null;
+                  if (commentMediaUrl) {
+                    messageType = 'image';
+                  }
+                }
+              }
+            } catch (e) {
+              console.error("Erro ao buscar media do comentario:", e);
+            }
+          }
+          
           if (commentValue.from.id === entry.id) {
             isEcho = true;
             if (commentValue.parent_id) {
               try {
                 const settings = await d1Api.getSettings();
                 const token = body.object === 'instagram' 
-                  ? (settings?.omnichannel?.instagramAccessToken || settings?.instagramAccessToken)
-                  : (settings?.omnichannel?.messengerAccessToken || settings?.messengerAccessToken);
+                  ? ((settings as any)?.omnichannel?.instagramAccessToken || (settings as any)?.instagramAccessToken)
+                  : ((settings as any)?.omnichannel?.messengerAccessToken || (settings as any)?.messengerAccessToken);
 
                 if (token) {
                   const parentRes = await fetch(`https://graph.facebook.com/v19.0/${commentValue.parent_id}?fields=from&access_token=${token}`);
@@ -147,145 +323,9 @@ export async function POST(req: NextRequest) {
                 console.error("Erro ao buscar parent comment:", e);
               }
             }
-            if (!leadId) {
-              leadId = commentValue.from.id;
-              tempLeadName = commentValue.from.username || commentValue.from.name || '';
-            }
-          } else {
-            leadId = commentValue.from.id;
-            tempLeadName = commentValue.from.username || commentValue.from.name || '';
           }
-        }
-      }
-
-      if (leadId && messageText) {
-        const channel = body.object === 'instagram' ? 'instagram' : 'facebook';
-        const chatId = `${channel}_${leadId}`;
-
-        let leadName = tempLeadName || ('Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook'));
-        let leadAvatar = null;
-
-        const profile = await getMetaProfile(leadId, channel);
-        if (profile) {
-          leadName = profile.name || leadName;
-          leadAvatar = profile.avatar || leadAvatar;
-        }
-
-        const { results: existingLeads } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
-        const agora = new Date().toISOString();
-
-        if (!existingLeads || existingLeads.length === 0) {
-          await d1Api.saveLead({
-            id: leadId,
-            nome: leadName,
-            origem: channel === 'instagram' ? 'Instagram Direct' : 'Facebook Messenger',
-            status: 'novo',
-            dataCriacao: agora,
-            dataUltimaAtividade: agora,
-            tags: ['omnichannel', channel],
-            avatar: leadAvatar,
-            isMetaLead: true
-          });
-        } else {
-          const leadData = existingLeads[0];
-          let updatedName = leadData.nome;
-          let updatedAvatar = leadData.avatar;
-
-          if (profile) {
-            if (!leadData.nome || leadData.nome.startsWith('Lead via')) {
-              updatedName = profile.name || leadData.nome;
-            }
-            if (!leadData.avatar) {
-              updatedAvatar = profile.avatar || leadData.avatar;
-            }
-          }
-          await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ?, nome = ?, avatar = ? WHERE id = ?`, [
-            agora, updatedName, updatedAvatar, leadId
-          ]);
-        }
-
-        const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
-        const hasChat = chatResults && chatResults.length > 0;
-
-        if (!hasChat) {
-          const newChat: ChatSession = {
-            id: chatId,
-            leadId: leadId,
-            leadName: leadName,
-            channel: channel as any,
-            lastMessage: messageText,
-            lastTimestamp: agora,
-            unreadCount: isEcho ? 0 : 1,
-            status: 'active',
-            leadAvatar: leadAvatar,
-            dataCriacao: agora
-          };
-          await d1Api.saveChatSession(newChat);
-        } else {
-          const chatData = chatResults[0];
-          const unreadCount = isEcho ? 0 : (chatData.unreadCount || 0) + 1;
           
-          let updatedLeadName = chatData.leadName;
-          let updatedLeadAvatar = chatData.leadAvatar;
-
-          if (profile) {
-            if (!chatData.leadName || chatData.leadName.startsWith('Lead via')) {
-              updatedLeadName = profile.name || chatData.leadName;
-            }
-            if (!chatData.leadAvatar) {
-              updatedLeadAvatar = profile.avatar || chatData.leadAvatar;
-            }
-          }
-
-          await d1Api.executeRun(`UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, leadName = ?, leadAvatar = ? WHERE id = ?`, [
-            messageText, agora, unreadCount, updatedLeadName, updatedLeadAvatar, chatId
-          ]);
-        }
-
-        let skipSave = false;
-
-        // Dedup: Evita salvar a mesma mensagem duas vezes num intervalo de 5 minutos
-        // O Webhook da Meta costuma fazer retentativas (retries) se demorar para responder
-        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const incomingFlag = isEcho ? 0 : 1;
-        const { results: recentMessages } = await d1Api.runQuery(
-          `SELECT id FROM messages WHERE chatId = ? AND content = ? AND isIncoming = ? AND timestamp >= ? LIMIT 1`,
-          [chatId, messageText, incomingFlag, fiveMinsAgo]
-        );
-        if (recentMessages && recentMessages.length > 0) {
-          skipSave = true;
-        }
-
-        if (!skipSave) {
-          await d1Api.sendMessage({
-            id: Math.random().toString(36).substr(2, 9),
-            chatId: chatId,
-            senderId: isEcho ? entry.id : leadId,
-            senderName: isEcho ? 'Nossa Conta' : leadName,
-            content: messageText,
-            timestamp: agora,
-            type: messageType,
-            status: 'delivered',
-            isIncoming: !isEcho,
-            channel: channel as any,
-            leadId: leadId,
-            leadName: leadName
-          });
-
-          if (!isEcho && !hasChat) {
-            try {
-              const settings = await d1Api.getSettings();
-              if (settings?.autoresponder?.enabled && settings.autoresponder.message) {
-                sendOmnichannelMessageAction(
-                  leadId,
-                  channel,
-                  settings.autoresponder.message
-                ).catch(err => console.error('Erro no Autoresponder Meta:', err));
-              }
-            } catch (err) {
-              console.error('Falha ao verificar Autoresponder Meta:', err);
-            }
-          }
+          await processMetaMessage(body.object, entry.id, leadId, messageText, messageType, isEcho, tempLeadName, commentMediaUrl);
         }
       }
     } else if (body.object === 'whatsapp_business_account') {
@@ -353,8 +393,10 @@ export async function POST(req: NextRequest) {
             status: 'novo',
             dataCriacao: agora,
             dataUltimaAtividade: agora,
-            tags: ['whatsapp', 'meta_official']
-          });
+            tags: ['whatsapp', 'meta_official'],
+            email: '',
+            consentimentoLGPD: true
+          } as any);
         }
 
         const chatId = `whatsapp_${with9}`; 
