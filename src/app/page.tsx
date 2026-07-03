@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
-import { Lead, Campaign, FilaEnvio, ChatSession, LandingPageInstance } from '@/types/crm';
+import { Lead, Campaign, FilaEnvio, ChatSession, LandingPageInstance, WhatsappConnection, UserProfile } from '@/types/crm';
 import { useRouter } from 'next/navigation';
 import { 
   Users, 
@@ -88,6 +88,13 @@ export default function Dashboard() {
   const [panelCustomStartDate, setPanelCustomStartDate] = useState('');
   const [panelCustomEndDate, setPanelCustomEndDate] = useState('');
   
+  const [whatsappConnections, setWhatsappConnections] = useState<WhatsappConnection[]>([]);
+  const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
+  const [panelFilterConnection, setPanelFilterConnection] = useState('all');
+  const [panelFilterUser, setPanelFilterUser] = useState('all');
+  const [rawResponseData, setRawResponseData] = useState<any[]>([]);
+  const [rawNoResponseData, setRawNoResponseData] = useState<any[]>([]);
+  
   const [period, setPeriod] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -127,6 +134,13 @@ export default function Dashboard() {
 
         const lps = await api.getLandingPages();
         setLandingPages(lps);
+
+        // Buscar conexões do WhatsApp e perfis de usuários
+        const conns = await api.getWhatsappConnections();
+        setWhatsappConnections(conns || []);
+
+        const users = await api.getAllUserProfiles();
+        setUserProfiles(users || []);
 
         const lpSlugs = lps.map(lp => lp.slug).filter(Boolean);
         
@@ -169,18 +183,20 @@ export default function Dashboard() {
           filterCond = 'AND c.isInternal = 1';
         }
 
-        // Busca a primeira mensagem de saída (isIncoming=0) por chat
+        // Busca a primeira mensagem de saída (isIncoming=0) por chat com campos de canal/vendedor
         const { results: responseData } = await api.runQuery(
-          `SELECT m.chatId, MIN(m.timestamp) as firstResponseAt, c.dataCriacao as chatCreatedAt, c.leadName
+          `SELECT m.chatId, MIN(m.timestamp) as firstResponseAt, c.dataCriacao as chatCreatedAt, c.leadName,
+                  c.channel, c.connectionId, c.assignedTo
            FROM messages m
            JOIN chats c ON c.id = m.chatId
            WHERE m.isIncoming = 0 ${filterCond}
            GROUP BY m.chatId`
         );
+        setRawResponseData(responseData || []);
 
-        // Chats sem nenhuma mensagem de saída (aguardando atendimento)
+        // Chats sem nenhuma mensagem de saída (aguardando atendimento) com campos de canal/vendedor
         const { results: noResponseData } = await api.runQuery(
-          `SELECT c.id, c.leadName, c.dataCriacao
+          `SELECT c.id, c.leadName, c.dataCriacao, c.channel, c.connectionId, c.assignedTo
            FROM chats c
            WHERE c.status = 'active' ${filterCond}
            AND c.id NOT IN (
@@ -188,6 +204,7 @@ export default function Dashboard() {
            )
            ORDER BY c.dataCriacao ASC`
         );
+        setRawNoResponseData(noResponseData || []);
 
         const now = Date.now();
         let totalResponseMs = 0;
@@ -756,8 +773,8 @@ export default function Dashboard() {
             </div>
 
             {/* Filters and Close */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* LP Filter */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Página de Captura</span>
@@ -788,6 +805,36 @@ export default function Dashboard() {
                     <option value="youtube">YouTube</option>
                     <option value="tiktok">Tiktok</option>
                     <option value="system">Sistema/Site</option>
+                  </select>
+                </div>
+
+                {/* Evolution Channel Filter */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Canal Evolution</span>
+                  <select 
+                    value={panelFilterConnection}
+                    onChange={e => setPanelFilterConnection(e.target.value)}
+                    style={{ background: '#111827', color: '#f8fafc', border: '1px solid #1e293b', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8125rem', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="all">Todas as Instâncias</option>
+                    {whatsappConnections.map(conn => (
+                      <option key={conn.id} value={conn.id}>{conn.name || conn.evolutionInstanceName || conn.phoneNumber || conn.id}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Salesperson Filter */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Vendedor</span>
+                  <select 
+                    value={panelFilterUser}
+                    onChange={e => setPanelFilterUser(e.target.value)}
+                    style={{ background: '#111827', color: '#f8fafc', border: '1px solid #1e293b', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8125rem', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="all">Todos os Vendedores</option>
+                    {userProfiles.map(u => (
+                      <option key={u.uid} value={u.uid}>{u.name || u.email}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -859,6 +906,14 @@ export default function Dashboard() {
             const filteredChats = chats.filter(c => {
               if (panelFilterChannel !== 'all' && c.channel !== panelFilterChannel) return false;
               
+              if (panelFilterConnection !== 'all' && c.connectionId !== panelFilterConnection && c.connectionName !== panelFilterConnection) return false;
+              
+              if (panelFilterUser !== 'all') {
+                if (c.assignedTo !== panelFilterUser && c.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.name && c.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.email) {
+                  return false;
+                }
+              }
+
               if (panelPeriod !== 'all') {
                 const timestamp = c.lastTimestamp || c.dataCriacao;
                 if (!timestamp) return true;
@@ -921,7 +976,121 @@ export default function Dashboard() {
 
             const unreadCount = filteredChats.filter(c => (c.unreadCount || 0) > 0).length;
 
-            const channelLeadCounts = {
+            // Filtros aplicados a resposta média e tempos de espera de forma dinâmica
+            const filteredResponseData = rawResponseData.filter(row => {
+              if (panelFilterChannel !== 'all' && row.channel !== panelFilterChannel) return false;
+              if (panelFilterConnection !== 'all' && row.connectionId !== panelFilterConnection && row.connectionName !== panelFilterConnection) return false;
+              if (panelFilterUser !== 'all') {
+                if (row.assignedTo !== panelFilterUser && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.name && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.email) {
+                  return false;
+                }
+              }
+              if (panelPeriod !== 'all') {
+                const timestamp = row.firstResponseAt;
+                if (!timestamp) return true;
+                const d = new Date(timestamp);
+                const now = new Date();
+                let limitDate = new Date(0);
+                let endDate = new Date(now);
+                if (panelPeriod === 'today') {
+                  limitDate = new Date();
+                  limitDate.setHours(0,0,0,0);
+                } else if (panelPeriod === '7d') {
+                  limitDate = new Date(now);
+                  limitDate.setDate(now.getDate() - 7);
+                } else if (panelPeriod === '30d') {
+                  limitDate = new Date(now);
+                  limitDate.setDate(now.getDate() - 30);
+                } else if (panelPeriod === 'month') {
+                  limitDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                } else if (panelPeriod === 'custom') {
+                  if (panelCustomStartDate) limitDate = new Date(panelCustomStartDate + 'T00:00:00');
+                  if (panelCustomEndDate) endDate = new Date(panelCustomEndDate + 'T23:59:59');
+                }
+                if (d < limitDate || d > endDate) return false;
+              }
+              return true;
+            });
+
+            const filteredNoResponseData = rawNoResponseData.filter(row => {
+              if (panelFilterChannel !== 'all' && row.channel !== panelFilterChannel) return false;
+              if (panelFilterConnection !== 'all' && row.connectionId !== panelFilterConnection && row.connectionName !== panelFilterConnection) return false;
+              if (panelFilterUser !== 'all') {
+                if (row.assignedTo !== panelFilterUser && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.name && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.email) {
+                  return false;
+                }
+              }
+              if (panelPeriod !== 'all') {
+                const timestamp = row.dataCriacao;
+                if (!timestamp) return true;
+                const d = new Date(timestamp);
+                const now = new Date();
+                let limitDate = new Date(0);
+                let endDate = new Date(now);
+                if (panelPeriod === 'today') {
+                  limitDate = new Date();
+                  limitDate.setHours(0,0,0,0);
+                } else if (panelPeriod === '7d') {
+                  limitDate = new Date(now);
+                  limitDate.setDate(now.getDate() - 7);
+                } else if (panelPeriod === '30d') {
+                  limitDate = new Date(now);
+                  limitDate.setDate(now.getDate() - 30);
+                } else if (panelPeriod === 'month') {
+                  limitDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                } else if (panelPeriod === 'custom') {
+                  if (panelCustomStartDate) limitDate = new Date(panelCustomStartDate + 'T00:00:00');
+                  if (panelCustomEndDate) endDate = new Date(panelCustomEndDate + 'T23:59:59');
+                }
+                if (d < limitDate || d > endDate) return false;
+              }
+              return true;
+            });
+
+            const now = Date.now();
+            let totalResponseMs = 0;
+            let validResponses = 0;
+
+            filteredResponseData.forEach((row: any) => {
+              const createdAt = new Date(row.chatCreatedAt).getTime();
+              const respondedAt = new Date(row.firstResponseAt).getTime();
+              if (!isNaN(createdAt) && !isNaN(respondedAt) && respondedAt >= createdAt) {
+                totalResponseMs += respondedAt - createdAt;
+                validResponses++;
+              }
+            });
+
+            const avgMs = validResponses > 0 ? Math.round(totalResponseMs / validResponses) : 0;
+            const oldestWaiting = filteredNoResponseData[0];
+            const oldestWaitingMs = oldestWaiting
+              ? now - new Date(oldestWaiting.dataCriacao).getTime()
+              : 0;
+
+            const responseTimeStats = {
+              avgResponseMs: avgMs,
+              chatsWithResponse: validResponses,
+              chatsWithoutResponse: filteredNoResponseData.length,
+              oldestWaitingMs: Math.max(0, oldestWaitingMs),
+              oldestWaitingName: oldestWaiting?.leadName || ''
+            };
+
+            const isAnyFilterActive = 
+              panelFilterChannel !== 'all' || 
+              panelFilterConnection !== 'all' || 
+              panelFilterUser !== 'all' || 
+              panelPeriod !== 'all' || 
+              panelFilterLp !== 'all' || 
+              panelFilterStatus !== 'all';
+
+            const channelLeadCounts = isAnyFilterActive ? {
+              facebook: filteredChats.filter(c => c.channel === 'facebook').length,
+              instagram: filteredChats.filter(c => c.channel === 'instagram').length,
+              whatsapp: filteredChats.filter(c => c.channel === 'whatsapp' && !c.connectionName?.toLowerCase().includes('widget')).length,
+              whatsapp_widget: filteredChats.filter(c => c.channel === 'whatsapp_widget' || c.connectionName?.toLowerCase().includes('widget')).length,
+              youtube: filteredChats.filter(c => c.channel === 'youtube').length,
+              tiktok: filteredChats.filter(c => c.channel === 'tiktok').length,
+              system: filteredLpLeads.length
+            } : {
               facebook: panelCounts.facebook,
               instagram: panelCounts.instagram,
               whatsapp: panelCounts.whatsapp,
