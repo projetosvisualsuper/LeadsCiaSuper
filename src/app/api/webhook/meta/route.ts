@@ -341,11 +341,22 @@ export async function POST(req: NextRequest) {
         const leadName = contact?.profile?.name || 'Cliente (WhatsApp)';
         const phoneId = value.metadata?.phone_number_id; 
 
-        // Carregar configurações para obter o token do Meta
+        // Carregar configurações e conexão para obter o token correto do Meta WhatsApp
         const settings = await d1Api.getSettings();
         const globalSettings = settings || {};
         const omnichannelSettings = globalSettings.omnichannel || {};
         const bucket = process.env.BUCKET || (globalThis as any).BUCKET;
+
+        const connections = await d1Api.getWhatsappConnections();
+        const connection = connections.find(c => c.metaPhoneNumberId === phoneId);
+        const connectionToken = connection?.metaAccessToken || omnichannelSettings.messengerAccessToken || (globalSettings as any).messengerAccessToken;
+
+        let connectionId = '';
+        let connectionName = 'WhatsApp Oficial';
+        if (connection) {
+          connectionId = connection.id;
+          connectionName = connection.name;
+        }
 
         let messageText = message.text?.body || '';
         let messageType = 'text';
@@ -354,7 +365,7 @@ export async function POST(req: NextRequest) {
 
         const downloadAndUploadMetaMedia = async (mediaId: string, mimeType: string, defaultExt: string) => {
           try {
-            const token = omnichannelSettings.messengerAccessToken || (globalSettings as any).messengerAccessToken;
+            const token = connectionToken;
             if (!token) return null;
 
             // 1. Obter a URL de download temporária do Meta
@@ -430,15 +441,7 @@ export async function POST(req: NextRequest) {
 
         const { with9, without9 } = normalizeBRNumber(rawPhone);
 
-        const connections = await d1Api.getWhatsappConnections();
-        const connection = connections.find(c => c.metaPhoneNumberId === phoneId);
-        
-        let connectionId = '';
-        let connectionName = 'WhatsApp Oficial';
-        if (connection) {
-          connectionId = connection.id;
-          connectionName = connection.name;
-        }
+
 
         const { results: existingLeads } = await d1Api.runQuery(`SELECT * FROM leads WHERE telefone = ? OR celular = ? LIMIT 1`, [with9, without9]);
 
