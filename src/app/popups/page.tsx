@@ -567,7 +567,11 @@ export default function PopupsPage() {
                   minHeight: '450px'
                 }}>
                   <div style={{ 
-                    background: formData.theme?.backgroundColor || '#ffffff', 
+                    backgroundColor: formData.theme?.backgroundColor || '#ffffff', 
+                    backgroundImage: formData.theme?.backgroundImageUrl ? `url(${formData.theme.backgroundImageUrl})` : 'none',
+                    backgroundPosition: 'center',
+                    backgroundSize: 'cover',
+                    backgroundRepeat: 'no-repeat',
                     color: formData.theme?.textColor || '#1e293b',
                     width: '100%',
                     maxWidth: ['image-left', 'image-right', 'image-form-left', 'image-form-right'].includes(formData.templateId!) ? '100%' : '320px',
