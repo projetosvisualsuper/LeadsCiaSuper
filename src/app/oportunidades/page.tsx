@@ -348,7 +348,7 @@ export default function OportunidadesPage() {
                       <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         <MessageSquare size={16} /> Histórico do Atendimento (IA)
                       </h4>
-                      <div className="card" style={{ padding: '1rem', backgroundColor: '#ffffff', fontSize: '0.9rem', color: '#475569', lineHeight: '1.5', height: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div className="card" style={{ padding: '1rem', backgroundColor: '#ffffff', fontSize: '0.9rem', color: '#475569', lineHeight: '1.5', height: '460px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {loadingChatId === opp.id ? (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                             <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary)' }} />
