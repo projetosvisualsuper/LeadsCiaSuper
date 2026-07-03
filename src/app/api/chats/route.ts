@@ -131,9 +131,29 @@ export async function GET(req: NextRequest) {
                     await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [avatarUrl, chat.leadId]);
                   }
                   metaCache.set(chat.id, nowMs);
+                } else {
+                  const errBody = await res.json().catch(() => ({}));
+                  await d1Api.executeRun(`INSERT INTO settings (key, valueJson) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`, [
+                    'meta_debug_avatar',
+                    JSON.stringify({
+                      status: res.status,
+                      error: errBody,
+                      leadId,
+                      chatId: chat.id,
+                      timestamp: new Date().toISOString()
+                    })
+                  ]);
                 }
-              } catch (err) {
-                // Silencioso em background
+              } catch (err: any) {
+                await d1Api.executeRun(`INSERT INTO settings (key, valueJson) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`, [
+                  'meta_debug_avatar',
+                  JSON.stringify({
+                    error: err?.message || String(err),
+                    leadId,
+                    chatId: chat.id,
+                    timestamp: new Date().toISOString()
+                  })
+                ]);
               }
             }
           }
