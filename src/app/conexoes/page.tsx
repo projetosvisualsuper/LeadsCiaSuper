@@ -1191,7 +1191,7 @@ export default function ConexoesPage() {
                       }}>
                         {/* Bubble */}
                         <div style={{
-                          backgroundColor: '#202c33', color: '#e9edef', padding: '8px', borderRadius: '8px', maxWidth: '85%',
+                          backgroundColor: '#202c33', color: '#e9edef', padding: '8px', borderRadius: '8px', width: '240px',
                           alignSelf: 'flex-start', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px'
                         }}>
                           {headerMediaUrl && (
@@ -1202,7 +1202,7 @@ export default function ConexoesPage() {
                         </div>
                         {/* Buttons in Mockup */}
                         {buttons.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '240px' }}>
                             {buttons.map((btn, i) => (
                               <div key={i} style={{ background: '#202c33', color: '#00a884', textAlign: 'center', padding: '6px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
                                 {btn.text || 'Botão'}
@@ -1526,7 +1526,7 @@ export default function ConexoesPage() {
                       }}>
                         {/* Bubble */}
                         <div style={{
-                          backgroundColor: '#202c33', color: '#e9edef', padding: '8px', borderRadius: '8px', maxWidth: '85%',
+                          backgroundColor: '#202c33', color: '#e9edef', padding: '8px', borderRadius: '8px', width: '240px',
                           alignSelf: 'flex-start', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px'
                         }}>
                           {headerType === 'TEXT' && headerText && (
@@ -1543,7 +1543,7 @@ export default function ConexoesPage() {
                         </div>
                         {/* Buttons in Mockup */}
                         {buttons.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '240px' }}>
                             {buttons.map((btn, i) => (
                               <div key={i} style={{ background: '#202c33', color: '#00a884', textAlign: 'center', padding: '6px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
                                 {btn.text || 'Botão'}
