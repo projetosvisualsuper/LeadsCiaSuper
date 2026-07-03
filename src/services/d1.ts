@@ -1,4 +1,4 @@
-import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage, WhatsappConnection, WhatsappTemplate } from '@/types/crm';
+import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage, WhatsappConnection, WhatsappTemplate, Pedido, Opportunity } from '@/types/crm';
 
 
 // Get the D1 database binding from process.env (or global context in Cloudflare Pages)
@@ -1421,6 +1421,57 @@ export const d1Api = {
 
   getUnreadPedidosCount: async (): Promise<number> => {
     const { results } = await runQuery(`SELECT COUNT(id) as count FROM pedidos WHERE isRead = 0`);
+    return results && results.length > 0 ? results[0].count : 0;
+  },
+
+  saveOpportunity: async (opportunity: Omit<Opportunity, 'id' | 'dataCriacao' | 'isRead' | 'status'>): Promise<void> => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const dataCriacao = new Date().toISOString();
+    await executeRun(
+      `INSERT INTO opportunities (id, leadId, assignedTo, status, isRead, dataCriacao) VALUES (?, ?, ?, 'pendente', 0, ?)`,
+      [id, opportunity.leadId, opportunity.assignedTo, dataCriacao]
+    );
+    // Também atualiza a atribuição do chat
+    await executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [opportunity.assignedTo, opportunity.leadId]);
+  },
+
+  getOpportunities: async (assignedTo?: string): Promise<Opportunity[]> => {
+    let query = `
+      SELECT o.*, l.nome as leadNome, l.celular as leadCelular, l.email as leadEmail, l.origem as leadOrigem
+      FROM opportunities o
+      LEFT JOIN leads l ON o.leadId = l.id
+    `;
+    let params: any[] = [];
+    if (assignedTo) {
+      query += ` WHERE o.assignedTo = ? `;
+      params.push(assignedTo);
+    }
+    query += ` ORDER BY o.dataCriacao DESC LIMIT 100 `;
+    
+    const { results } = await runQuery(query, params);
+    return (results || []) as Opportunity[];
+  },
+
+  markOpportunityAsRead: async (oppId: string): Promise<void> => {
+    await executeRun(`UPDATE opportunities SET isRead = 1 WHERE id = ?`, [oppId]);
+  },
+
+  updateOpportunityStatus: async (oppId: string, status: string): Promise<void> => {
+    await executeRun(`UPDATE opportunities SET status = ? WHERE id = ?`, [status, oppId]);
+  },
+
+  updateOpportunityObservacao: async (oppId: string, observacao: string): Promise<void> => {
+    await executeRun(`UPDATE opportunities SET observacao = ? WHERE id = ?`, [observacao, oppId]);
+  },
+
+  getUnreadOpportunitiesCount: async (assignedTo?: string): Promise<number> => {
+    let query = `SELECT COUNT(id) as count FROM opportunities WHERE isRead = 0`;
+    let params: any[] = [];
+    if (assignedTo) {
+      query += ` AND assignedTo = ?`;
+      params.push(assignedTo);
+    }
+    const { results } = await runQuery(query, params);
     return results && results.length > 0 ? results[0].count : 0;
   },
 

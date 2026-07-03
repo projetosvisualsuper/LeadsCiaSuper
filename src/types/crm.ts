@@ -443,3 +443,17 @@ export interface Pedido {
   leadCelular?: string;
   observacao?: string;
 }
+
+export interface Opportunity {
+  id: string;
+  leadId: string;
+  assignedTo: string;
+  status: 'pendente' | 'em_atendimento' | 'finalizado' | 'cancelado';
+  isRead: boolean;
+  dataCriacao: string;
+  observacao?: string;
+  leadNome?: string;
+  leadCelular?: string;
+  leadEmail?: string;
+  leadOrigem?: string;
+}

@@ -21,6 +21,19 @@ export async function GET() {
       );
     `).run();
 
+    // Criação das tabelas de oportunidades
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS opportunities (
+        id TEXT PRIMARY KEY,
+        leadId TEXT NOT NULL,
+        assignedTo TEXT NOT NULL,
+        status TEXT DEFAULT 'pendente',
+        isRead INTEGER DEFAULT 0,
+        dataCriacao TEXT NOT NULL,
+        observacao TEXT
+      );
+    `).run();
+
     await db.prepare(`
       CREATE TABLE IF NOT EXISTS internal_messages (
         id TEXT PRIMARY KEY,

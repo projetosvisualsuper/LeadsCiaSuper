@@ -34,14 +34,15 @@ import {
   Phone,
   Mic,
   AlertTriangle,
-  ShoppingBag
+  ShoppingBag,
+  Briefcase
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
 const rolePermissions: Record<string, string[]> = {
-  basico: ['/', '/leads', '/atendimento', '/chat-interno'],
-  intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/pedidos'],
-  master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios', '/logs', '/pedidos']
+  basico: ['/', '/leads', '/atendimento', '/chat-interno', '/oportunidades'],
+  intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/pedidos', '/oportunidades'],
+  master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios', '/logs', '/pedidos', '/oportunidades']
 };
 
 export default function ClientLayout({
@@ -71,7 +72,8 @@ export default function ClientLayout({
     '/bots',
     '/conexoes',
     '/logs',
-    '/pedidos'
+    '/pedidos',
+    '/oportunidades'
   ];
 
   // Se a rota NÃO estiver na lista acima, consideramos que é uma Página de Captura pública
@@ -90,6 +92,7 @@ export default function ClientLayout({
   const [whatsappUnreadCount, setWhatsappUnreadCount] = useState(0);
   const [unreadLogsCount, setUnreadLogsCount] = useState(0);
   const [unreadPedidosCount, setUnreadPedidosCount] = useState(0);
+  const [unreadOportunidadesCount, setUnreadOportunidadesCount] = useState(0);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [disconnectedConnections, setDisconnectedConnections] = useState<any[]>([]);
 
@@ -743,7 +746,7 @@ export default function ClientLayout({
 
             // Auto-ocultar a notificação visual após 6 segundos
             setTimeout(() => {
-              setNotification(prev => (prev?.type === 'lead' ? null : prev));
+              setNotification((prev: any) => (prev?.type === 'lead' ? null : prev));
             }, 6000);
             
             // Tocar som de notificação
@@ -794,19 +797,30 @@ export default function ClientLayout({
     const handlePedidosRead = () => {
       api.getUnreadPedidosCount().then(setUnreadPedidosCount).catch(console.error);
     };
+    const handleOportunidadesRead = () => {
+      fetch('/api/opportunities?countOnly=true')
+        .then(res => res.json())
+        .then(data => setUnreadOportunidadesCount(data.count || 0))
+        .catch(console.error);
+    };
+    
+    handleOportunidadesRead();
     
     // Poll a cada 30 segundos
     const interval = setInterval(() => {
       handleLogsRead();
       handlePedidosRead();
+      handleOportunidadesRead();
     }, 30000);
 
     window.addEventListener('logs-read', handleLogsRead);
     window.addEventListener('pedidos-read', handlePedidosRead);
+    window.addEventListener('oportunidades-read', handleOportunidadesRead);
     return () => {
       clearInterval(interval);
       window.removeEventListener('logs-read', handleLogsRead);
       window.removeEventListener('pedidos-read', handlePedidosRead);
+      window.removeEventListener('oportunidades-read', handleOportunidadesRead);
     };
   }, []);
 
@@ -957,6 +971,7 @@ export default function ClientLayout({
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {renderNavLink('/', 'Dashboard', <LayoutDashboard size={sidebarIconSize} />)}
             {renderNavLink('/leads', 'Leads', <Users size={sidebarIconSize} />)}
+            {renderNavLink('/oportunidades', 'Oportunidades', <Briefcase size={sidebarIconSize} />, unreadOportunidadesCount > 0 ? unreadOportunidadesCount : undefined)}
             {renderNavLink('/pedidos', 'Pedidos', <ShoppingBag size={sidebarIconSize} />, unreadPedidosCount > 0 ? unreadPedidosCount : undefined)}
             {renderNavLink('/campanhas', 'Campanhas', <Mail size={sidebarIconSize} />)}
             {renderNavLink('/segmentacoes', 'Segmentações', <Filter size={sidebarIconSize} />)}

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, Suspense, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { api } from '@/services/api';
 import { 
   Search, 
   Filter, 
@@ -97,6 +98,14 @@ function AtendimentoContent() {
   const [isMobile, setIsMobile] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [showLeadDetails, setShowLeadDetails] = useState(true);
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  useEffect(() => {
+    api.getAllUserProfiles()
+      .then(setSystemUsers)
+      .catch(err => console.error('Erro ao carregar usuários:', err));
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -2298,6 +2307,52 @@ function AtendimentoContent() {
                   <p style={{ fontSize: '0.65rem', marginTop: '0.5rem', opacity: 0.6 }}>Altere aqui para forçar o uso do Docker neste lead.</p>
                 </div>
               )}
+
+              {/* Atribuição de Consultor */}
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Encaminhar para Consultor</label>
+                <select 
+                  value={activeChat?.assignedTo || ''}
+                  disabled={isAssigning}
+                  onChange={async (e) => {
+                    const userId = e.target.value;
+                    if (!userId || !selectedLead || !activeChat) return;
+                    setIsAssigning(true);
+                    try {
+                      const res = await fetch('/api/opportunities', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ leadId: selectedLead.id, assignedTo: userId })
+                      });
+                      if (res.ok) {
+                        showAlert('Lead encaminhado com sucesso!', 'success');
+                        // Atualizar o chat localmente
+                        setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, assignedTo: userId } : c));
+                        // Disparar evento para atualizar a sidebar
+                        window.dispatchEvent(new CustomEvent('oportunidades-read'));
+                      } else {
+                        showAlert('Erro ao encaminhar lead.', 'error');
+                      }
+                    } catch (err) {
+                      showAlert('Erro ao conectar com o servidor.', 'error');
+                    } finally {
+                      setIsAssigning(false);
+                    }
+                  }}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                >
+                  <option value="">Selecione um consultor...</option>
+                  {systemUsers
+                    .filter(u => u.status === 'approved')
+                    .map(u => (
+                      <option key={u.uid} value={u.uid}>
+                        {u.name || u.email} ({u.role === 'admin' ? 'Master' : u.role === 'editor' ? 'Intermediário' : 'Básico'})
+                      </option>
+                    ))
+                  }
+                </select>
+                <p style={{ fontSize: '0.65rem', marginTop: '0.5rem', opacity: 0.6 }}>Encaminhe este lead para que ele surja no módulo de Oportunidades do consultor.</p>
+              </div>
 
               {selectedLead && (
                 <div style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
