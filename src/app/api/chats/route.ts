@@ -53,21 +53,21 @@ export async function GET(req: NextRequest) {
 
     const chats = await d1Api.getChats();
 
-    // Em segundo plano, tenta resolver avatares em falta para os chats de WhatsApp
+    // Em segundo plano, tenta resolver avatares em falta para os chats de WhatsApp e renovar avatares expirados do Meta (Instagram/Facebook)
     (async () => {
       try {
+        const settings = await d1Api.getSettings();
+        const globalSettings = settings || {};
+        const omnichannelSettings = globalSettings.omnichannel || {};
+
+        // 1. WhatsApp - Carrega avatares ausentes
         const chatsWithoutAvatar = chats.filter(c => c.id.startsWith('whatsapp_') && (!c.leadAvatar || c.leadAvatar === ''));
         if (chatsWithoutAvatar.length > 0) {
-          const settings = await d1Api.getSettings();
-          const globalSettings = settings || {};
-          const omnichannelSettings = globalSettings.omnichannel || {};
           const apiUrl = omnichannelSettings.evolutionApiUrl || '';
           const apiKey = omnichannelSettings.evolutionApiKey || '';
           
           if (apiUrl && apiKey) {
             const connections = await d1Api.getWhatsappConnections();
-            
-            // Resolve em lote sequencial ou pequenos grupos de 10 por chamada
             for (const chat of chatsWithoutAvatar.slice(0, 10)) {
               const rawPhone = chat.id.substring('whatsapp_'.length);
               const defaultConn = connections.find(c => c.isDefault) || connections[0];
@@ -92,6 +92,48 @@ export async function GET(req: NextRequest) {
                 } catch (err) {
                   // Silencioso em background
                 }
+              }
+            }
+          }
+        }
+
+        // 2. Meta (Instagram & Facebook) - Renova avatares temporários que expiraram
+        const metaChats = chats.filter(c => c.id.startsWith('instagram_') || c.id.startsWith('facebook_'));
+        if (metaChats.length > 0) {
+          if (!(globalThis as any).metaAvatarUpdateCache) {
+            (globalThis as any).metaAvatarUpdateCache = new Map<string, number>();
+          }
+          const metaCache = (globalThis as any).metaAvatarUpdateCache;
+          const nowMs = Date.now();
+          const SIX_HOURS = 6 * 60 * 60 * 1000;
+
+          for (const chat of metaChats.slice(0, 10)) {
+            const lastUpdated = metaCache.get(chat.id) || 0;
+            if (nowMs - lastUpdated < SIX_HOURS) {
+              continue; // Evita requisições excessivas (limite de 6 horas por lead)
+            }
+
+            const channel = chat.id.startsWith('instagram_') ? 'instagram' : 'facebook';
+            const leadId = chat.leadId;
+            const token = channel === 'instagram' 
+              ? (omnichannelSettings.instagramAccessToken || (globalSettings as any).instagramAccessToken)
+              : (omnichannelSettings.messengerAccessToken || (globalSettings as any).messengerAccessToken);
+
+            if (token && leadId) {
+              try {
+                const fields = channel === 'instagram' ? 'name,profile_pic' : 'name,first_name,last_name,profile_pic';
+                const res = await fetch(`https://graph.facebook.com/v19.0/${leadId}?fields=${fields}&access_token=${token}`);
+                if (res.ok) {
+                  const data = await res.json();
+                  const avatarUrl = data.profile_picture_url || data.profile_picture || data.profile_pic;
+                  if (avatarUrl && avatarUrl !== chat.leadAvatar) {
+                    await d1Api.executeRun(`UPDATE chats SET leadAvatar = ? WHERE id = ?`, [avatarUrl, chat.id]);
+                    await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [avatarUrl, chat.leadId]);
+                  }
+                  metaCache.set(chat.id, nowMs);
+                }
+              } catch (err) {
+                // Silencioso em background
               }
             }
           }
