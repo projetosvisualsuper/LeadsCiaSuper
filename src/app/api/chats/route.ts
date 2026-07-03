@@ -53,66 +53,68 @@ export async function GET(req: NextRequest) {
 
     const chats = await d1Api.getChats();
 
-    // Em segundo plano, tenta resolver avatares em falta para os chats de WhatsApp e renovar avatares expirados do Meta (Instagram/Facebook)
-    (async () => {
-      try {
-        const settings = await d1Api.getSettings();
-        const globalSettings = settings || {};
-        const omnichannelSettings = globalSettings.omnichannel || {};
+    // Tenta resolver avatares em falta para os chats de WhatsApp e renovar avatares expirados do Meta (Instagram/Facebook) antes de retornar
+    try {
+      const settings = await d1Api.getSettings();
+      const globalSettings = settings || {};
+      const omnichannelSettings = globalSettings.omnichannel || {};
 
-        // 1. WhatsApp - Carrega avatares ausentes
-        const chatsWithoutAvatar = chats.filter(c => c.id.startsWith('whatsapp_') && (!c.leadAvatar || c.leadAvatar === ''));
-        if (chatsWithoutAvatar.length > 0) {
-          const apiUrl = omnichannelSettings.evolutionApiUrl || '';
-          const apiKey = omnichannelSettings.evolutionApiKey || '';
-          
-          if (apiUrl && apiKey) {
-            const connections = await d1Api.getWhatsappConnections();
-            for (const chat of chatsWithoutAvatar.slice(0, 10)) {
-              const rawPhone = chat.id.substring('whatsapp_'.length);
-              const defaultConn = connections.find(c => c.isDefault) || connections[0];
-              const conn = connections.find(c => c.id === chat.connectionId || c.name === chat.connectionName) || defaultConn;
-              const instanceName = conn ? conn.evolutionInstanceName : '';
-              
-              if (instanceName) {
-                try {
-                  const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                    body: JSON.stringify({ number: `${rawPhone}@s.whatsapp.net` })
-                  });
-                  if (picRes.ok) {
-                    const picData = await picRes.json();
-                    if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
-                      const avatarUrl = picData.profilePictureUrl;
-                      await d1Api.executeRun(`UPDATE chats SET leadAvatar = ? WHERE id = ?`, [avatarUrl, chat.id]);
-                      await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [avatarUrl, chat.leadId]);
-                    }
+      // 1. WhatsApp - Carrega avatares ausentes
+      const chatsWithoutAvatar = chats.filter(c => c.id.startsWith('whatsapp_') && (!c.leadAvatar || c.leadAvatar === ''));
+      if (chatsWithoutAvatar.length > 0) {
+        const apiUrl = omnichannelSettings.evolutionApiUrl || '';
+        const apiKey = omnichannelSettings.evolutionApiKey || '';
+        
+        if (apiUrl && apiKey) {
+          const connections = await d1Api.getWhatsappConnections();
+          const promises = chatsWithoutAvatar.slice(0, 5).map(async (chat) => {
+            const rawPhone = chat.id.substring('whatsapp_'.length);
+            const defaultConn = connections.find(c => c.isDefault) || connections[0];
+            const conn = connections.find(c => c.id === chat.connectionId || c.name === chat.connectionName) || defaultConn;
+            const instanceName = conn ? conn.evolutionInstanceName : '';
+            
+            if (instanceName) {
+              try {
+                const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                  body: JSON.stringify({ number: `${rawPhone}@s.whatsapp.net` })
+                });
+                if (picRes.ok) {
+                  const picData = await picRes.json();
+                  if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
+                    const avatarUrl = picData.profilePictureUrl;
+                    await d1Api.executeRun(`UPDATE chats SET leadAvatar = ? WHERE id = ?`, [avatarUrl, chat.id]);
+                    await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [avatarUrl, chat.leadId]);
+                    chat.leadAvatar = avatarUrl;
                   }
-                } catch (err) {
-                  // Silencioso em background
                 }
+              } catch (err) {
+                // Silencioso
               }
             }
-          }
+          });
+          await Promise.all(promises);
         }
+      }
 
-        // 2. Meta (Instagram & Facebook) - Renova avatares temporários que expiraram
-        const metaChats = chats.filter(c => c.id.startsWith('instagram_') || c.id.startsWith('facebook_'));
-        if (metaChats.length > 0) {
-          if (!(globalThis as any).metaAvatarUpdateCache) {
-            (globalThis as any).metaAvatarUpdateCache = new Map<string, number>();
-          }
-          const metaCache = (globalThis as any).metaAvatarUpdateCache;
-          const nowMs = Date.now();
-          const SIX_HOURS = 6 * 60 * 60 * 1000;
+      // 2. Meta (Instagram & Facebook) - Renova avatares temporários que expiraram
+      const metaChats = chats.filter(c => c.id.startsWith('instagram_') || c.id.startsWith('facebook_'));
+      if (metaChats.length > 0) {
+        if (!(globalThis as any).metaAvatarUpdateCache) {
+          (globalThis as any).metaAvatarUpdateCache = new Map<string, number>();
+        }
+        const metaCache = (globalThis as any).metaAvatarUpdateCache;
+        const nowMs = Date.now();
+        const SIX_HOURS = 6 * 60 * 60 * 1000;
 
-          for (const chat of metaChats.slice(0, 10)) {
-            const lastUpdated = metaCache.get(chat.id) || 0;
-            if (nowMs - lastUpdated < SIX_HOURS) {
-              continue; // Evita requisições excessivas (limite de 6 horas por lead)
-            }
+        const chatsToUpdate = metaChats.filter(chat => {
+          const lastUpdated = metaCache.get(chat.id) || 0;
+          return (nowMs - lastUpdated >= SIX_HOURS);
+        });
 
+        if (chatsToUpdate.length > 0) {
+          const promises = chatsToUpdate.slice(0, 5).map(async (chat) => {
             const channel = chat.id.startsWith('instagram_') ? 'instagram' : 'facebook';
             const leadId = chat.leadId;
             const token = channel === 'instagram' 
@@ -129,6 +131,7 @@ export async function GET(req: NextRequest) {
                   if (avatarUrl && avatarUrl !== chat.leadAvatar) {
                     await d1Api.executeRun(`UPDATE chats SET leadAvatar = ? WHERE id = ?`, [avatarUrl, chat.id]);
                     await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [avatarUrl, chat.leadId]);
+                    chat.leadAvatar = avatarUrl;
                   }
                   metaCache.set(chat.id, nowMs);
                 } else {
@@ -156,12 +159,13 @@ export async function GET(req: NextRequest) {
                 ]);
               }
             }
-          }
+          });
+          await Promise.all(promises);
         }
-      } catch (err) {
-        // Silencioso em background
       }
-    })();
+    } catch (err) {
+      // Silencioso
+    }
 
     return NextResponse.json(chats);
   } catch (error: any) {
