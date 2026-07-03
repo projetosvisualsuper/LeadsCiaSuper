@@ -20,9 +20,54 @@ import {
   Eye, 
   Send,
   ExternalLink,
-  Info
+  Info,
+  Paperclip
 } from 'lucide-react';
 import Link from 'next/link';
+
+const renderMessageContent = (msg: ChatMessage, leadNome: string) => {
+  const isImage = msg.type === 'image';
+  const isVideo = msg.type === 'video';
+  const isAudio = msg.type === 'audio';
+  const isFile = msg.type === 'file';
+
+  const mediaUrl = msg.mediaUrl || (msg.content.startsWith('http') ? msg.content : undefined);
+
+  if (mediaUrl) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {isImage && (
+          <img 
+            src={mediaUrl} 
+            alt="Imagem" 
+            style={{ maxWidth: '100%', maxHeight: '200px', display: 'block', borderRadius: '8px', cursor: 'pointer' }} 
+            onClick={() => window.open(mediaUrl, '_blank')}
+          />
+        )}
+        {isVideo && (
+          <video 
+            src={mediaUrl} 
+            controls 
+            style={{ maxWidth: '100%', maxHeight: '200px', display: 'block', borderRadius: '8px' }} 
+          />
+        )}
+        {isAudio && (
+          <audio src={mediaUrl} controls style={{ maxWidth: '100%', height: '36px' }} />
+        )}
+        {isFile && (
+          <a href={mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(0,0,0,0.05)', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+            <Paperclip size={16} /> <span>Abrir Documento</span>
+          </a>
+        )}
+        {msg.content && !['📷 Imagem', '🎥 Vídeo', '🎵 Áudio', '📄 Documento', 'imagem', 'video', 'audio', 'documento'].includes(msg.content.toLowerCase()) && !msg.content.startsWith('http') && (
+          <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
+        )}
+      </div>
+    );
+  }
+
+  return <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>;
+};
 
 export default function OportunidadesPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -328,7 +373,7 @@ export default function OportunidadesPage() {
                               <span style={{ display: 'block', fontWeight: 600, fontSize: '0.75rem', color: msg.isIncoming ? '#475569' : 'var(--primary)', marginBottom: '0.15rem' }}>
                                 {msg.isIncoming ? opp.leadNome : 'Sistema (IA)'}
                               </span>
-                              <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
+                              {renderMessageContent(msg, opp.leadNome || 'Lead')}
                               <span style={{ display: 'block', textAlign: 'right', fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.25rem' }}>
                                 {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
