@@ -52,6 +52,55 @@ export async function GET(req: NextRequest) {
     }
 
     const chats = await d1Api.getChats();
+
+    // Em segundo plano, tenta resolver avatares em falta para os chats de WhatsApp
+    (async () => {
+      try {
+        const chatsWithoutAvatar = chats.filter(c => c.id.startsWith('whatsapp_') && (!c.leadAvatar || c.leadAvatar === ''));
+        if (chatsWithoutAvatar.length > 0) {
+          const settings = await d1Api.getSettings();
+          const globalSettings = settings || {};
+          const omnichannelSettings = globalSettings.omnichannel || {};
+          const apiUrl = omnichannelSettings.evolutionApiUrl || '';
+          const apiKey = omnichannelSettings.evolutionApiKey || '';
+          
+          if (apiUrl && apiKey) {
+            const connections = await d1Api.getWhatsappConnections();
+            
+            // Resolve em lote sequencial ou pequenos grupos de 10 por chamada
+            for (const chat of chatsWithoutAvatar.slice(0, 10)) {
+              const rawPhone = chat.id.substring('whatsapp_'.length);
+              const defaultConn = connections.find(c => c.isDefault) || connections[0];
+              const conn = connections.find(c => c.id === chat.connectionId || c.name === chat.connectionName) || defaultConn;
+              const instanceName = conn ? conn.evolutionInstanceName : '';
+              
+              if (instanceName) {
+                try {
+                  const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                    body: JSON.stringify({ number: `${rawPhone}@s.whatsapp.net` })
+                  });
+                  if (picRes.ok) {
+                    const picData = await picRes.json();
+                    if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
+                      const avatarUrl = picData.profilePictureUrl;
+                      await d1Api.executeRun(`UPDATE chats SET leadAvatar = ? WHERE id = ?`, [avatarUrl, chat.id]);
+                      await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [avatarUrl, chat.leadId]);
+                    }
+                  }
+                } catch (err) {
+                  // Silencioso em background
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // Silencioso em background
+      }
+    })();
+
     return NextResponse.json(chats);
   } catch (error: any) {
     console.error('Error in GET /api/chats:', error);
