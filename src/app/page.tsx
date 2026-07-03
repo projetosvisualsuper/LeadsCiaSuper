@@ -89,9 +89,7 @@ export default function Dashboard() {
   const [panelCustomEndDate, setPanelCustomEndDate] = useState('');
   
   const [whatsappConnections, setWhatsappConnections] = useState<WhatsappConnection[]>([]);
-  const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [panelFilterConnection, setPanelFilterConnection] = useState('all');
-  const [panelFilterUser, setPanelFilterUser] = useState('all');
   const [rawResponseData, setRawResponseData] = useState<any[]>([]);
   const [rawNoResponseData, setRawNoResponseData] = useState<any[]>([]);
   
@@ -135,12 +133,9 @@ export default function Dashboard() {
         const lps = await api.getLandingPages();
         setLandingPages(lps);
 
-        // Buscar conexões do WhatsApp e perfis de usuários
+        // Buscar conexões do WhatsApp
         const conns = await api.getWhatsappConnections();
         setWhatsappConnections(conns || []);
-
-        const users = await api.getAllUserProfiles();
-        setUserProfiles(users || []);
 
         const lpSlugs = lps.map(lp => lp.slug).filter(Boolean);
         
@@ -823,21 +818,6 @@ export default function Dashboard() {
                   </select>
                 </div>
 
-                {/* Salesperson Filter */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Vendedor</span>
-                  <select 
-                    value={panelFilterUser}
-                    onChange={e => setPanelFilterUser(e.target.value)}
-                    style={{ background: '#111827', color: '#f8fafc', border: '1px solid #1e293b', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.8125rem', outline: 'none', cursor: 'pointer' }}
-                  >
-                    <option value="all">Todos os Vendedores</option>
-                    {userProfiles.map(u => (
-                      <option key={u.uid} value={u.uid}>{u.name || u.email}</option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Lead Status Filter */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Status do Lead</span>
@@ -907,12 +887,6 @@ export default function Dashboard() {
               if (panelFilterChannel !== 'all' && c.channel !== panelFilterChannel) return false;
               
               if (panelFilterConnection !== 'all' && c.connectionId !== panelFilterConnection && c.connectionName !== panelFilterConnection) return false;
-              
-              if (panelFilterUser !== 'all') {
-                if (c.assignedTo !== panelFilterUser && c.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.name && c.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.email) {
-                  return false;
-                }
-              }
 
               if (panelPeriod !== 'all') {
                 const timestamp = c.lastTimestamp || c.dataCriacao;
@@ -980,11 +954,6 @@ export default function Dashboard() {
             const filteredResponseData = rawResponseData.filter(row => {
               if (panelFilterChannel !== 'all' && row.channel !== panelFilterChannel) return false;
               if (panelFilterConnection !== 'all' && row.connectionId !== panelFilterConnection && row.connectionName !== panelFilterConnection) return false;
-              if (panelFilterUser !== 'all') {
-                if (row.assignedTo !== panelFilterUser && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.name && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.email) {
-                  return false;
-                }
-              }
               if (panelPeriod !== 'all') {
                 const timestamp = row.firstResponseAt;
                 if (!timestamp) return true;
@@ -1015,11 +984,6 @@ export default function Dashboard() {
             const filteredNoResponseData = rawNoResponseData.filter(row => {
               if (panelFilterChannel !== 'all' && row.channel !== panelFilterChannel) return false;
               if (panelFilterConnection !== 'all' && row.connectionId !== panelFilterConnection && row.connectionName !== panelFilterConnection) return false;
-              if (panelFilterUser !== 'all') {
-                if (row.assignedTo !== panelFilterUser && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.name && row.assignedTo !== userProfiles.find(u => u.uid === panelFilterUser)?.email) {
-                  return false;
-                }
-              }
               if (panelPeriod !== 'all') {
                 const timestamp = row.dataCriacao;
                 if (!timestamp) return true;
@@ -1077,7 +1041,6 @@ export default function Dashboard() {
             const isAnyFilterActive = 
               panelFilterChannel !== 'all' || 
               panelFilterConnection !== 'all' || 
-              panelFilterUser !== 'all' || 
               panelPeriod !== 'all' || 
               panelFilterLp !== 'all' || 
               panelFilterStatus !== 'all';
