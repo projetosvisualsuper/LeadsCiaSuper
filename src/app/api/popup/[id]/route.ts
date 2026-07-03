@@ -333,7 +333,12 @@ export async function GET(
         opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
       }
       .gl-popup-content {
-        position: relative; background: \${theme.backgroundColor || '#fff'};
+        position: relative;
+        background-color: \${theme.backgroundColor || '#fff'};
+        background-image: \${theme.backgroundImageUrl ? \`url('\${theme.backgroundImageUrl}')\` : 'none'};
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
         color: \${theme.textColor || '#1e293b'}; width: 100%;
         max-width: \${template === 'horizontal-banner' ? '100%' : (['image-left', 'image-right', 'image-form-left', 'image-form-right'].includes(template) ? '700px' : '450px')};
         border-radius: \${template === 'horizontal-banner' ? '0' : '24px'};
