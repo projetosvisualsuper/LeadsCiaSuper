@@ -40,7 +40,7 @@ import {
 import { UserProfile, Lead } from '@/types/crm';
 
 const rolePermissions: Record<string, string[]> = {
-  basico: ['/', '/leads', '/atendimento', '/chat-interno', '/oportunidades'],
+  basico: ['/leads', '/oportunidades', '/chat-interno'],
   intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/pedidos', '/oportunidades'],
   master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios', '/logs', '/pedidos', '/oportunidades']
 };
@@ -638,9 +638,10 @@ export default function ClientLayout({
         if (data.authenticated && data.user.status === 'approved') {
           setUserProfile(data.user);
           const mappedRole = data.user.role === 'admin' ? 'master' : (data.user.role === 'editor' ? 'intermediario' : (data.user.role || 'basico'));
-          const allowedPaths = rolePermissions[mappedRole] || [];
-          if (!isCapturePage && pathname !== '/' && !allowedPaths.includes(pathname)) {
-            router.push('/');
+           const allowedPaths = rolePermissions[mappedRole] || [];
+          if (!isCapturePage && !allowedPaths.includes(pathname)) {
+            const fallbackPath = allowedPaths.length > 0 ? allowedPaths[0] : '/login';
+            router.push(fallbackPath);
           }
         } else {
           setUserProfile(null);
