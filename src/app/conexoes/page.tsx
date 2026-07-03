@@ -612,9 +612,28 @@ export default function ConexoesPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <div>
                       <h4 style={{ fontWeight: 700, fontSize: '1.1rem' }}>{tpl.name}</h4>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-                        {tpl.category} • {tpl.language}
-                      </span>
+                      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                          {tpl.category} • {tpl.language}
+                        </span>
+                        {tpl.status === 'APPROVED' || tpl.status === 'approved' ? (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                            Aprovado
+                          </span>
+                        ) : tpl.status === 'PENDING' || tpl.status === 'pending' ? (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                            Pendente
+                          </span>
+                        ) : tpl.status === 'REJECTED' || tpl.status === 'rejected' ? (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                            Rejeitado
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', background: 'rgba(107, 114, 128, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                            Modelo Local
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button onClick={() => openTemplateModal(tpl)} className="btn-outline" style={{ width: '32px', height: '32px', padding: 0 }}><Pencil size={14}/></button>
