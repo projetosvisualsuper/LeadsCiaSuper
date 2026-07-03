@@ -339,8 +339,80 @@ export async function POST(req: NextRequest) {
         
         const rawPhone = message.from; 
         const leadName = contact?.profile?.name || 'Cliente (WhatsApp)';
-        const messageText = message.text?.body || '';
         const phoneId = value.metadata?.phone_number_id; 
+
+        // Carregar configurações para obter o token do Meta
+        const settings = await d1Api.getSettings();
+        const globalSettings = settings || {};
+        const omnichannelSettings = globalSettings.omnichannel || {};
+        const bucket = process.env.BUCKET || (globalThis as any).BUCKET;
+
+        let messageText = message.text?.body || '';
+        let messageType = 'text';
+        let mediaUrl: string | null = '';
+        let mediaMimeType = '';
+
+        const downloadAndUploadMetaMedia = async (mediaId: string, mimeType: string, defaultExt: string) => {
+          try {
+            const token = omnichannelSettings.messengerAccessToken || (globalSettings as any).messengerAccessToken;
+            if (!token) return null;
+
+            // 1. Obter a URL de download temporária do Meta
+            const urlRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}?access_token=${token}`);
+            if (!urlRes.ok) return null;
+            const urlData = await urlRes.json();
+            const downloadUrl = urlData.url;
+            if (!downloadUrl) return null;
+
+            // 2. Baixar o arquivo de mídia usando o token no cabeçalho
+            const fileRes = await fetch(downloadUrl, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!fileRes.ok) return null;
+
+            const arrayBuffer = await fileRes.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+
+            // 3. Fazer upload para o R2 do Cloudflare
+            if (bucket) {
+              const fileExt = mimeType.split('/')[1]?.split(';')[0] || defaultExt;
+              const fileName = `chat_${rawPhone}/${message.id}.${fileExt}`;
+              await bucket.put(fileName, bytes.buffer, {
+                httpMetadata: { contentType: mimeType }
+              });
+              console.log(`✅ Upload de mídia oficial Meta para o R2 com sucesso: ${fileName}`);
+              return `/api/media/${fileName.split('/').map(s => encodeURIComponent(s)).join('/')}`;
+            } else {
+              // Fallback se R2 não estiver disponível
+              return downloadUrl;
+            }
+          } catch (err) {
+            console.error("Erro ao transferir mídia oficial do Meta para o R2:", err);
+            return null;
+          }
+        };
+
+        if (message.type === 'image' && message.image) {
+          messageType = 'image';
+          messageText = message.image.caption || '[Imagem]';
+          mediaMimeType = message.image.mime_type || 'image/jpeg';
+          mediaUrl = await downloadAndUploadMetaMedia(message.image.id, mediaMimeType, 'jpg');
+        } else if (message.type === 'video' && message.video) {
+          messageType = 'video';
+          messageText = message.video.caption || '[Vídeo]';
+          mediaMimeType = message.video.mime_type || 'video/mp4';
+          mediaUrl = await downloadAndUploadMetaMedia(message.video.id, mediaMimeType, 'mp4');
+        } else if (message.type === 'audio' && message.audio) {
+          messageType = 'file';
+          messageText = '[Áudio]';
+          mediaMimeType = message.audio.mime_type || 'audio/ogg';
+          mediaUrl = await downloadAndUploadMetaMedia(message.audio.id, mediaMimeType, 'ogg');
+        } else if (message.type === 'document' && message.document) {
+          messageType = 'file';
+          messageText = message.document.filename || '[Documento]';
+          mediaMimeType = message.document.mime_type || 'application/pdf';
+          mediaUrl = await downloadAndUploadMetaMedia(message.document.id, mediaMimeType, 'pdf');
+        } 
 
         const normalizeBRNumber = (phone: string) => {
           let normalized = phone.replace(/\D/g, '');
@@ -433,12 +505,14 @@ export async function POST(req: NextRequest) {
           senderName: leadName,
           content: messageText,
           timestamp: timestampIso,
-          type: 'text',
+          type: messageType as any,
           status: 'delivered',
           isIncoming: true,
           channel: 'whatsapp',
           leadId: leadId,
-          leadName: leadName
+          leadName: leadName,
+          mediaUrl: mediaUrl || undefined,
+          mediaMimeType: mediaMimeType || undefined
         });
 
         if (!chatResults || chatResults.length === 0) {
