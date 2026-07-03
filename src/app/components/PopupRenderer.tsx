@@ -100,7 +100,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
          </div>
          
          <div style={{ display: 'grid', gap: '0.5rem' }}>
-           <button onClick={handleCopyCoupon} style={{ width: '100%', height: '42px', borderRadius: '8px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+           <button onClick={handleCopyCoupon} style={{ width: '100%', height: '42px', borderRadius: '8px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
               {copying ? '✓ Copiado!' : 'Copiar Código'}
            </button>
            {currentPopup?.buttonLink && (
@@ -109,7 +109,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
          </div>
 
          {theme.sendCouponEmail && (
-           <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#10b981', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+           <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
               ✓ Enviamos uma cópia para seu e-mail
            </div>
          )}
@@ -167,7 +167,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
 
       if (popup.trigger === 'exit-intent') {
         const handleMouseLeave = (e: MouseEvent) => {
-          if (e.clientY < 20 || !e.relatedTarget) {
+          if (e.clientY < 15 && (!e.relatedTarget || e.clientY <= 0)) {
             showPopup(popup);
           }
         };
@@ -320,7 +320,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
                </div>
                
                <div style={{ display: 'grid', gap: '0.75rem' }}>
-                 <button onClick={handleCopyCoupon} style={{ width: '100%', height: '50px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+                 <button onClick={handleCopyCoupon} style={{ width: '100%', height: '50px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                     {copying ? '✓ Copiado!' : 'Copiar Código'}
                  </button>
                  {currentPopup.buttonLink && (
@@ -329,7 +329,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
                </div>
 
                {theme.sendCouponEmail && (
-                 <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+                 <div style={{ marginTop: '1.5rem', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                     ✓ Enviamos uma cópia para seu e-mail
                  </div>
                )}
@@ -409,7 +409,7 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
               )}
               {currentPopup.couponCode ? (
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
-                  <button onClick={handleCopyCoupon} style={{ width: '100%', height: '50px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '0.5rem' }}>
+                  <button onClick={handleCopyCoupon} style={{ width: '100%', height: '50px', borderRadius: '12px', background: '#1e293b', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                      {copying ? '✓ Copiado!' : 'Copiar Código'}
                   </button>
                   {currentPopup.buttonLink && (

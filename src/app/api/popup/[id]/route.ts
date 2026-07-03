@@ -510,7 +510,7 @@ export async function GET(
     } else if (popupData.trigger === 'exit-intent') {
       // Desktop mouse leave
       const handleMouseLeave = (e) => {
-        if (e.clientY < 20 || !e.relatedTarget) {
+        if (e.clientY < 15 && (!e.relatedTarget || e.clientY <= 0)) {
           show();
         }
       };
