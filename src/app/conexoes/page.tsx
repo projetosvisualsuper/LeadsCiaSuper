@@ -16,7 +16,8 @@ import {
   Zap,
   MoreVertical,
   Pencil,
-  LogOut
+  LogOut,
+  Upload
 } from 'lucide-react';
 
 export default function ConexoesPage() {
@@ -43,6 +44,83 @@ export default function ConexoesPage() {
     language: 'pt_BR',
     content: ''
   });
+
+  // Wizard States
+  const [wizardStep, setWizardStep] = useState<number>(1); // 1 = Select type, 2 = Editor / WhatsApp select category, 3 = WhatsApp editor
+  const [wizardType, setWizardType] = useState<'general' | 'whatsapp' | null>(null);
+  const [wabaCategoryTab, setWabaCategoryTab] = useState<'MARKETING' | 'UTILITY'>('MARKETING');
+  const [wabaSubtype, setWabaSubtype] = useState<string>('customizado');
+  const [headerType, setHeaderType] = useState<'NONE' | 'TEXT' | 'MEDIA'>('NONE');
+  const [headerText, setHeaderText] = useState<string>('');
+  const [headerMediaUrl, setHeaderMediaUrl] = useState<string>('');
+  const [footerText, setFooterText] = useState<string>('');
+  const [buttons, setButtons] = useState<any[]>([]);
+  const [isMediaUploading, setIsMediaUploading] = useState<boolean>(false);
+
+  const openTemplateModal = (tpl?: any) => {
+    if (tpl) {
+      setEditingId(tpl.id);
+      setTemplateFormData({
+        id: tpl.id,
+        name: tpl.name,
+        connectionId: tpl.connectionId,
+        category: tpl.category,
+        language: tpl.language,
+        content: tpl.content,
+        status: tpl.status,
+        components: tpl.components || []
+      });
+      const isGeneral = tpl.category === 'GENERAL';
+      setWizardType(isGeneral ? 'general' : 'whatsapp');
+      setWizardStep(isGeneral ? 2 : 3);
+      if (!isGeneral) {
+        setWabaCategoryTab(tpl.category);
+      }
+      const headerObj = (tpl.components || []).find((c: any) => c.type === 'HEADER');
+      if (headerObj) {
+        setHeaderType(headerObj.format === 'TEXT' ? 'TEXT' : (headerObj.format ? 'MEDIA' : 'NONE'));
+        setHeaderText(headerObj.text || '');
+        setHeaderMediaUrl(headerObj.imageUrl || headerObj.mediaUrl || '');
+      } else {
+        setHeaderType('NONE');
+        setHeaderText('');
+        setHeaderMediaUrl('');
+      }
+      const footerObj = (tpl.components || []).find((c: any) => c.type === 'FOOTER');
+      if (footerObj) {
+        setFooterText(footerObj.text || '');
+      } else {
+        setFooterText('');
+      }
+      const buttonsObj = (tpl.components || []).find((c: any) => c.type === 'BUTTONS');
+      if (buttonsObj && buttonsObj.buttons) {
+        setButtons(buttonsObj.buttons);
+      } else {
+        setButtons([]);
+      }
+    } else {
+      setEditingId(null);
+      const nowStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '_') + '_' + new Date().toLocaleTimeString('pt-BR', { hour12: false }).substring(0, 5).replace(/:/g, '_');
+      setTemplateFormData({
+        name: `modelo_${nowStr}`,
+        connectionId: '',
+        category: 'GENERAL',
+        language: 'pt_BR',
+        content: '',
+        status: 'LOCAL'
+      });
+      setWizardStep(1);
+      setWizardType(null);
+      setWabaCategoryTab('MARKETING');
+      setWabaSubtype('customizado');
+      setHeaderType('NONE');
+      setHeaderText('');
+      setHeaderMediaUrl('');
+      setFooterText('');
+      setButtons([]);
+    }
+    setShowTemplateModal(true);
+  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -221,22 +299,59 @@ export default function ConexoesPage() {
     setSaving(false);
   };
 
-  const handleSaveTemplate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveTemplate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setSaving(true);
     try {
       const id = editingId || Math.random().toString(36).substr(2, 9);
+
+      const componentsArr: any[] = [];
+      
+      if (headerType !== 'NONE') {
+        componentsArr.push({
+          type: 'HEADER',
+          format: headerType === 'TEXT' ? 'TEXT' : 'IMAGE',
+          text: headerType === 'TEXT' ? headerText : undefined,
+          mediaUrl: headerType === 'MEDIA' ? headerMediaUrl : undefined,
+          imageUrl: headerType === 'MEDIA' ? headerMediaUrl : undefined
+        });
+      }
+
+      if (footerText) {
+        componentsArr.push({
+          type: 'FOOTER',
+          text: footerText
+        });
+      }
+
+      if (buttons.length > 0) {
+        componentsArr.push({
+          type: 'BUTTONS',
+          buttons: buttons.map(b => ({
+            type: b.type,
+            text: b.text,
+            url: b.url || undefined,
+            phone: b.phone || undefined
+          }))
+        });
+      }
+
       const payload = {
         ...templateFormData,
         id,
+        category: wizardType === 'general' ? 'GENERAL' : wabaCategoryTab,
+        status: wizardType === 'general' ? 'LOCAL' : 'PENDING',
+        components: componentsArr,
         dataCriacao: new Date().toISOString()
       };
+
       await api.saveWhatsappTemplate(payload);
       showToast('Modelo salvo com sucesso!', 'success');
       setShowTemplateModal(false);
       setEditingId(null);
       loadTemplates();
     } catch (error) {
+      console.error(error);
       showToast('Erro ao salvar modelo.', 'error');
     }
     setSaving(false);
@@ -276,9 +391,7 @@ export default function ConexoesPage() {
               setFormData({ name: '', type: 'evolution_api', isDefault: false });
               setShowModal(true);
             } else {
-              setEditingId(null);
-              setTemplateFormData({ name: '', connectionId: '', category: 'MARKETING', language: 'pt_BR', content: '' });
-              setShowTemplateModal(true);
+              openTemplateModal();
             }
           }}
           className="btn btn-primary"
@@ -504,7 +617,7 @@ export default function ConexoesPage() {
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => { setEditingId(tpl.id); setTemplateFormData(tpl); setShowTemplateModal(true); }} className="btn-outline" style={{ width: '32px', height: '32px', padding: 0 }}><Pencil size={14}/></button>
+                      <button onClick={() => openTemplateModal(tpl)} className="btn-outline" style={{ width: '32px', height: '32px', padding: 0 }}><Pencil size={14}/></button>
                       <button onClick={() => handleDeleteTemplate(tpl.id)} className="btn-outline" style={{ width: '32px', height: '32px', padding: 0, color: 'var(--danger)' }}><Trash2 size={14}/></button>
                     </div>
                   </div>
@@ -818,74 +931,670 @@ export default function ConexoesPage() {
         </div>
       )}
 
-      {/* MODAL TEMPLATE */}
+      {/* MODAL TEMPLATE (WIZARD KOMMO STYLE) */}
       {showTemplateModal && (
         <div style={{ 
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', 
+          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', 
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' 
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '550px', padding: 0 }}>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Cadastrar Modelo da Meta</h2>
-              <button onClick={() => setShowTemplateModal(false)}><XCircle size={24} /></button>
-            </div>
-            <form onSubmit={handleSaveTemplate} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Conexão Meta Relacionada</label>
-                <select 
-                  required
-                  className="btn-outline"
-                  style={{ width: '100%', height: '42px', padding: '0 1rem' }}
-                  value={templateFormData.connectionId}
-                  onChange={e => setTemplateFormData({...templateFormData, connectionId: e.target.value})}
-                >
-                  <option value="">Selecione uma conexão...</option>
-                  {connections.filter(c => c.type === 'meta_official').map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nome (Identificador)</label>
+          <div className="card" style={{ 
+            width: '100%', 
+            maxWidth: wizardStep === 1 ? '550px' : '1000px', 
+            padding: 0, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            maxHeight: '90vh',
+            transition: 'max-width 0.3s ease'
+          }}>
+            {/* Header */}
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--background)' }}>
+              {wizardStep >= 2 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <input 
-                    type="text" required
-                    className="btn-outline" style={{ width: '100%', height: '42px', padding: '0 1rem' }}
-                    placeholder="ex: boas_vindas_v01"
-                    value={templateFormData.name}
-                    onChange={e => setTemplateFormData({...templateFormData, name: e.target.value.toLowerCase().replace(/ /g, '_')})}
+                    type="text" 
+                    value={templateFormData.name} 
+                    onChange={e => setTemplateFormData({ ...templateFormData, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                    style={{ border: 'none', background: 'transparent', fontSize: '1.25rem', fontWeight: 'bold', width: '350px', outline: 'none', borderBottom: '1px dashed var(--primary)' }}
+                    title="Clique para editar o identificador do modelo"
                   />
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                    {wizardType === 'general' ? 'Modelo Geral' : 'WhatsApp Official'}
+                  </span>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Categoria</label>
-                  <select 
-                    className="btn-outline" style={{ width: '100%', height: '42px', padding: '0 1rem' }}
-                    value={templateFormData.category}
-                    onChange={e => setTemplateFormData({...templateFormData, category: e.target.value})}
+              ) : (
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>Selecione o tipo de modelo</h2>
+              )}
+              <button 
+                onClick={() => setShowTemplateModal(false)} 
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+              {/* PASSO 1: Seleção de Tipo */}
+              {wizardStep === 1 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div 
+                    onClick={() => {
+                      setWizardType('general');
+                      setTemplateFormData((prev: any) => ({ ...prev, category: 'GENERAL', status: 'LOCAL' }));
+                      setWizardStep(2);
+                    }}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: '12px',
+                      padding: '1.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1.25rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = 'rgba(99, 102, 241, 0.02)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'transparent'; }}
                   >
-                    <option value="MARKETING">Marketing</option>
-                    <option value="UTILITY">Utilidade</option>
-                    <option value="AUTHENTICATION">Autenticação</option>
-                  </select>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <MessageSquare size={24} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontWeight: 700, fontSize: '1rem', margin: '0 0 4px 0' }}>Modelo geral</h4>
+                      <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.6 }}>Automatize mensagens básicas em qualquer canal</p>
+                    </div>
+                  </div>
+
+                  <div 
+                    onClick={() => {
+                      setWizardType('whatsapp');
+                      setWizardStep(2);
+                    }}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: '12px',
+                      padding: '1.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1.25rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.background = 'rgba(16, 185, 129, 0.02)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Zap size={24} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ fontWeight: 700, fontSize: '1rem', margin: '0 0 4px 0' }}>Modelo de WhatsApp</h4>
+                      <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.6 }}>Inicie novos chats e envie transmissões no WhatsApp Oficial</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Texto do Modelo</label>
-                <textarea 
-                  required
-                  className="btn-outline" style={{ width: '100%', height: '120px', padding: '1rem', resize: 'none' }}
-                  placeholder={"Olá {{1}}, vimos seu interesse em {{2}}..."}
-                  value={templateFormData.content}
-                  onChange={e => setTemplateFormData({...templateFormData, content: e.target.value})}
-                />
-                <p style={{ fontSize: '0.7rem', opacity: 0.5, marginTop: '0.5rem' }}>Importante: O texto deve ser idêntico ao que foi aprovado na Meta.</p>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setShowTemplateModal(false)} className="btn btn-outline">Cancelar</button>
-                <button type="submit" className="btn btn-primary">{saving ? 'Salvando...' : 'Salvar Modelo'}</button>
-              </div>
-            </form>
+              )}
+
+              {/* PASSO 2 (Modelo Geral Editor) */}
+              {wizardStep === 2 && wizardType === 'general' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '2rem' }}>
+                  {/* Form */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* Anexo */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Anexo (opcional)</label>
+                      <label style={{ 
+                        border: '2px dashed var(--border)', 
+                        borderRadius: '8px', 
+                        padding: '1.5rem', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        cursor: 'pointer',
+                        background: '#f8fafc'
+                      }}>
+                        <Upload size={24} style={{ color: '#64748b' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{isMediaUploading ? 'Carregando...' : 'Carregue ou arraste seu arquivo aqui'}</span>
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setIsMediaUploading(true);
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              setHeaderMediaUrl(event.target?.result as string);
+                              setHeaderType('MEDIA');
+                              setIsMediaUploading(false);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                      </label>
+                      {headerMediaUrl && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                          <img src={headerMediaUrl} style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                          <button type="button" onClick={() => { setHeaderMediaUrl(''); setHeaderType('NONE'); }} className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}>Remover</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Corpo */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Texto</label>
+                      <textarea
+                        className="btn-outline"
+                        style={{ width: '100%', height: '150px', padding: '1rem', resize: 'none' }}
+                        placeholder="Digite o texto da sua mensagem aqui..."
+                        value={templateFormData.content}
+                        onChange={e => setTemplateFormData({ ...templateFormData, content: e.target.value })}
+                      />
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => setTemplateFormData((prev: any) => ({ ...prev, content: (prev.content || '') + ' {{nome}}' }))}
+                          className="btn-outline" 
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          [-..] Nome do Lead
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setTemplateFormData((prev: any) => ({ ...prev, content: (prev.content || '') + ' 🚀' }))}
+                          className="btn-outline" 
+                          style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                        >
+                          🚀
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setTemplateFormData((prev: any) => ({ ...prev, content: (prev.content || '') + ' 🔥' }))}
+                          className="btn-outline" 
+                          style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                        >
+                          🔥
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Botões */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Botões (opcional)</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="button" onClick={() => {
+                          if (buttons.length >= 3) {
+                            alert('Máximo de 3 botões atingido.');
+                            return;
+                          }
+                          setButtons([...buttons, { type: 'QUICK_REPLY', text: 'Resposta rápida' }]);
+                        }} className="btn-outline" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>+ Resposta rápida</button>
+                        <button type="button" onClick={() => {
+                          if (buttons.length >= 3) {
+                            alert('Máximo de 3 botões atingido.');
+                            return;
+                          }
+                          setButtons([...buttons, { type: 'URL', text: 'Comprar agora', url: 'https://' }]);
+                        }} className="btn-outline" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>+ Chamada para ação</button>
+                      </div>
+
+                      {buttons.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+                          {buttons.map((btn, index) => (
+                            <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#f8fafc', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>{btn.type === 'QUICK_REPLY' ? 'Resp. Rápida' : 'Link/Ação'}</span>
+                              <input 
+                                type="text" 
+                                value={btn.text} 
+                                onChange={e => {
+                                  const list = [...buttons];
+                                  list[index].text = e.target.value;
+                                  setButtons(list);
+                                }}
+                                placeholder="Texto do botão"
+                                style={{ flex: 1, height: '32px', padding: '0 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                              />
+                              {btn.type === 'URL' && (
+                                <input 
+                                  type="text" 
+                                  value={btn.url || ''} 
+                                  onChange={e => {
+                                    const list = [...buttons];
+                                    list[index].url = e.target.value;
+                                    setButtons(list);
+                                  }}
+                                  placeholder="https://exemplo.com"
+                                  style={{ flex: 1, height: '32px', padding: '0 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                />
+                              )}
+                              <button type="button" onClick={() => setButtons(buttons.filter((_, i) => i !== index))} className="btn btn-outline" style={{ color: 'var(--danger)', padding: '0.2rem 0.5rem' }}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preview */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Pré-visualização</div>
+                    {/* Mockup Celular */}
+                    <div style={{
+                      width: '300px', height: '520px', background: '#0b141a', borderRadius: '32px', border: '10px solid #222e35',
+                      display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative'
+                    }}>
+                      <div style={{ height: '20px', background: '#222e35', color: '#aebac1', fontSize: '0.7rem', display: 'flex', justifyContent: 'space-between', padding: '0 1rem', alignItems: 'center' }}>
+                        <span>15:16</span>
+                        <span>📶 🔋</span>
+                      </div>
+                      <div style={{
+                        flex: 1, backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)',
+                        backgroundSize: 'cover', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                      }}>
+                        {/* Bubble */}
+                        <div style={{
+                          backgroundColor: '#202c33', color: '#e9edef', padding: '8px', borderRadius: '8px', maxWidth: '85%',
+                          alignSelf: 'flex-start', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px'
+                        }}>
+                          {headerMediaUrl && (
+                            <img src={headerMediaUrl} style={{ width: '100%', maxHeight: '110px', objectFit: 'cover', borderRadius: '6px' }} />
+                          )}
+                          <div style={{ whiteSpace: 'pre-wrap' }}>{templateFormData.content || 'Digite o texto...'}</div>
+                          <div style={{ fontSize: '0.6rem', color: '#8696a0', alignSelf: 'flex-end' }}>15:16 ✓✓</div>
+                        </div>
+                        {/* Buttons in Mockup */}
+                        {buttons.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%' }}>
+                            {buttons.map((btn, i) => (
+                              <div key={i} style={{ background: '#202c33', color: '#00a884', textAlign: 'center', padding: '6px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
+                                {btn.text || 'Botão'}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PASSO 2 (WhatsApp Categoria Select) */}
+              {wizardStep === 2 && wizardType === 'whatsapp' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '2rem' }}>
+                  {/* Categorias */}
+                  <div>
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => setWabaCategoryTab('MARKETING')} 
+                        style={{ padding: '0.75rem 1rem', background: 'none', border: 'none', borderBottom: wabaCategoryTab === 'MARKETING' ? '3px solid var(--primary)' : '3px solid transparent', fontWeight: 'bold', cursor: 'pointer' }}
+                      >
+                        Marketing
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setWabaCategoryTab('UTILITY')} 
+                        style={{ padding: '0.75rem 1rem', background: 'none', border: 'none', borderBottom: wabaCategoryTab === 'UTILITY' ? '3px solid var(--primary)' : '3px solid transparent', fontWeight: 'bold', cursor: 'pointer' }}
+                      >
+                        Utilidade
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <p style={{ fontSize: '0.85rem', opacity: 0.6, margin: 0 }}>
+                        {wabaCategoryTab === 'MARKETING' 
+                          ? 'Para mensagens promocionais, como ofertas especiais, descontos ou anúncios de novos produtos.'
+                          : 'Para mensagens que mantêm os clientes informados, como atualizações de pedidos, alertas de transação ou lembretes.'
+                        }
+                      </p>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border)', padding: '1rem', borderRadius: '8px', cursor: 'pointer' }}>
+                        <input type="radio" checked={wabaSubtype === 'customizado'} onChange={() => setWabaSubtype('customizado')} />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Customizado</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>Compartilhe mensagens com cabeçalho de mídia, rodapés e botões de chamada rápida.</div>
+                        </div>
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border)', padding: '1rem', borderRadius: '8px', opacity: 0.5, cursor: 'not-allowed' }}>
+                        <input type="radio" disabled />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Carrossel</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>Exiba seus produtos em cartões deslizantes de forma interativa.</div>
+                        </div>
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border)', padding: '1rem', borderRadius: '8px', opacity: 0.5, cursor: 'not-allowed' }}>
+                        <input type="radio" disabled />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Catálogo / Flows</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>Conecte um catálogo de vendas do WhatsApp oficial para enviar ofertas nativas.</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Preview da Categoria */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{
+                      width: '300px', height: '520px', background: '#0b141a', borderRadius: '32px', border: '10px solid #222e35',
+                      display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative'
+                    }}>
+                      <div style={{ height: '20px', background: '#222e35', color: '#aebac1', fontSize: '0.7rem', display: 'flex', justifyContent: 'space-between', padding: '0 1rem', alignItems: 'center' }}>
+                        <span>15:16</span>
+                        <span>📶 🔋</span>
+                      </div>
+                      <div style={{
+                        flex: 1, backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)',
+                        backgroundSize: 'cover', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                      }}>
+                        {/* Bubble */}
+                        <div style={{
+                          backgroundColor: '#202c33', color: '#e9edef', padding: '8px', borderRadius: '8px', maxWidth: '85%',
+                          alignSelf: 'flex-start', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px'
+                        }}>
+                          <img src="https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=300&q=80" style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '6px' }} />
+                          <div style={{ fontWeight: 'bold' }}>Olá, Maria! 👋</div>
+                          <div>Descubra nossa nova coleção exclusiva!</div>
+                          <div style={{ fontSize: '0.7rem', color: '#8696a0' }}>Use o cupom NOVOS10.</div>
+                        </div>
+                        <div style={{ background: '#202c33', color: '#00a884', textAlign: 'center', padding: '6px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, maxWidth: '85%' }}>
+                          🔗 Comprar Agora
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PASSO 3 (WhatsApp Editor) */}
+              {wizardStep === 3 && wizardType === 'whatsapp' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '2rem' }}>
+                  {/* Editor Form */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* WABA select */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Conexão WhatsApp Oficial</label>
+                      <select
+                        required
+                        className="btn-outline"
+                        style={{ width: '100%', height: '42px', padding: '0 1rem', background: '#ffffff' }}
+                        value={templateFormData.connectionId}
+                        onChange={e => setTemplateFormData({ ...templateFormData, connectionId: e.target.value })}
+                      >
+                        <option value="">Selecione uma conta...</option>
+                        {connections.filter(c => c.type === 'meta_official').map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      {/* Idioma */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Idioma</label>
+                        <select
+                          className="btn-outline"
+                          style={{ width: '100%', height: '42px', padding: '0 1rem', background: '#ffffff' }}
+                          value={templateFormData.language}
+                          onChange={e => setTemplateFormData({ ...templateFormData, language: e.target.value })}
+                        >
+                          <option value="pt_BR">Português (Brasil)</option>
+                          <option value="en_US">Inglês (EUA)</option>
+                          <option value="es_ES">Espanhol (Espanha)</option>
+                        </select>
+                      </div>
+
+                      {/* Cabeçalho */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Cabeçalho (Opcional)</label>
+                        <select
+                          className="btn-outline"
+                          style={{ width: '100%', height: '42px', padding: '0 1rem', background: '#ffffff' }}
+                          value={headerType}
+                          onChange={e => {
+                            setHeaderType(e.target.value as any);
+                            setHeaderText('');
+                            setHeaderMediaUrl('');
+                          }}
+                        >
+                          <option value="NONE">Sem cabeçalho</option>
+                          <option value="TEXT">Texto</option>
+                          <option value="MEDIA">Mídia (Imagem)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {headerType === 'TEXT' && (
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Texto do Cabeçalho</label>
+                        <input 
+                          type="text"
+                          className="btn-outline"
+                          placeholder="Ex: Olá, cliente!"
+                          value={headerText}
+                          onChange={e => setHeaderText(e.target.value)}
+                          style={{ width: '100%', height: '40px', padding: '0 1rem' }}
+                        />
+                      </div>
+                    )}
+
+                    {headerType === 'MEDIA' && (
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Imagem do Cabeçalho</label>
+                        <label style={{ 
+                          border: '2px dashed var(--border)', 
+                          borderRadius: '8px', 
+                          padding: '1rem', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center', 
+                          gap: '0.5rem', 
+                          cursor: 'pointer',
+                          background: '#f8fafc'
+                        }}>
+                          <Upload size={20} style={{ color: '#64748b' }} />
+                          <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Fazer upload da imagem</span>
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setIsMediaUploading(true);
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setHeaderMediaUrl(event.target?.result as string);
+                                setIsMediaUploading(false);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }} />
+                        </label>
+                        {headerMediaUrl && (
+                          <img src={headerMediaUrl} style={{ width: '80px', height: '50px', objectFit: 'cover', borderRadius: '4px', marginTop: '0.5rem' }} />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Corpo */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Corpo do texto</label>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{(templateFormData.content || '').length}/1024</span>
+                      </div>
+                      <textarea
+                        className="btn-outline"
+                        style={{ width: '100%', height: '120px', padding: '1rem', resize: 'none' }}
+                        maxLength={1024}
+                        placeholder="Digite o texto da sua mensagem aqui..."
+                        value={templateFormData.content}
+                        onChange={e => setTemplateFormData({ ...templateFormData, content: e.target.value })}
+                      />
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button type="button" onClick={() => setTemplateFormData((prev: any) => ({ ...prev, content: (prev.content || '') + ' {{1}}' }))} className="btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>{"{}"} Variável</button>
+                        <button type="button" onClick={() => setTemplateFormData((prev: any) => ({ ...prev, content: `*${prev.content || ''}*` }))} className="btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>B</button>
+                        <button type="button" onClick={() => setTemplateFormData((prev: any) => ({ ...prev, content: `_${prev.content || ''}_` }))} className="btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem', fontStyle: 'italic' }}>I</button>
+                        <button type="button" onClick={() => setTemplateFormData((prev: any) => ({ ...prev, content: (prev.content || '') + ' 😊' }))} className="btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>😊</button>
+                      </div>
+                    </div>
+
+                    {/* Rodapé */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Rodapé (Opcional)</label>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{footerText.length}/60</span>
+                      </div>
+                      <input 
+                        type="text"
+                        className="btn-outline"
+                        maxLength={60}
+                        placeholder="Ex: Mensagem automática de vendas"
+                        value={footerText}
+                        onChange={e => setFooterText(e.target.value)}
+                        style={{ width: '100%', height: '40px', padding: '0 1rem' }}
+                      />
+                    </div>
+
+                    {/* Botões */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Botões (Opcional)</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="button" onClick={() => {
+                          if (buttons.length >= 3) {
+                            alert('Máximo de 3 botões.');
+                            return;
+                          }
+                          setButtons([...buttons, { type: 'QUICK_REPLY', text: 'Responda aqui' }]);
+                        }} className="btn-outline" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>+ Resposta rápida</button>
+                        <button type="button" onClick={() => {
+                          if (buttons.length >= 3) {
+                            alert('Máximo de 3 botões.');
+                            return;
+                          }
+                          setButtons([...buttons, { type: 'URL', text: 'Link Externo', url: 'https://' }]);
+                        }} className="btn-outline" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>+ Chamada para ação</button>
+                      </div>
+
+                      {buttons.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+                          {buttons.map((btn, index) => (
+                            <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#f8fafc', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>{btn.type === 'QUICK_REPLY' ? 'Resp. Rápida' : 'Link'}</span>
+                              <input 
+                                type="text" 
+                                value={btn.text} 
+                                onChange={e => {
+                                  const list = [...buttons];
+                                  list[index].text = e.target.value;
+                                  setButtons(list);
+                                }}
+                                placeholder="Texto do botão"
+                                style={{ flex: 1, height: '32px', padding: '0 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                              />
+                              {btn.type === 'URL' && (
+                                <input 
+                                  type="text" 
+                                  value={btn.url || ''} 
+                                  onChange={e => {
+                                    const list = [...buttons];
+                                    list[index].url = e.target.value;
+                                    setButtons(list);
+                                  }}
+                                  placeholder="https://exemplo.com"
+                                  style={{ flex: 1, height: '32px', padding: '0 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                />
+                              )}
+                              <button type="button" onClick={() => setButtons(buttons.filter((_, i) => i !== index))} className="btn btn-outline" style={{ color: 'var(--danger)', padding: '0.2rem 0.5rem' }}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Preview */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Visualização do WhatsApp</div>
+                    <div style={{
+                      width: '300px', height: '520px', background: '#0b141a', borderRadius: '32px', border: '10px solid #222e35',
+                      display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative'
+                    }}>
+                      <div style={{ height: '20px', background: '#222e35', color: '#aebac1', fontSize: '0.7rem', display: 'flex', justifyContent: 'space-between', padding: '0 1rem', alignItems: 'center' }}>
+                        <span>15:16</span>
+                        <span>📶 🔋</span>
+                      </div>
+                      <div style={{
+                        flex: 1, backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)',
+                        backgroundSize: 'cover', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                      }}>
+                        {/* Bubble */}
+                        <div style={{
+                          backgroundColor: '#202c33', color: '#e9edef', padding: '8px', borderRadius: '8px', maxWidth: '85%',
+                          alignSelf: 'flex-start', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px'
+                        }}>
+                          {headerType === 'TEXT' && headerText && (
+                            <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '2px', marginBottom: '2px' }}>{headerText}</div>
+                          )}
+                          {headerType === 'MEDIA' && headerMediaUrl && (
+                            <img src={headerMediaUrl} style={{ width: '100%', maxHeight: '110px', objectFit: 'cover', borderRadius: '6px' }} />
+                          )}
+                          <div style={{ whiteSpace: 'pre-wrap' }}>{templateFormData.content || 'Digite o texto...'}</div>
+                          {footerText && (
+                            <div style={{ fontSize: '0.7rem', color: '#8696a0', marginTop: '2px' }}>{footerText}</div>
+                          )}
+                          <div style={{ fontSize: '0.6rem', color: '#8696a0', alignSelf: 'flex-end' }}>15:16 ✓✓</div>
+                        </div>
+                        {/* Buttons in Mockup */}
+                        {buttons.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%' }}>
+                            {buttons.map((btn, i) => (
+                              <div key={i} style={{ background: '#202c33', color: '#00a884', textAlign: 'center', padding: '6px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
+                                {btn.text || 'Botão'}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Action Buttons */}
+            <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', background: '#f8fafc', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={() => {
+                  if (wizardStep === 1) {
+                    setShowTemplateModal(false);
+                  } else {
+                    setWizardStep(prev => prev - 1);
+                  }
+                }}
+              >
+                {wizardStep === 1 ? 'Cancelar' : 'Voltar'}
+              </button>
+
+              {wizardStep === 2 && wizardType === 'whatsapp' && (
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={() => setWizardStep(3)}
+                >
+                  Próximo
+                </button>
+              )}
+
+              {((wizardStep === 2 && wizardType === 'general') || (wizardStep === 3 && wizardType === 'whatsapp')) && (
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  disabled={saving || !templateFormData.name}
+                  onClick={() => handleSaveTemplate()}
+                >
+                  {saving ? 'Salvando...' : wizardType === 'general' ? 'Salvar Modelo' : 'Enviar para Análise'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
