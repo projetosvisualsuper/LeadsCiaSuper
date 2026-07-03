@@ -39,6 +39,7 @@ export default function PopupsPage() {
   const [selectedPopup, setSelectedPopup] = useState<PopupConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isBgCompressing, setIsBgCompressing] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Form State
@@ -60,7 +61,8 @@ export default function PopupsPage() {
       textColor: '#1e293b',
       buttonColor: '#3b82f6',
       buttonTextColor: '#ffffff',
-      overlayColor: 'rgba(0,0,0,0.5)'
+      overlayColor: 'rgba(0,0,0,0.5)',
+      backgroundImageUrl: ''
     }
   });
 
@@ -113,7 +115,27 @@ export default function PopupsPage() {
       setIsCompressing(false);
     }
   };
+  const handleBgFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    setIsBgCompressing(true);
+    try {
+      const compressed = await compressImage(file, 800, 600, 0.6);
+      setFormData(prev => ({
+        ...prev,
+        theme: {
+          ...prev.theme,
+          backgroundImageUrl: compressed
+        }
+      }));
+    } catch (error) {
+      console.error('Erro ao processar imagem de fundo:', error);
+      alert('Erro ao processar imagem. Tente outro arquivo.');
+    } finally {
+      setIsBgCompressing(false);
+    }
+  };
   const refreshData = async () => {
     setLoading(true);
     try {
@@ -158,7 +180,8 @@ export default function PopupsPage() {
           textColor: '#1e293b',
           buttonColor: '#3b82f6',
           buttonTextColor: '#ffffff',
-          overlayColor: 'rgba(0,0,0,0.5)'
+          overlayColor: 'rgba(0,0,0,0.5)',
+          backgroundImageUrl: ''
         }
       });
     }
@@ -594,6 +617,28 @@ export default function PopupsPage() {
                   <div>
                     <label className="label">Cor de Fundo</label>
                     <input type="color" style={{ width: '100%', height: '42px', cursor: 'pointer' }} value={formData.theme?.backgroundColor} onChange={e => setFormData({...formData, theme: {...formData.theme!, backgroundColor: e.target.value}})} />
+                  </div>
+                  <div>
+                    <label className="label">Imagem de Fundo (Background)</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <label className="btn btn-outline" style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', height: '42px', padding: 0 }}>
+                        <Upload size={16} /> {isBgCompressing ? 'Processando...' : 'Escolher Fundo'}
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBgFileUpload} />
+                      </label>
+                      {formData.theme?.backgroundImageUrl && (
+                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          <img src={formData.theme.backgroundImageUrl} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.25rem', height: '32px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold' }}
+                            onClick={() => setFormData({ ...formData, theme: { ...formData.theme!, backgroundImageUrl: '' } })}
+                            title="Remover Imagem de Fundo"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="label">Cor do Texto</label>

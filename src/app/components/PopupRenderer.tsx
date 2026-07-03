@@ -458,7 +458,11 @@ export default function PopupRenderer({ slug }: PopupRendererProps) {
       {/* Popup Content */}
       <div style={{ 
         position: 'relative',
-        background: theme.backgroundColor || '#ffffff',
+        backgroundColor: theme.backgroundColor || '#ffffff',
+        backgroundImage: theme.backgroundImageUrl ? `url(${theme.backgroundImageUrl})` : 'none',
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
         color: theme.textColor || '#1e293b',
         width: '100%',
         maxWidth: template === 'horizontal-banner' ? '100%' : (['image-left', 'image-right', 'image-form-left', 'image-form-right'].includes(template) ? '700px' : '450px'),
