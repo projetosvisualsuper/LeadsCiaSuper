@@ -392,30 +392,55 @@ export default function OportunidadesPage() {
                           <Phone size={16} /> Falar com o Lead
                         </h4>
                         {opp.leadCelular ? (
-                          <a 
-                            href={getWhatsAppWebUrl(opp.leadCelular)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              gap: '0.5rem',
-                              background: '#25D366', 
-                              color: '#ffffff',
-                              padding: '0.65rem 1rem', 
-                              borderRadius: '8px',
-                              textDecoration: 'none',
-                              fontSize: '0.9rem',
-                              fontWeight: 'bold',
-                              boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)',
-                              transition: 'transform 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                          >
-                            <Send size={16} /> Conversar no WhatsApp Web <ExternalLink size={14} />
-                          </a>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <a 
+                              href={getWhatsAppWebUrl(opp.leadCelular)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                background: '#25D366', 
+                                color: '#ffffff',
+                                padding: '0.65rem 1rem', 
+                                borderRadius: '8px',
+                                textDecoration: 'none',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)',
+                                transition: 'transform 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                              <Send size={16} /> Conversar no WhatsApp Web <ExternalLink size={14} />
+                            </a>
+                            
+                            <Link 
+                              href={`/leads?search=${opp.leadCelular || opp.leadNome}`} 
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                background: '#ffffff', 
+                                color: '#0ea5e9',
+                                border: '1px solid #0ea5e9',
+                                padding: '0.65rem 1rem', 
+                                borderRadius: '8px',
+                                textDecoration: 'none',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                transition: 'background-color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                            >
+                              Abrir Lead &rarr;
+                            </Link>
+                          </div>
                         ) : (
                           <div style={{ padding: '0.75rem', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#b91c1c', fontSize: '0.85rem' }}>
                             Número de telefone não cadastrado para este lead.
