@@ -370,7 +370,7 @@ export default function ConexoesPage() {
 
   const [syncingTemplates, setSyncingTemplates] = useState(false);
 
-  const handleSyncTemplates = async () => {
+  const handleSyncTemplates = async (onlyUpdateExisting?: boolean) => {
     const metaConn = connections.find(c => c.type === 'meta_official');
     if (!metaConn) {
       showToast('Nenhuma conexão oficial do WhatsApp (Meta) encontrada para sincronizar.', 'error');
@@ -379,8 +379,12 @@ export default function ConexoesPage() {
     setSyncingTemplates(true);
     try {
       showToast('Sincronizando modelos com a Meta...', 'success');
-      const res = await api.syncTemplatesFromMeta(metaConn.id);
-      showToast(`Sincronização concluída! Importados: ${res.createdCount}, Atualizados: ${res.updatedCount}`, 'success');
+      const res = await api.syncTemplatesFromMeta(metaConn.id, onlyUpdateExisting);
+      if (onlyUpdateExisting) {
+        showToast(`Status dos modelos atualizados! Total de atualizações: ${res.updatedCount}`, 'success');
+      } else {
+        showToast(`Sincronização concluída! Importados: ${res.createdCount}, Atualizados: ${res.updatedCount}`, 'success');
+      }
       loadTemplates();
     } catch (error: any) {
       console.error(error);
@@ -418,15 +422,28 @@ export default function ConexoesPage() {
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           {activeTab === 'templates' && connections.some(c => c.type === 'meta_official') && (
-            <button 
-              onClick={handleSyncTemplates}
-              disabled={syncingTemplates}
-              className="btn btn-outline"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '44px', padding: '0 1.5rem' }}
-            >
-              <RefreshCw size={18} style={{ animation: syncingTemplates ? 'spin 1s linear infinite' : 'none' }} />
-              {syncingTemplates ? 'Sincronizando...' : 'Sincronizar com a Meta'}
-            </button>
+            <>
+              <button 
+                onClick={() => handleSyncTemplates(true)}
+                disabled={syncingTemplates}
+                className="btn btn-outline"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '44px', padding: '0 1.25rem' }}
+                title="Atualiza apenas o status dos modelos que já estão cadastrados no CRM"
+              >
+                <RefreshCw size={18} style={{ animation: syncingTemplates ? 'spin 1s linear infinite' : 'none' }} />
+                {syncingTemplates ? 'Atualizando...' : 'Atualizar Status'}
+              </button>
+              <button 
+                onClick={() => handleSyncTemplates(false)}
+                disabled={syncingTemplates}
+                className="btn btn-outline"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '44px', padding: '0 1.25rem' }}
+                title="Sincroniza os status e importa todos os modelos novos do painel da Meta"
+              >
+                <Upload size={18} />
+                Sincronizar & Importar
+              </button>
+            </>
           )}
           <button 
             onClick={() => {

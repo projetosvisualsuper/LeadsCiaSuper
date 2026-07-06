@@ -1135,7 +1135,7 @@ export const d1Api = {
     return { success: true, status: metaStatus, metaResponse: responseData };
   },
 
-  syncTemplatesFromMeta: async (connectionId: string): Promise<any> => {
+  syncTemplatesFromMeta: async (connectionId: string, onlyUpdateExisting?: boolean): Promise<any> => {
     // 1. Buscar a conexão
     const { results: connections } = await runQuery(`SELECT * FROM whatsapp_connections WHERE id = ? LIMIT 1`, [connectionId]);
     if (!connections || connections.length === 0) {
@@ -1190,7 +1190,7 @@ export const d1Api = {
           [t.status, t.category, content, JSON.stringify(otherComponents), locals[0].id]
         );
         updatedCount++;
-      } else {
+      } else if (!onlyUpdateExisting) {
         // Inserir novo importado da Meta
         const id = Math.random().toString(36).substr(2, 9);
         await executeRun(
