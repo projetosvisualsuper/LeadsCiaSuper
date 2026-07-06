@@ -1137,11 +1137,15 @@ export const d1Api = {
             text: comp.text
           });
         } else {
+          const mediaVal = comp.imageUrl || comp.mediaUrl || 'https://visualsuper.com.br/placeholder.png';
+          const isUrl = mediaVal.startsWith('http');
           metaComponents.push({
             type: 'HEADER',
             format: comp.format || 'IMAGE',
-            example: {
-              header_handle: [comp.imageUrl || comp.mediaUrl || 'https://visualsuper.com.br/placeholder.png']
+            example: isUrl ? {
+              header_url: [mediaVal]
+            } : {
+              header_handle: [mediaVal]
             }
           });
         }
