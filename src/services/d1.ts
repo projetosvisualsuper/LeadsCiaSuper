@@ -1138,13 +1138,15 @@ export const d1Api = {
           });
         } else {
           let mediaVal = comp.imageUrl || comp.mediaUrl || 'https://visualsuper.com.br/placeholder.png';
+          let mimeType = 'image/png';
+          let buffer: ArrayBuffer | null = null;
           
           // Se a imagem ainda for base64, fazer upload para o R2 no backend
           if (mediaVal.startsWith('data:')) {
             try {
               const matches = mediaVal.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
               if (matches && matches.length === 3) {
-                const mimeType = matches[1];
+                mimeType = matches[1];
                 const base64Data = matches[2];
                 
                 // Converter base64 para ArrayBuffer
@@ -1154,6 +1156,7 @@ export const d1Api = {
                 for (let i = 0; i < len; i++) {
                   bytes[i] = binaryString.charCodeAt(i);
                 }
+                buffer = bytes.buffer;
                 
                 const extension = mimeType.split('/').pop() || 'png';
                 const safeName = Math.random().toString(36).substring(2, 10);
@@ -1162,7 +1165,7 @@ export const d1Api = {
                 // Acessar R2 bucket
                 let bucket = (globalThis as any).BUCKET;
                 if (bucket) {
-                  await bucket.put(fileName, bytes.buffer, {
+                  await bucket.put(fileName, buffer, {
                     httpMetadata: { contentType: mimeType }
                   });
                   mediaVal = `/api/media/${fileName}`;
@@ -1182,17 +1185,67 @@ export const d1Api = {
             }
           }
 
-          if (origin && mediaVal.startsWith('/')) {
-            mediaVal = `${origin.replace(/\/$/, '')}${mediaVal}`;
+          // Se não for base64, ou se a conversão falhou/não ocorreu, baixar do R2/URL pública
+          if (!buffer) {
+            try {
+              let fetchUrl = mediaVal;
+              if (fetchUrl.startsWith('/')) {
+                fetchUrl = `${origin?.replace(/\/$/, '') || 'https://leads.ciasuper.com.br'}${fetchUrl}`;
+              }
+              const fetchRes = await fetch(fetchUrl);
+              if (!fetchRes.ok) {
+                throw new Error(`Falha ao baixar imagem de exemplo do cabeçalho: ${fetchRes.statusText}`);
+              }
+              buffer = await fetchRes.arrayBuffer();
+              mimeType = fetchRes.headers.get('Content-Type') || 'image/png';
+            } catch (fetchErr: any) {
+              throw new Error(`Erro ao carregar mídia para upload da Meta: ${fetchErr.message}`);
+            }
           }
-          const isUrl = mediaVal.startsWith('http');
+
+          // Fazer o upload para a Meta via Resumable Upload API
+          // 1. Obter o App ID do token da conexão
+          const appRes = await fetch(`https://graph.facebook.com/v19.0/app?access_token=${token}`);
+          if (!appRes.ok) {
+            const errData = await appRes.json();
+            throw new Error(`Erro ao obter App ID da Meta: ${errData.error?.message || appRes.statusText}`);
+          }
+          const appData = await appRes.json();
+          const appId = appData.id;
+
+          // 2. Iniciar a sessão de upload na Meta
+          const initRes = await fetch(`https://graph.facebook.com/v19.0/${appId}/uploads?file_length=${buffer.byteLength}&file_type=${mimeType}&access_token=${token}`, {
+            method: 'POST'
+          });
+          if (!initRes.ok) {
+            const errData = await initRes.json();
+            throw new Error(`Erro ao iniciar sessão de upload na Meta: ${errData.error?.message || initRes.statusText}`);
+          }
+          const initData = await initRes.json();
+          const uploadSessionId = initData.id;
+
+          // 3. Enviar bytes do arquivo para a Meta
+          const uploadRes = await fetch(`https://graph.facebook.com/v19.0/${uploadSessionId}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `OAuth ${token}`,
+              'file_offset': '0',
+              'Content-Type': 'application/octet-stream'
+            },
+            body: buffer
+          });
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json();
+            throw new Error(`Erro ao enviar bytes de mídia para a Meta: ${errData.error?.message || uploadRes.statusText}`);
+          }
+          const uploadData = await uploadRes.json();
+          const headerHandle = uploadData.h;
+
           metaComponents.push({
             type: 'HEADER',
             format: comp.format || 'IMAGE',
-            example: isUrl ? {
-              header_url: [mediaVal]
-            } : {
-              header_handle: [mediaVal]
+            example: {
+              header_handle: [headerHandle]
             }
           });
         }
