@@ -1029,6 +1029,193 @@ export const d1Api = {
     await executeRun(`DELETE FROM whatsapp_templates WHERE id = ?`, [id]);
   },
 
+  submitTemplateToMeta: async (templateId: string): Promise<any> => {
+    // 1. Buscar o template no banco
+    const { results: templates } = await runQuery(`SELECT * FROM whatsapp_templates WHERE id = ? LIMIT 1`, [templateId]);
+    if (!templates || templates.length === 0) {
+      throw new Error('Modelo não encontrado no banco de dados.');
+    }
+    const tpl = templates[0];
+    const components = tpl.componentsJson ? JSON.parse(tpl.componentsJson) : [];
+
+    // 2. Buscar a conexão
+    const { results: connections } = await runQuery(`SELECT * FROM whatsapp_connections WHERE id = ? LIMIT 1`, [tpl.connectionId]);
+    if (!connections || connections.length === 0) {
+      throw new Error('Conexão associada não encontrada.');
+    }
+    const conn = connections[0];
+    const token = conn.metaAccessToken;
+    const wabaId = conn.metaWabaId;
+
+    if (!token || !wabaId) {
+      throw new Error('Essa conexão não possui ID do WABA ou Token configurados.');
+    }
+
+    // 3. Mapear para o formato que a Meta espera
+    const metaComponents: any[] = [
+      {
+        type: 'BODY',
+        text: tpl.content
+      }
+    ];
+
+    for (const comp of components) {
+      if (comp.type === 'HEADER') {
+        if (comp.format === 'TEXT') {
+          metaComponents.push({
+            type: 'HEADER',
+            format: 'TEXT',
+            text: comp.text
+          });
+        } else {
+          metaComponents.push({
+            type: 'HEADER',
+            format: comp.format || 'IMAGE',
+            example: {
+              header_handle: [comp.imageUrl || comp.mediaUrl || 'https://visualsuper.com.br/placeholder.png']
+            }
+          });
+        }
+      } else if (comp.type === 'FOOTER') {
+        metaComponents.push({
+          type: 'FOOTER',
+          text: comp.text
+        });
+      } else if (comp.type === 'BUTTONS') {
+        metaComponents.push({
+          type: 'BUTTONS',
+          buttons: (comp.buttons || []).map((b: any) => {
+            const btn: any = {
+              type: b.type === 'QUICK_REPLY' || b.type === 'quick_reply' ? 'QUICK_REPLY' : b.type,
+              text: b.text
+            };
+            if (b.type === 'URL' || b.type === 'url') {
+              btn.type = 'URL';
+              btn.url = b.url;
+            } else if (b.type === 'PHONE_NUMBER' || b.type === 'phone' || b.type === 'PHONE') {
+              btn.type = 'PHONE_NUMBER';
+              btn.phone_number = b.phone || b.phoneNumber;
+            }
+            return btn;
+          })
+        });
+      }
+    }
+
+    const payload = {
+      name: tpl.name.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+      category: tpl.category || 'MARKETING',
+      language: tpl.language || 'pt_BR',
+      components: metaComponents
+    };
+
+    // 4. Enviar requisição para a Meta
+    const response = await fetch(`https://graph.facebook.com/v19.0/${wabaId}/message_templates`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(`Erro Meta: ${responseData.error?.message || JSON.stringify(responseData)}`);
+    }
+
+    // 5. Atualizar o status local
+    const metaStatus = responseData.status || 'PENDING';
+    await executeRun(`UPDATE whatsapp_templates SET status = ?, name = ? WHERE id = ?`, [
+      metaStatus,
+      payload.name,
+      templateId
+    ]);
+
+    return { success: true, status: metaStatus, metaResponse: responseData };
+  },
+
+  syncTemplatesFromMeta: async (connectionId: string): Promise<any> => {
+    // 1. Buscar a conexão
+    const { results: connections } = await runQuery(`SELECT * FROM whatsapp_connections WHERE id = ? LIMIT 1`, [connectionId]);
+    if (!connections || connections.length === 0) {
+      throw new Error('Conexão não encontrada.');
+    }
+    const conn = connections[0];
+    const token = conn.metaAccessToken;
+    const wabaId = conn.metaWabaId;
+
+    if (!token || !wabaId) {
+      throw new Error('Essa conexão não possui ID do WABA ou Token configurados.');
+    }
+
+    // 2. Buscar templates na Meta (com limite alto e tratando paginação)
+    let url = `https://graph.facebook.com/v19.0/${wabaId}/message_templates?limit=100&access_token=${token}`;
+    const allMetaTemplates: any[] = [];
+
+    while (url) {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(`Erro ao buscar templates na Meta: ${data.error?.message || JSON.stringify(data)}`);
+      }
+      if (data.data) {
+        allMetaTemplates.push(...data.data);
+      }
+      url = data.paging?.next || null;
+    }
+
+    // 3. Sincronizar com o banco local
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    for (const t of allMetaTemplates) {
+      // Procurar localmente por nome e idioma
+      const { results: locals } = await runQuery(
+        `SELECT * FROM whatsapp_templates WHERE name = ? AND language = ? AND connectionId = ? LIMIT 1`,
+        [t.name, t.language, connectionId]
+      );
+
+      // Extrair o conteúdo do corpo (body) para visualização
+      const bodyComp = (t.components || []).find((c: any) => c.type === 'BODY');
+      const content = bodyComp ? bodyComp.text : '';
+
+      // Filtrar apenas os componentes que não sejam o BODY para salvar no componentsJson
+      const otherComponents = (t.components || []).filter((c: any) => c.type !== 'BODY');
+
+      if (locals && locals.length > 0) {
+        // Atualizar status e conteúdo do existente
+        await executeRun(
+          `UPDATE whatsapp_templates SET status = ?, category = ?, content = ?, componentsJson = ? WHERE id = ?`,
+          [t.status, t.category, content, JSON.stringify(otherComponents), locals[0].id]
+        );
+        updatedCount++;
+      } else {
+        // Inserir novo importado da Meta
+        const id = Math.random().toString(36).substr(2, 9);
+        await executeRun(
+          `INSERT INTO whatsapp_templates (id, connectionId, name, category, language, content, status, componentsJson, dataCriacao)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            id,
+            connectionId,
+            t.name,
+            t.category,
+            t.language,
+            content,
+            t.status,
+            JSON.stringify(otherComponents),
+            new Date().toISOString()
+          ]
+        );
+        createdCount++;
+      }
+    }
+
+    return { success: true, createdCount, updatedCount, totalMeta: allMetaTemplates.length };
+  },
+
+
   // Stats / Dashboard
   getSentTodayCount: async (): Promise<number> => {
     const today = new Date().toISOString().split('T')[0];

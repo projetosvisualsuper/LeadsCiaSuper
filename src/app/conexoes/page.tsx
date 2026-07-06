@@ -346,15 +346,47 @@ export default function ConexoesPage() {
       };
 
       await api.saveWhatsappTemplate(payload);
-      showToast('Modelo salvo com sucesso!', 'success');
+      if (wizardType === 'whatsapp') {
+        try {
+          showToast('Enviando modelo para a Meta...', 'success');
+          await api.submitTemplateToMeta(id);
+          showToast('Modelo enviado para análise com sucesso!', 'success');
+        } catch (metaErr: any) {
+          console.error(metaErr);
+          showToast(`Salvo localmente, mas erro na Meta: ${metaErr.message || metaErr}`, 'error');
+        }
+      } else {
+        showToast('Modelo salvo com sucesso!', 'success');
+      }
       setShowTemplateModal(false);
       setEditingId(null);
       loadTemplates();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showToast('Erro ao salvar modelo.', 'error');
+      showToast(`Erro ao salvar modelo: ${error.message || error}`, 'error');
     }
     setSaving(false);
+  };
+
+  const [syncingTemplates, setSyncingTemplates] = useState(false);
+
+  const handleSyncTemplates = async () => {
+    const metaConn = connections.find(c => c.type === 'meta_official');
+    if (!metaConn) {
+      showToast('Nenhuma conexão oficial do WhatsApp (Meta) encontrada para sincronizar.', 'error');
+      return;
+    }
+    setSyncingTemplates(true);
+    try {
+      showToast('Sincronizando modelos com a Meta...', 'success');
+      const res = await api.syncTemplatesFromMeta(metaConn.id);
+      showToast(`Sincronização concluída! Importados: ${res.createdCount}, Atualizados: ${res.updatedCount}`, 'success');
+      loadTemplates();
+    } catch (error: any) {
+      console.error(error);
+      showToast(`Erro na sincronização: ${error.message || error}`, 'error');
+    }
+    setSyncingTemplates(false);
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -384,22 +416,35 @@ export default function ConexoesPage() {
             Gerencie as instâncias de WhatsApp da empresa e dos vendedores.
           </p>
         </div>
-        <button 
-          onClick={() => {
-            if (activeTab === 'connections') {
-              setEditingId(null);
-              setFormData({ name: '', type: 'evolution_api', isDefault: false });
-              setShowModal(true);
-            } else {
-              openTemplateModal();
-            }
-          }}
-          className="btn btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '44px', padding: '0 1.5rem' }}
-        >
-          <Plus size={18} />
-          {activeTab === 'connections' ? 'Nova Conexão' : 'Cadastrar Modelo'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          {activeTab === 'templates' && connections.some(c => c.type === 'meta_official') && (
+            <button 
+              onClick={handleSyncTemplates}
+              disabled={syncingTemplates}
+              className="btn btn-outline"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '44px', padding: '0 1.5rem' }}
+            >
+              <RefreshCw size={18} style={{ animation: syncingTemplates ? 'spin 1s linear infinite' : 'none' }} />
+              {syncingTemplates ? 'Sincronizando...' : 'Sincronizar com a Meta'}
+            </button>
+          )}
+          <button 
+            onClick={() => {
+              if (activeTab === 'connections') {
+                setEditingId(null);
+                setFormData({ name: '', type: 'evolution_api', isDefault: false });
+                setShowModal(true);
+              } else {
+                openTemplateModal();
+              }
+            }}
+            className="btn btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '44px', padding: '0 1.5rem' }}
+          >
+            <Plus size={18} />
+            {activeTab === 'connections' ? 'Nova Conexão' : 'Cadastrar Modelo'}
+          </button>
+        </div>
       </header>
 
       {/* Tabs */}

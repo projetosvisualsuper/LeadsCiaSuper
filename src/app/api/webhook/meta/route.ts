@@ -333,6 +333,27 @@ export async function POST(req: NextRequest) {
       const changes = entry?.changes?.[0];
       const value = changes?.value;
 
+      // Tratar atualizações de status de modelo (templates)
+      if (changes && changes.field === 'message_template_status_update') {
+        const val = changes.value;
+        if (val && val.message_template_name) {
+          const templateName = val.message_template_name;
+          const templateLanguage = val.message_template_language;
+          const status = val.event; // Ex: APPROVED, REJECTED
+          const wabaId = entry?.id;
+
+          const connections = await d1Api.getWhatsappConnections();
+          const connection = connections.find(c => c.metaWabaId === wabaId);
+          if (connection) {
+            await d1Api.executeRun(
+              `UPDATE whatsapp_templates SET status = ? WHERE name = ? AND language = ? AND connectionId = ?`,
+              [status, templateName, templateLanguage, connection.id]
+            );
+            console.log(`✅ Webhook: Template ${templateName} (${templateLanguage}) atualizado para ${status}`);
+          }
+        }
+      }
+
       if (value && value.messages && value.messages.length > 0) {
         const message = value.messages[0];
         const contact = value.contacts?.[0];
