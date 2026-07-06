@@ -1398,6 +1398,7 @@ function LeadsContent() {
             </div>
           </div>
         </div>
+      )}
       {isMergeModalOpen && selectedLeads.length === 2 && (() => {
         const leadA = leads.find(l => l.id === selectedLeads[0]);
         const leadB = leads.find(l => l.id === selectedLeads[1]);
