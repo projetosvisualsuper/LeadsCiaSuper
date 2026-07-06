@@ -1138,6 +1138,50 @@ export const d1Api = {
           });
         } else {
           let mediaVal = comp.imageUrl || comp.mediaUrl || 'https://visualsuper.com.br/placeholder.png';
+          
+          // Se a imagem ainda for base64, fazer upload para o R2 no backend
+          if (mediaVal.startsWith('data:')) {
+            try {
+              const matches = mediaVal.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+              if (matches && matches.length === 3) {
+                const mimeType = matches[1];
+                const base64Data = matches[2];
+                
+                // Converter base64 para ArrayBuffer
+                const binaryString = atob(base64Data);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                const extension = mimeType.split('/').pop() || 'png';
+                const safeName = Math.random().toString(36).substring(2, 10);
+                const fileName = `templates/${safeName}.${extension}`;
+                
+                // Acessar R2 bucket
+                let bucket = (globalThis as any).BUCKET;
+                if (bucket) {
+                  await bucket.put(fileName, bytes.buffer, {
+                    httpMetadata: { contentType: mimeType }
+                  });
+                  mediaVal = `/api/media/${fileName}`;
+                  
+                  // Atualizar os componentes locais do template no banco para salvar o novo caminho
+                  const updatedComponents = components.map((c: any) => {
+                    if (c.type === 'HEADER' && c.format === 'IMAGE') {
+                      return { ...c, imageUrl: mediaVal, mediaUrl: mediaVal };
+                    }
+                    return c;
+                  });
+                  await executeRun(`UPDATE whatsapp_templates SET componentsJson = ? WHERE id = ?`, [JSON.stringify(updatedComponents), templateId]);
+                }
+              }
+            } catch (err) {
+              console.error('Erro ao converter base64 para R2 na ponte:', err);
+            }
+          }
+
           if (origin && mediaVal.startsWith('/')) {
             mediaVal = `${origin.replace(/\/$/, '')}${mediaVal}`;
           }
