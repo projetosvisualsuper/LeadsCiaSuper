@@ -499,6 +499,13 @@ export async function POST(req: NextRequest) {
         const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
         const timestampIso = new Date().toISOString();
 
+        // Buscar se existe algum atendente/vendedor vinculado a esta conexão
+        const { results: linkedUsers } = await d1Api.runQuery(
+          `SELECT uid FROM users WHERE whatsappConnectionId = ? LIMIT 1`,
+          [connectionId]
+        );
+        const assignedToId = linkedUsers && linkedUsers.length > 0 ? linkedUsers[0].uid : undefined;
+
         if (!chatResults || chatResults.length === 0) {
           const newChat: ChatSession = {
             id: chatId,
@@ -511,13 +518,18 @@ export async function POST(req: NextRequest) {
             lastTimestamp: timestampIso,
             unreadCount: 1,
             status: 'active',
+            assignedTo: assignedToId,
             dataCriacao: timestampIso
           };
           await d1Api.saveChatSession(newChat);
         } else {
           const currentData = chatResults[0];
-          await d1Api.executeRun(`UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ? WHERE id = ?`, [
-             messageText, timestampIso, (currentData.unreadCount || 0) + 1, connectionId, connectionName, chatId
+          let assignedTo = currentData.assignedTo;
+          if (!assignedTo) {
+            assignedTo = assignedToId;
+          }
+          await d1Api.executeRun(`UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, assignedTo = ? WHERE id = ?`, [
+             messageText, timestampIso, (currentData.unreadCount || 0) + 1, connectionId, connectionName, assignedTo || null, chatId
           ]);
         }
 

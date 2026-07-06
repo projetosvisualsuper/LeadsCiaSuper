@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
+import { verifyToken } from '@/lib/auth';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -51,7 +52,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(messages);
     }
 
-    const chats = await d1Api.getChats();
+    const cookieHeader = req.headers.get('cookie') || '';
+    const token = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('session_token='))
+      ?.substring('session_token='.length);
+
+    let assignedToFilter: string | undefined = undefined;
+
+    if (token) {
+      try {
+        const decoded = await verifyToken(token);
+        if (decoded && decoded.uid) {
+          const profile = await d1Api.getUserProfile(decoded.uid);
+          if (profile && profile.role !== 'admin' && profile.role !== 'master') {
+            assignedToFilter = decoded.uid;
+          }
+        }
+      } catch (err) {
+        console.error('Error verifying token in /api/chats route:', err);
+      }
+    }
+
+    const chats = await d1Api.getChats(assignedToFilter);
 
     // Tenta resolver avatares em falta para os chats de WhatsApp e renovar avatares expirados do Meta (Instagram/Facebook) antes de retornar
     try {

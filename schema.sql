@@ -110,7 +110,8 @@ CREATE TABLE IF NOT EXISTS users (
   dataSolicitacao TEXT NOT NULL,
   dataAprovacao TEXT,
   passwordHash TEXT,
-  salt TEXT
+  salt TEXT,
+  whatsappConnectionId TEXT
 );
 
 CREATE TABLE IF NOT EXISTS segmentations (

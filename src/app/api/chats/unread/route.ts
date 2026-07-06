@@ -1,18 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
+import { verifyToken } from '@/lib/auth';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const sql = `
+    const cookieHeader = req.headers.get('cookie') || '';
+    const token = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('session_token='))
+      ?.substring('session_token='.length);
+
+    let sql = `
       SELECT COUNT(id) as unreadCount 
       FROM chats 
       WHERE unreadCount > 0
     `;
-    const { results } = await (d1Api as any).runQuery(sql);
+    const params: any[] = [];
 
+    if (token) {
+      try {
+        const decoded = await verifyToken(token);
+        if (decoded && decoded.uid) {
+          const profile = await d1Api.getUserProfile(decoded.uid);
+          if (profile && profile.role !== 'admin' && profile.role !== 'master') {
+            sql += ` AND assignedTo = ? `;
+            params.push(decoded.uid);
+          }
+        }
+      } catch (err) {
+        console.error('Error verifying token in /api/chats/unread route:', err);
+      }
+    }
+
+    const { results } = await (d1Api as any).runQuery(sql, params);
     const unreadCount = results?.[0]?.unreadCount || 0;
 
     return NextResponse.json({ unreadCount });

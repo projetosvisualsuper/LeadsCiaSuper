@@ -21,14 +21,16 @@ import {
 
 export default function UsuariosPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', role: 'editor' as any });
+  const [editForm, setEditForm] = useState({ name: '', role: 'editor' as any, whatsappConnectionId: '' });
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
+    loadConnections();
   }, []);
 
   const loadUsers = async () => {
@@ -36,6 +38,15 @@ export default function UsuariosPage() {
     const data = await api.getAllUserProfiles();
     setUsers(data);
     setLoading(false);
+  };
+
+  const loadConnections = async () => {
+    try {
+      const data = await api.getWhatsappConnections();
+      setConnections(data);
+    } catch (e) {
+      console.error('Erro ao carregar conexões:', e);
+    }
   };
 
   const handleUpdateStatus = async (uid: string, status: 'approved' | 'rejected') => {
@@ -64,7 +75,11 @@ export default function UsuariosPage() {
 
   const handleEditUser = (user: UserProfile) => {
     setEditingUser(user);
-    setEditForm({ name: user.name || '', role: user.role });
+    setEditForm({ 
+      name: user.name || '', 
+      role: user.role, 
+      whatsappConnectionId: user.whatsappConnectionId || '' 
+    });
   };
 
   const handleSaveEdit = async () => {
@@ -73,7 +88,8 @@ export default function UsuariosPage() {
     try {
       await api.updateUserProfile(editingUser.uid, {
         name: editForm.name,
-        role: editForm.role
+        role: editForm.role,
+        whatsappConnectionId: editForm.whatsappConnectionId || null
       });
       setEditingUser(null);
       await loadUsers();
@@ -275,6 +291,21 @@ export default function UsuariosPage() {
                   <option value="basico">Básico (Acesso a Leads e Chat)</option>
                   <option value="intermediario">Intermediário (Acesso a Marketing e Relatórios)</option>
                   <option value="master">Master (Acesso total + Gerenciar usuários)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b' }}>Conexão WhatsApp Vinculada</label>
+                <select 
+                  className="btn-outline"
+                  style={{ width: '100%', height: '42px', color: '#1e293b' }}
+                  value={editForm.whatsappConnectionId || ''}
+                  onChange={e => setEditForm({ ...editForm, whatsappConnectionId: e.target.value })}
+                >
+                  <option value="">Nenhuma (Recebe todas ou nenhuma atribuição automática)</option>
+                  {connections.map(conn => (
+                    <option key={conn.id} value={conn.id}>{conn.name} ({conn.type === 'meta_official' ? 'Meta' : 'Evolution'})</option>
+                  ))}
                 </select>
               </div>
 

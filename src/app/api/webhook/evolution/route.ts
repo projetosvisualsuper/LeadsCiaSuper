@@ -434,6 +434,13 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Buscar se existe algum atendente/vendedor vinculado a esta conexão
+        const { results: linkedUsers } = await d1Api.runQuery(
+          `SELECT uid FROM users WHERE whatsappConnectionId = ? LIMIT 1`,
+          [connectionId]
+        );
+        const assignedToId = linkedUsers && linkedUsers.length > 0 ? linkedUsers[0].uid : undefined;
+
         // Criar nova sessão de chat
         const newChat: ChatSession = {
           id: chatId,
@@ -447,6 +454,7 @@ export async function POST(req: NextRequest) {
           lastTimestamp: timestampIso,
           unreadCount: isFromMe ? 0 : 1,
           status: 'active',
+          assignedTo: assignedToId,
           dataCriacao: timestampIso
         };
         await d1Api.saveChatSession(newChat);
@@ -494,9 +502,21 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Se a conversa já existe mas não possui responsável, vincular ao usuário dono da conexão
+        let assignedTo = matchedChat.assignedTo;
+        if (!assignedTo) {
+          const { results: linkedUsers } = await d1Api.runQuery(
+            `SELECT uid FROM users WHERE whatsappConnectionId = ? LIMIT 1`,
+            [connectionId]
+          );
+          if (linkedUsers && linkedUsers.length > 0) {
+            assignedTo = linkedUsers[0].uid;
+          }
+        }
+
         await d1Api.executeRun(
-          `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ?, leadAvatar = ? WHERE id = ?`,
-          [messageText, timestampIso, unreadCount, connectionId, connectionName, finalLeadName, leadAvatar, chatId]
+          `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ?, leadAvatar = ?, assignedTo = ? WHERE id = ?`,
+          [messageText, timestampIso, unreadCount, connectionId, connectionName, finalLeadName, leadAvatar, assignedTo || null, chatId]
         );
       }
 

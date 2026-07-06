@@ -694,10 +694,11 @@ export const d1Api = {
     }
 
     const sql = `
-      INSERT INTO users (uid, email, name, status, role, dataSolicitacao, dataAprovacao)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (uid, email, name, status, role, dataSolicitacao, dataAprovacao, whatsappConnectionId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(uid) DO UPDATE SET
-        email = excluded.email, name = excluded.name, status = excluded.status, role = excluded.role
+        email = excluded.email, name = excluded.name, status = excluded.status, role = excluded.role,
+        whatsappConnectionId = excluded.whatsappConnectionId
     `;
     const params = [
       profile.uid,
@@ -706,7 +707,8 @@ export const d1Api = {
       profile.status,
       profile.role,
       profile.dataSolicitacao || new Date().toISOString(),
-      profile.dataAprovacao || null
+      profile.dataAprovacao || null,
+      profile.whatsappConnectionId || null
     ];
     await executeRun(sql, params);
     return profile;
@@ -807,13 +809,19 @@ export const d1Api = {
   },
 
   // Chats / Inbox
-  getChats: async (): Promise<ChatSession[]> => {
-    const { results } = await runQuery(`
+  getChats: async (assignedTo?: string): Promise<ChatSession[]> => {
+    let sql = `
       SELECT c.*, 
         (SELECT m.isIncoming FROM messages m WHERE m.chatId = c.id ORDER BY m.timestamp DESC LIMIT 1) as lastMessageIsIncoming
       FROM chats c
-      ORDER BY c.lastTimestamp DESC, c.dataCriacao DESC
-    `);
+    `;
+    let params: any[] = [];
+    if (assignedTo) {
+      sql += ` WHERE c.assignedTo = ? `;
+      params.push(assignedTo);
+    }
+    sql += ` ORDER BY c.lastTimestamp DESC, c.dataCriacao DESC `;
+    const { results } = await runQuery(sql, params);
     return results as ChatSession[];
   },
 

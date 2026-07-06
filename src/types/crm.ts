@@ -274,6 +274,7 @@ export interface UserProfile {
   role: UserRole;
   dataSolicitacao: string;
   dataAprovacao?: string;
+  whatsappConnectionId?: string;
 }
 
 export interface Segmentation {
