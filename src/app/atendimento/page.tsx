@@ -2090,6 +2090,8 @@ function AtendimentoContent() {
                       border: '1px solid #e2e8f0', 
                       padding: '1rem', 
                       width: '350px', 
+                      maxHeight: '400px',
+                      overflowY: 'auto',
                       zIndex: 102,
                       display: 'flex',
                       flexDirection: 'column',
