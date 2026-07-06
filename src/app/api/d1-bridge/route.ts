@@ -16,8 +16,14 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
     
+    let finalArgs = args;
+    if (method === 'submitTemplateToMeta') {
+      const origin = req.nextUrl.origin;
+      finalArgs = [args[0], origin];
+    }
+
     // Executa a consulta SQL com os argumentos e retorna o resultado
-    const result = await (d1Api as any)[method](...args);
+    const result = await (d1Api as any)[method](...finalArgs);
     return NextResponse.json(result === undefined ? { success: true } : result);
   } catch (error: any) {
     console.error(`Erro na ponte D1 (Bridge) para o método [${req.method}]:`, error);

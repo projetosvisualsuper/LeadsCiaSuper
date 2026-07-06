@@ -1098,7 +1098,7 @@ export const d1Api = {
     await executeRun(`DELETE FROM whatsapp_templates WHERE id = ?`, [id]);
   },
 
-  submitTemplateToMeta: async (templateId: string): Promise<any> => {
+  submitTemplateToMeta: async (templateId: string, origin?: string): Promise<any> => {
     // 1. Buscar o template no banco
     const { results: templates } = await runQuery(`SELECT * FROM whatsapp_templates WHERE id = ? LIMIT 1`, [templateId]);
     if (!templates || templates.length === 0) {
@@ -1137,7 +1137,10 @@ export const d1Api = {
             text: comp.text
           });
         } else {
-          const mediaVal = comp.imageUrl || comp.mediaUrl || 'https://visualsuper.com.br/placeholder.png';
+          let mediaVal = comp.imageUrl || comp.mediaUrl || 'https://visualsuper.com.br/placeholder.png';
+          if (origin && mediaVal.startsWith('/')) {
+            mediaVal = `${origin.replace(/\/$/, '')}${mediaVal}`;
+          }
           const isUrl = mediaVal.startsWith('http');
           metaComponents.push({
             type: 'HEADER',

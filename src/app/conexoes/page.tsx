@@ -1137,17 +1137,30 @@ export default function ConexoesPage() {
                       }}>
                         <Upload size={24} style={{ color: '#64748b' }} />
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{isMediaUploading ? 'Carregando...' : 'Carregue ou arraste seu arquivo aqui'}</span>
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
                             setIsMediaUploading(true);
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              setHeaderMediaUrl(event.target?.result as string);
-                              setHeaderType('MEDIA');
+                            try {
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              formData.append('chatId', 'templates');
+                              const res = await fetch('/api/upload', {
+                                method: 'POST',
+                                body: formData
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                if (data && data.url) {
+                                  setHeaderMediaUrl(data.url);
+                                  setHeaderType('MEDIA');
+                                }
+                              }
+                            } catch (err) {
+                              console.error('Erro no upload:', err);
+                            } finally {
                               setIsMediaUploading(false);
-                            };
-                            reader.readAsDataURL(file);
+                            }
                           }
                         }} />
                       </label>
@@ -1475,16 +1488,29 @@ export default function ConexoesPage() {
                         }}>
                           <Upload size={20} style={{ color: '#64748b' }} />
                           <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Fazer upload da imagem</span>
-                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
                               setIsMediaUploading(true);
-                              const reader = new FileReader();
-                              reader.onload = (event) => {
-                                setHeaderMediaUrl(event.target?.result as string);
+                              try {
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                formData.append('chatId', 'templates');
+                                const res = await fetch('/api/upload', {
+                                  method: 'POST',
+                                  body: formData
+                                });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  if (data && data.url) {
+                                    setHeaderMediaUrl(data.url);
+                                  }
+                                }
+                              } catch (err) {
+                                console.error('Erro no upload:', err);
+                              } finally {
                                 setIsMediaUploading(false);
-                              };
-                              reader.readAsDataURL(file);
+                              }
                             }
                           }} />
                         </label>
