@@ -78,6 +78,8 @@ export default function OportunidadesPage() {
   const [chatHistories, setChatHistories] = useState<Record<string, ChatMessage[]>>({});
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'novas' | 'ganhas' | 'perdidas'>('novas');
+  const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
 
   const fetchOpportunities = async () => {
     setLoading(true);
@@ -194,13 +196,21 @@ export default function OportunidadesPage() {
     let bg = '#f1f5f9';
     let color = '#475569';
     let icon = null;
+    let label = safeStatus.replace('_', ' ');
 
     if (safeStatus === 'pendente') {
       bg = '#fee2e2'; color = '#b91c1c'; icon = <Clock size={12}/>;
     } else if (safeStatus === 'em_atendimento') {
       bg = '#dbeafe'; color = '#1d4ed8'; icon = <RefreshCw size={12}/>;
+    } else if (safeStatus === 'ganha') {
+      bg = '#d1fae5'; color = '#047857'; icon = <Check size={12}/>;
+      label = 'Ganha';
+    } else if (safeStatus === 'perdida') {
+      bg = '#fee2e2'; color = '#b91c1c'; icon = <XCircle size={12}/>;
+      label = 'Perdida';
     } else if (safeStatus === 'finalizado') {
       bg = '#d1fae5'; color = '#047857'; icon = <Check size={12}/>;
+      label = 'Finalizado';
     } else if (safeStatus === 'cancelado') {
       bg = '#f1f5f9'; color = '#475569'; icon = <XCircle size={12}/>;
     }
@@ -219,7 +229,7 @@ export default function OportunidadesPage() {
         textTransform: 'uppercase'
       }}>
         {icon}
-        {safeStatus.replace('_', ' ')}
+        {label}
       </span>
     );
   };
@@ -229,6 +239,20 @@ export default function OportunidadesPage() {
     const cleanPhone = phone.replace(/\D/g, '');
     return `https://web.whatsapp.com/send?phone=${cleanPhone}`;
   };
+
+  const filteredOpportunities = opportunities.filter(opp => {
+    const status = opp.status || 'pendente';
+    if (activeTab === 'novas') {
+      return status === 'pendente' || status === 'em_atendimento';
+    }
+    if (activeTab === 'ganhas') {
+      return status === 'ganha' || status === 'finalizado';
+    }
+    if (activeTab === 'perdidas') {
+      return status === 'perdida' || status === 'cancelado';
+    }
+    return true;
+  });
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'inherit' }}>
@@ -255,17 +279,63 @@ export default function OportunidadesPage() {
         </button>
       </div>
 
+      {/* TABS */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+        <button 
+          onClick={() => setActiveTab('novas')}
+          style={{
+            padding: '0.5rem 1rem',
+            border: 'none',
+            background: 'none',
+            borderBottom: activeTab === 'novas' ? '3px solid var(--primary)' : '3px solid transparent',
+            color: activeTab === 'novas' ? 'var(--primary)' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          Novas ({opportunities.filter(o => !o.status || o.status === 'pendente' || o.status === 'em_atendimento').length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('ganhas')}
+          style={{
+            padding: '0.5rem 1rem',
+            border: 'none',
+            background: 'none',
+            borderBottom: activeTab === 'ganhas' ? '3px solid #10b981' : '3px solid transparent',
+            color: activeTab === 'ganhas' ? '#10b981' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          Ganhas ({opportunities.filter(o => o.status === 'ganha' || o.status === 'finalizado').length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('perdidas')}
+          style={{
+            padding: '0.5rem 1rem',
+            border: 'none',
+            background: 'none',
+            borderBottom: activeTab === 'perdidas' ? '3px solid #ef4444' : '3px solid transparent',
+            color: activeTab === 'perdidas' ? '#ef4444' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          Perdidas ({opportunities.filter(o => o.status === 'perdida' || o.status === 'cancelado').length})
+        </button>
+      </div>
+
       {/* LISTAGEM */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '12px' }}>
-        {opportunities.length === 0 && !loading ? (
+        {filteredOpportunities.length === 0 && !loading ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <CheckCircle2 size={48} color="#34d399" style={{ marginBottom: '1rem' }} />
             <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#334155', margin: 0 }}>Tudo limpo!</h3>
-            <p style={{ marginTop: '0.5rem' }}>Nenhuma oportunidade ou encaminhamento pendente no momento.</p>
+            <p style={{ marginTop: '0.5rem' }}>Nenhuma oportunidade nesta aba no momento.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {opportunities.map((opp, index) => (
+            {filteredOpportunities.map((opp, index) => (
               <div 
                 key={opp.id} 
                 style={{
@@ -474,8 +544,8 @@ export default function OportunidadesPage() {
                           </button>
                           <button 
                             className="btn-outline"
-                            onClick={() => handleStatusChange(opp.id, 'finalizado')} 
-                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', backgroundColor: opp.status === 'finalizado' ? '#d1fae5' : '#ffffff', borderColor: opp.status === 'finalizado' ? '#10b981' : '#cbd5e1' }}
+                            onClick={() => setShowFinalizeModal(opp.id)} 
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', backgroundColor: (opp.status === 'finalizado' || opp.status === 'ganha' || opp.status === 'perdida') ? '#d1fae5' : '#ffffff', borderColor: (opp.status === 'finalizado' || opp.status === 'ganha' || opp.status === 'perdida') ? '#10b981' : '#cbd5e1' }}
                           >
                             Finalizado
                           </button>
@@ -579,6 +649,45 @@ export default function OportunidadesPage() {
           </div>
         )}
       </div>
+      {showFinalizeModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ maxWidth: '400px', width: '90%', padding: '2rem', textAlign: 'center', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1e293b', marginBottom: '1rem' }}>Finalizar Oportunidade</h3>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>
+              Como foi a conclusão do atendimento para esta oportunidade? Escolha uma opção para direcioná-la para a aba correspondente.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
+              <button 
+                className="btn" 
+                style={{ flex: 1, backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                onClick={async () => {
+                  await handleStatusChange(showFinalizeModal, 'ganha');
+                  setShowFinalizeModal(null);
+                }}
+              >
+                🏆 Ganha
+              </button>
+              <button 
+                className="btn" 
+                style={{ flex: 1, backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                onClick={async () => {
+                  await handleStatusChange(showFinalizeModal, 'perdida');
+                  setShowFinalizeModal(null);
+                }}
+              >
+                ❌ Perdida
+              </button>
+            </div>
+            <button 
+              className="btn btn-outline" 
+              style={{ width: '100%', padding: '0.65rem', borderRadius: '8px', cursor: 'pointer' }}
+              onClick={() => setShowFinalizeModal(null)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin {
