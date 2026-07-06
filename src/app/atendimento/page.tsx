@@ -100,11 +100,16 @@ function AtendimentoContent() {
   const [showLeadDetails, setShowLeadDetails] = useState(true);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [dbTemplates, setDbTemplates] = useState<any[]>([]);
 
   useEffect(() => {
     api.getAllUserProfiles()
       .then(setSystemUsers)
       .catch(err => console.error('Erro ao carregar usuários:', err));
+
+    api.getWhatsappTemplates()
+      .then(setDbTemplates)
+      .catch(err => console.error('Erro ao carregar templates:', err));
   }, []);
 
   useEffect(() => {
@@ -2091,29 +2096,45 @@ function AtendimentoContent() {
                       gap: '0.5rem'
                     }}>
                       <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Modelos Pré-Aprovados (Meta)</p>
-                      {META_TEMPLATES.map((template, idx) => (
-                        <button 
-                          key={idx} 
-                          type="button" 
-                          onClick={() => {
-                            setNewMessage(template);
-                            setShowTemplatePicker(false);
-                          }}
-                          style={{ 
-                            fontSize: '0.875rem', 
-                            padding: '0.75rem', 
-                            background: '#f8fafc', 
-                            border: '1px solid #e2e8f0', 
-                            cursor: 'pointer', 
-                            borderRadius: '8px',
-                            textAlign: 'left',
-                            lineHeight: '1.4'
-                          }}
-                          className="hover-bg"
-                        >
-                          {template}
-                        </button>
-                      ))}
+                      {(() => {
+                        const activeChat = chats.find(c => c.id === selectedChatId);
+                        const templatesToShow = dbTemplates.filter(t => {
+                          if (t.status === 'LOCAL' || t.status === 'local' || !t.connectionId) return true;
+                          return (t.status === 'APPROVED' || t.status === 'approved') && t.connectionId === activeChat?.connectionId;
+                        });
+
+                        const finalTemplates = templatesToShow.length > 0 
+                          ? templatesToShow.map(t => ({ name: t.name, content: t.content })) 
+                          : META_TEMPLATES.map(text => ({ name: 'Padrão', content: text }));
+
+                        return finalTemplates.map((template, idx) => (
+                          <button 
+                            key={idx} 
+                            type="button" 
+                            onClick={() => {
+                              setNewMessage(template.content);
+                              setShowTemplatePicker(false);
+                            }}
+                            style={{ 
+                              fontSize: '0.875rem', 
+                              padding: '0.75rem', 
+                              background: '#f8fafc', 
+                              border: '1px solid #e2e8f0', 
+                              cursor: 'pointer', 
+                              borderRadius: '8px',
+                              textAlign: 'left',
+                              lineHeight: '1.4'
+                            }}
+                            className="hover-bg"
+                            title={template.name}
+                          >
+                            <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.25rem' }}>
+                              {template.name}
+                            </span>
+                            {template.content}
+                          </button>
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
