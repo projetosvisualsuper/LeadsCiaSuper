@@ -23,7 +23,8 @@ import {
   MessageCircle,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  GitMerge
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -130,6 +131,11 @@ function LeadsContent() {
     loading: boolean;
   }>({ total: 0, toCreate: [], toUpdate: [], loading: false });
   const [customImportTag, setCustomImportTag] = useState('');
+  
+  // Merge State
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [primaryLeadId, setPrimaryLeadId] = useState<string | null>(null);
+  const [mergeLoading, setMergeLoading] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -293,6 +299,47 @@ function LeadsContent() {
     }
     setSelectedLeads([]);
     await refreshLeads();
+  };
+
+  const handleMergeClick = () => {
+    if (selectedLeads.length !== 2) return;
+    setPrimaryLeadId(selectedLeads[0]);
+    setIsMergeModalOpen(true);
+  };
+
+  const confirmMerge = async () => {
+    if (selectedLeads.length !== 2 || !primaryLeadId) return;
+    const secondaryLeadId = selectedLeads.find(id => id !== primaryLeadId);
+    if (!secondaryLeadId) return;
+
+    setMergeLoading(true);
+    try {
+      const response = await fetch('/api/leads/merge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sourceLeadId: secondaryLeadId,
+          targetLeadId: primaryLeadId
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erro desconhecido ao mesclar leads.');
+      }
+
+      alert('Leads mesclados com sucesso!');
+      setSelectedLeads([]);
+      setIsMergeModalOpen(false);
+      await refreshLeads();
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro ao mesclar leads: ' + err.message);
+    } finally {
+      setMergeLoading(false);
+    }
   };
 
   const handleCreateSegment = async () => {
@@ -765,6 +812,15 @@ function LeadsContent() {
                 }}
               >
                 <WhatsAppIcon size={18} /> Falar no WhatsApp
+              </button>
+            )}
+            {selectedLeads.length === 2 && (
+              <button 
+                className="btn" 
+                style={{ background: 'rgba(255,255,255,0.2)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }} 
+                onClick={handleMergeClick}
+              >
+                <GitMerge size={18} /> Mesclar Selecionados
               </button>
             )}
             <button className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }} onClick={() => setIsSegmentModalOpen(true)}>
@@ -1342,7 +1398,109 @@ function LeadsContent() {
             </div>
           </div>
         </div>
-      )}
+      {isMergeModalOpen && selectedLeads.length === 2 && (() => {
+        const leadA = leads.find(l => l.id === selectedLeads[0]);
+        const leadB = leads.find(l => l.id === selectedLeads[1]);
+        if (!leadA || !leadB) return null;
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+            <div className="card" style={{ maxWidth: '600px', width: '100%', padding: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1e293b' }}>Mesclar Fichas de Leads</h3>
+                <button onClick={() => setIsMergeModalOpen(false)} style={{ opacity: 0.5, color: '#1e293b' }}><X size={20} /></button>
+              </div>
+
+              <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                Escolha qual lead você deseja manter como <strong>principal</strong>. Todos os históricos de conversas, oportunidades, tags e pedidos do outro lead serão migrados para ele. Os campos vazios do principal também serão completados com os dados do secundário.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+                {/* Lead A Card */}
+                <div 
+                  onClick={() => setPrimaryLeadId(leadA.id)}
+                  style={{
+                    border: primaryLeadId === leadA.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                    borderRadius: '12px',
+                    padding: '1.25rem',
+                    cursor: 'pointer',
+                    background: primaryLeadId === leadA.id ? 'rgba(59, 130, 246, 0.05)' : 'white',
+                    transition: 'all 0.2s',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <input 
+                      type="radio" 
+                      checked={primaryLeadId === leadA.id} 
+                      onChange={() => setPrimaryLeadId(leadA.id)} 
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <strong style={{ fontSize: '0.95rem' }}>Manter Principal</strong>
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8rem', opacity: 0.8 }}>
+                    <div><strong>Nome:</strong> {leadA.nome}</div>
+                    <div><strong>Telefone:</strong> {leadA.celular || leadA.telefone || '-'}</div>
+                    <div><strong>Email:</strong> {leadA.email || '-'}</div>
+                    <div><strong>Origem:</strong> {leadA.origem}</div>
+                    <div><strong>Cidade:</strong> {leadA.cidade || '-'}</div>
+                  </div>
+                </div>
+
+                {/* Lead B Card */}
+                <div 
+                  onClick={() => setPrimaryLeadId(leadB.id)}
+                  style={{
+                    border: primaryLeadId === leadB.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                    borderRadius: '12px',
+                    padding: '1.25rem',
+                    cursor: 'pointer',
+                    background: primaryLeadId === leadB.id ? 'rgba(59, 130, 246, 0.05)' : 'white',
+                    transition: 'all 0.2s',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <input 
+                      type="radio" 
+                      checked={primaryLeadId === leadB.id} 
+                      onChange={() => setPrimaryLeadId(leadB.id)} 
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <strong style={{ fontSize: '0.95rem' }}>Manter Principal</strong>
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8rem', opacity: 0.8 }}>
+                    <div><strong>Nome:</strong> {leadB.nome}</div>
+                    <div><strong>Telefone:</strong> {leadB.celular || leadB.telefone || '-'}</div>
+                    <div><strong>Email:</strong> {leadB.email || '-'}</div>
+                    <div><strong>Origem:</strong> {leadB.origem}</div>
+                    <div><strong>Cidade:</strong> {leadB.cidade || '-'}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ flex: 1, height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} 
+                  onClick={confirmMerge}
+                  disabled={mergeLoading || !primaryLeadId}
+                >
+                  {mergeLoading ? <Loader2 className="animate-spin" size={18} /> : 'Confirmar Mesclagem'}
+                </button>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ flex: 1, height: '42px' }} 
+                  onClick={() => setIsMergeModalOpen(false)}
+                  disabled={mergeLoading}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

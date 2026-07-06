@@ -271,6 +271,67 @@ export const d1Api = {
     await executeRun(`DELETE FROM leads WHERE id IN (${placeholders})`, ids);
   },
 
+  mergeLeads: async (sourceLeadId: string, targetLeadId: string): Promise<void> => {
+    // 1. Buscar os leads
+    const { results: sourceResults } = await runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [sourceLeadId]);
+    const { results: targetResults } = await runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [targetLeadId]);
+
+    if (!sourceResults || sourceResults.length === 0 || !targetResults || targetResults.length === 0) {
+      throw new Error('Um ou ambos os leads não foram encontrados.');
+    }
+
+    const sourceLead = sourceResults[0];
+    const targetLead = targetResults[0];
+
+    // 2. Mesclar campos vazios no lead de destino (principal)
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    const fieldsToMerge = [
+      'email', 'telefone', 'celular', 'empresa', 'observacoes', 
+      'cidade', 'estado', 'documento', 'avatar'
+    ];
+
+    for (const field of fieldsToMerge) {
+      if (!targetLead[field] && sourceLead[field]) {
+        updates.push(`${field} = ?`);
+        params.push(sourceLead[field]);
+      }
+    }
+
+    // Faturamento
+    if ((sourceLead.faturamento || 0) > (targetLead.faturamento || 0)) {
+      updates.push(`faturamento = ?`);
+      params.push(sourceLead.faturamento);
+    }
+
+    // Tags
+    let targetTags: string[] = [];
+    try { targetTags = targetLead.tags ? JSON.parse(targetLead.tags) : []; } catch (e) { targetTags = []; }
+    let sourceTags: string[] = [];
+    try { sourceTags = sourceLead.tags ? JSON.parse(sourceLead.tags) : []; } catch (e) { sourceTags = []; }
+    const mergedTags = Array.from(new Set([...targetTags, ...sourceTags])).filter(Boolean);
+    updates.push(`tags = ?`);
+    params.push(JSON.stringify(mergedTags));
+
+    if (updates.length > 0) {
+      const sqlUpdate = `UPDATE leads SET ${updates.join(', ')} WHERE id = ?`;
+      params.push(targetLeadId);
+      await executeRun(sqlUpdate, params);
+    }
+
+    // 3. Atualizar dependências nas outras tabelas
+    await executeRun(`UPDATE opportunities SET leadId = ? WHERE leadId = ?`, [targetLeadId, sourceLeadId]);
+    await executeRun(`UPDATE pedidos SET leadId = ? WHERE leadId = ?`, [targetLeadId, sourceLeadId]);
+    await executeRun(`UPDATE queue SET leadId = ? WHERE leadId = ?`, [targetLeadId, sourceLeadId]);
+    
+    // Atualizar sessões de chat vinculadas
+    await executeRun(`UPDATE chats SET leadId = ?, leadName = ? WHERE leadId = ?`, [targetLeadId, targetLead.nome || 'Cliente', sourceLeadId]);
+
+    // 4. Deletar o lead duplicado
+    await executeRun(`DELETE FROM leads WHERE id = ?`, [sourceLeadId]);
+  },
+
   saveLeadsBulk: async (leads: Lead[]): Promise<void> => {
     const agora = new Date().toISOString();
     for (const lead of leads) {
