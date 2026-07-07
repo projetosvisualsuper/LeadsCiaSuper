@@ -96,8 +96,9 @@ async function processBlingOrder(orderId: string) {
   const clientName = data.contato?.nome || 'Cliente';
   let clientPhone = data.contato?.celular || data.contato?.telefone || '';
 
-  const isOpen = statusName.includes('aberto') || statusName === '1';
-  const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '2' || statusName === '15';
+  const isOpen = statusName.includes('aberto') || statusName.includes('andamento') || statusName === '6' || statusName === '18' || statusName === '1';
+  const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '9' || statusName === '15' || statusName === '2';
+  const isCanceled = statusName.includes('cancelado') || statusName === '12' || statusName === '3';
 
   // 4. Localizar o pedido correspondente no banco D1
   const pedidos = await d1Api.getPedidos();
@@ -188,6 +189,22 @@ async function processBlingOrder(orderId: string) {
       return { 
         success: true, 
         message: 'Pedido não localizado no CRM para atualização de rastreamento.' 
+      };
+    }
+  }
+
+  if (isCanceled) {
+    if (pedidoLocal) {
+      await d1Api.updatePedidoStatus(pedidoLocal.id, 'cancelado');
+      return { 
+        success: true, 
+        message: 'Status do pedido atualizado para Cancelado no CRM.',
+        pedido: pedidoLocal
+      };
+    } else {
+      return { 
+        success: true, 
+        message: 'Pedido cancelado no Bling, mas não localizado no CRM.' 
       };
     }
   }
