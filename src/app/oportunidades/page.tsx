@@ -78,7 +78,7 @@ export default function OportunidadesPage() {
   const [chatHistories, setChatHistories] = useState<Record<string, ChatMessage[]>>({});
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'novas' | 'ganhas' | 'perdidas'>('novas');
+  const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas'>('novas');
   const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
 
   const fetchOpportunities = async () => {
@@ -243,7 +243,10 @@ export default function OportunidadesPage() {
   const filteredOpportunities = opportunities.filter(opp => {
     const status = opp.status || 'pendente';
     if (activeTab === 'novas') {
-      return status === 'pendente' || status === 'em_atendimento';
+      return status === 'pendente';
+    }
+    if (activeTab === 'atendidas') {
+      return status === 'em_atendimento';
     }
     if (activeTab === 'ganhas') {
       return status === 'ganha' || status === 'finalizado';
@@ -293,7 +296,21 @@ export default function OportunidadesPage() {
             cursor: 'pointer'
           }}
         >
-          Novas ({opportunities.filter(o => !o.status || o.status === 'pendente' || o.status === 'em_atendimento').length})
+          Novas ({opportunities.filter(o => !o.status || o.status === 'pendente').length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('atendidas')}
+          style={{
+            padding: '0.5rem 1rem',
+            border: 'none',
+            background: 'none',
+            borderBottom: activeTab === 'atendidas' ? '3px solid #3b82f6' : '3px solid transparent',
+            color: activeTab === 'atendidas' ? '#3b82f6' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          Atendidas ({opportunities.filter(o => o.status === 'em_atendimento').length})
         </button>
         <button 
           onClick={() => setActiveTab('ganhas')}
