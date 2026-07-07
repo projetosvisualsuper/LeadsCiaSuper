@@ -352,7 +352,7 @@ export default function IntegracoesPage() {
       longDescription: 'Integre o Bling ERP para atualizar o status dos pedidos para Enviado e disparar o código de rastreio aos seus clientes via WhatsApp automaticamente quando o pedido for despachado.',
       color: '#f59e0b',
       icon: ShoppingBag,
-      status: settings?.bling?.enabled ? 'connected' : 'disconnected',
+      status: (settings?.bling?.enabled && settings?.bling?.accessToken) ? 'connected' : 'disconnected',
       features: [
         'Sincronização automática do código de rastreamento',
         'Atualização automática de status de pedidos',
@@ -972,8 +972,23 @@ export default function IntegracoesPage() {
 
                           <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                             <div>
-                              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>Autenticação de Conta Bling (OAuth)</p>
-                              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '4px 0 0 0' }}>Salve as credenciais acima antes de clicar em Conectar.</p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <p style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>Autenticação de Conta Bling (OAuth)</p>
+                                {settings?.bling?.accessToken ? (
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', background: '#d1fae5', padding: '0.15rem 0.4rem', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
+                                    ✓ Conectado
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '0.15rem 0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                    Não Conectado
+                                  </span>
+                                )}
+                              </div>
+                              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                                {settings?.bling?.accessToken 
+                                  ? 'Sua conta está integrada. Clique ao lado para reautorizar se necessário.' 
+                                  : 'Salve as credenciais acima antes de clicar em Conectar.'}
+                              </p>
                             </div>
                             <button
                               type="button"
