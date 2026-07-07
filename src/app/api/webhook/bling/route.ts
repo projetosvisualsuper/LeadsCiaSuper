@@ -34,8 +34,6 @@ export async function POST(req: NextRequest) {
     console.error('### WEBHOOK RECEBIDO DO BLING ###');
     console.error(JSON.stringify(body, null, 2));
 
-    // Extrair dados do Bling (Suporta V3 e V2 estruturado)
-    const event = body.event || '';
     const data = body.data || body.retorno || body;
 
     // Obter dados principais do pedido
@@ -60,55 +58,111 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Número do pedido não identificado' }, { status: 400 });
     }
 
-    // Verificar se o status recebido é de finalização/envio
-    // Bling V3 padrão para despachado/finalizado é 'Atendido'
+    const isOpen = statusName.includes('aberto');
     const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado');
-
-    if (!isFinalized) {
-      return NextResponse.json({ success: true, message: `Ignorado. Status '${statusName}' não indica envio.` });
-    }
 
     // 1. Localizar o pedido correspondente no banco D1
     const pedidos = await d1Api.getPedidos();
     const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
 
-    let targetLeadId = '';
-    let pedidoIdLocal = '';
+    if (isOpen) {
+      if (pedidoLocal) {
+        // Se o pedido já existe (por exemplo, na aba do site), apenas atualizamos informações necessárias
+        const updateText = `\n[BLING ATUALIZAÇÃO] Pedido aberto no Bling em ${new Date().toLocaleString('pt-BR')}.`;
+        const novaObs = (pedidoLocal.observacao || '') + updateText;
+        await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
-    if (pedidoLocal) {
-      pedidoIdLocal = pedidoLocal.id;
-      targetLeadId = pedidoLocal.leadId;
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Pedido já existia. Apenas informações necessárias foram atualizadas.' 
+        });
+      } else {
+        // Se não existe, criamos o pedido sob a aba de "Pedidos Mercos" com status "em_atendimento"
+        const cleanPhone = clientPhone.replace(/\D/g, '');
+        let targetLeadId = '';
 
-      // Atualiza o status do pedido localmente para 'enviado'
-      await d1Api.updatePedidoStatus(pedidoIdLocal, 'enviado');
+        // Tentar localizar lead pelo celular
+        if (cleanPhone) {
+          const { results } = await d1Api.runQuery(
+            `SELECT id FROM leads WHERE celular = ? OR telefone = ? LIMIT 1`,
+            [cleanPhone, cleanPhone]
+          );
+          if (results && results.length > 0) {
+            targetLeadId = results[0].id;
+          }
+        }
 
-      // Salva o código de rastreamento na observação
-      const trackText = trackingCode ? `\n[BLING RASTREIO] Código de Rastreamento: ${trackingCode}` : '';
-      const novaObs = (pedidoLocal.observacao || '') + trackText;
-      await d1Api.updatePedidoObservacao(pedidoIdLocal, novaObs);
-    }
+        // Se não achou lead, criamos um novo lead
+        if (!targetLeadId) {
+          targetLeadId = Math.random().toString(36).substr(2, 9);
+          const agora = new Date().toISOString();
+          await d1Api.runQuery(
+            `INSERT INTO leads (id, nome, celular, origem, dataCriacao, status) VALUES (?, ?, ?, 'Bling Mercos', ?, 'novo')`,
+            [targetLeadId, clientName, cleanPhone || null, agora]
+          );
+        }
 
-    // 2. Tentar achar o celular do cliente se não recebido pelo webhook
-    if (!clientPhone && targetLeadId) {
-      const { results } = await d1Api.runQuery(`SELECT celular, telefone FROM leads WHERE id = ? LIMIT 1`, [targetLeadId]);
-      if (results && results.length > 0) {
-        clientPhone = results[0].celular || results[0].telefone || '';
+        // Criar o Pedido com origem 'mercos'
+        const itensBling = data.itens ? (Array.isArray(data.itens) ? data.itens.map((i: any) => i.descricao || i.codigo).join(', ') : data.itens.toString()) : 'Produtos Mercos';
+        const valorBling = parseFloat(data.total || data.valorTotal || data.valor || '0');
+
+        await d1Api.savePedido({
+          leadId: targetLeadId,
+          pedidoReferencia: orderNumber,
+          itens: itensBling,
+          valor: valorBling,
+          origem: 'mercos'
+        } as any);
+
+        // Buscar o pedido recém-criado para atualizar o status para 'em_atendimento'
+        const todosPedidos = await d1Api.getPedidos();
+        const recemCriado = todosPedidos.find(p => p.pedidoReferencia === orderNumber && p.origem === 'mercos');
+        if (recemCriado) {
+          await d1Api.updatePedidoStatus(recemCriado.id, 'em_atendimento');
+        }
+
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Pedido criado com sucesso na aba Mercos com status Em Atendimento.' 
+        });
       }
     }
 
-    // Registrar no Log do sistema
-    await d1Api.saveSystemLog({
-      id: Math.random().toString(36).substr(2, 9),
-      servico: 'Bling Integration',
-      mensagem: `Pedido #${orderNumber} atualizado para 'enviado'. Rastreamento: ${trackingCode || 'não informado'}.`,
-      dataCriacao: new Date().toISOString(),
-      isRead: false,
-      severidade: 'info'
-    } as any);
+    if (isFinalized) {
+      if (pedidoLocal) {
+        // Atualiza o status do pedido localmente para 'enviado' (mantendo a origem original)
+        await d1Api.updatePedidoStatus(pedidoLocal.id, 'enviado');
+
+        // Salva o código de rastreamento na observação
+        const trackText = trackingCode ? `\n[BLING RASTREIO] Código de Rastreamento: ${trackingCode}` : '';
+        const novaObs = (pedidoLocal.observacao || '') + trackText;
+        await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
+
+        // Registrar no Log do sistema
+        await d1Api.saveSystemLog({
+          id: Math.random().toString(36).substr(2, 9),
+          servico: 'Bling Integration',
+          mensagem: `Pedido #${orderNumber} atualizado para 'enviado'. Rastreamento: ${trackingCode || 'não informado'}.`,
+          dataCriacao: new Date().toISOString(),
+          isRead: false,
+          severidade: 'info'
+        } as any);
+
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Status do pedido atualizado para Enviado e código de rastreio armazenado com sucesso.' 
+        });
+      } else {
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Pedido não localizado para atualização de rastreamento.' 
+        });
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Status do pedido atualizado para Enviado e código de rastreio armazenado com sucesso.'
+      message: `Webhook recebido. Evento '${statusName}' ignorado.` 
     });
 
   } catch (error: any) {

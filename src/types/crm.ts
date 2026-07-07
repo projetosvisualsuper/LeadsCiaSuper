@@ -445,12 +445,13 @@ export interface Pedido {
   pedidoReferencia?: string;
   itens?: string;
   valor?: number;
-  status: 'pendente' | 'em_atendimento' | 'finalizado' | 'cancelado';
+  status: 'pendente' | 'em_atendimento' | 'finalizado' | 'cancelado' | 'enviado';
   isRead: boolean;
   dataCriacao: string;
   leadNome?: string;
   leadCelular?: string;
   observacao?: string;
+  origem?: 'site' | 'mercos';
 }
 
 export interface Opportunity {

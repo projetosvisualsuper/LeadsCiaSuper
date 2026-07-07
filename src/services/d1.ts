@@ -1745,16 +1745,26 @@ export const d1Api = {
   },
 
   // --- PEDIDOS ---
-  savePedido: async (pedido: Omit<Pedido, 'id' | 'dataCriacao' | 'isRead' | 'status'>): Promise<void> => {
+  ensureOrigemColumn: async (): Promise<void> => {
+    try {
+      await executeRun(`ALTER TABLE pedidos ADD COLUMN origem TEXT DEFAULT 'site'`);
+    } catch (e) {
+      // Ignora se a coluna já existir
+    }
+  },
+
+  savePedido: async (pedido: Omit<Pedido, 'id' | 'dataCriacao' | 'isRead' | 'status'> & { origem?: string }): Promise<void> => {
+    await d1Api.ensureOrigemColumn();
     const id = Math.random().toString(36).substr(2, 9);
     const dataCriacao = new Date().toISOString();
     await executeRun(
-      `INSERT INTO pedidos (id, leadId, pedidoReferencia, itens, valor, status, isRead, dataCriacao) VALUES (?, ?, ?, ?, ?, 'pendente', 0, ?)`,
-      [id, pedido.leadId, pedido.pedidoReferencia || null, pedido.itens || null, pedido.valor || null, dataCriacao]
+      `INSERT INTO pedidos (id, leadId, pedidoReferencia, itens, valor, status, isRead, dataCriacao, origem) VALUES (?, ?, ?, ?, ?, 'pendente', 0, ?, ?)`,
+      [id, pedido.leadId, pedido.pedidoReferencia || null, pedido.itens || null, pedido.valor || null, dataCriacao, pedido.origem || 'site']
     );
   },
 
   getPedidos: async (): Promise<Pedido[]> => {
+    await d1Api.ensureOrigemColumn();
     // Fazer JOIN com a tabela de leads para pegar o nome e o celular do lead
     const query = `
       SELECT p.*, l.nome as leadNome, l.celular as leadCelular

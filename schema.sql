@@ -249,5 +249,6 @@ CREATE TABLE IF NOT EXISTS pedidos (
   status TEXT DEFAULT 'pendente',
   isRead INTEGER DEFAULT 0,
   dataCriacao TEXT NOT NULL,
-  observacao TEXT
+  observacao TEXT,
+  origem TEXT DEFAULT 'site'
 );

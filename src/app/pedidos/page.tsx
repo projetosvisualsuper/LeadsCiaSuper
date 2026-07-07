@@ -14,6 +14,7 @@ export default function PedidosPage() {
   const [expandedPedidoId, setExpandedPedidoId] = useState<string | null>(null);
   const [observacoesInput, setObservacoesInput] = useState<Record<string, string>>({});
   const [savingObs, setSavingObs] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'site' | 'mercos'>('site');
 
   const handleSaveObservacao = async (pedidoId: string) => {
     const obs = observacoesInput[pedidoId] || '';
@@ -112,6 +113,8 @@ export default function PedidosPage() {
       bg = '#d1fae5'; color = '#047857'; icon = <Check size={12}/>;
     } else if (safeStatus === 'cancelado') {
       bg = '#fee2e2'; color = '#b91c1c'; icon = <XCircle size={12}/>;
+    } else if (safeStatus === 'enviado') {
+      bg = '#e0f2fe'; color = '#0369a1'; icon = <Package size={12}/>;
     }
 
     return (
@@ -133,6 +136,13 @@ export default function PedidosPage() {
     );
   };
 
+  const filteredPedidos = pedidos.filter(p => {
+    if (activeTab === 'mercos') {
+      return p.origem === 'mercos';
+    }
+    return p.origem !== 'mercos';
+  });
+
   return (
     <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'inherit' }}>
       
@@ -141,10 +151,12 @@ export default function PedidosPage() {
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b', margin: 0 }}>
             <ShoppingBag size={28} color="#059669" />
-            Pedidos do Site
+            {activeTab === 'site' ? 'Pedidos do Site' : 'Pedidos do Mercos'}
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-            Gerencie cotações e compras recebidas através do site ou integrações.
+            {activeTab === 'site' 
+              ? 'Gerencie cotações e compras recebidas através do site ou integrações.' 
+              : 'Gerencie pedidos recebidos diretamente da integração com o Mercos/Bling.'}
           </p>
         </div>
         <button 
@@ -158,9 +170,47 @@ export default function PedidosPage() {
         </button>
       </div>
 
+      {/* Navigation Tabs */}
+      <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '1.5rem', width: 'fit-content' }}>
+        <button 
+          onClick={() => setActiveTab('site')}
+          style={{
+            padding: '0.6rem 1.2rem',
+            borderRadius: '8px',
+            border: 'none',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            background: activeTab === 'site' ? '#ffffff' : 'transparent',
+            color: activeTab === 'site' ? '#0f172a' : '#64748b',
+            boxShadow: activeTab === 'site' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Pedidos do Site
+        </button>
+        <button 
+          onClick={() => setActiveTab('mercos')}
+          style={{
+            padding: '0.6rem 1.2rem',
+            borderRadius: '8px',
+            border: 'none',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            background: activeTab === 'mercos' ? '#ffffff' : 'transparent',
+            color: activeTab === 'mercos' ? '#0f172a' : '#64748b',
+            boxShadow: activeTab === 'mercos' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Pedidos Mercos
+        </button>
+      </div>
+
       {/* LISTAGEM */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '12px' }}>
-        {pedidos.length === 0 && !loading ? (
+        {filteredPedidos.length === 0 && !loading ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <CheckCircle2 size={48} color="#34d399" style={{ marginBottom: '1rem' }} />
             <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#334155', margin: 0 }}>Tudo limpo!</h3>
@@ -168,11 +218,11 @@ export default function PedidosPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {pedidos.map((pedido, index) => (
+            {filteredPedidos.map((pedido, index) => (
               <div 
                 key={pedido.id} 
                 style={{
-                  borderBottom: index < pedidos.length - 1 ? '1px solid #f1f5f9' : 'none',
+                  borderBottom: index < filteredPedidos.length - 1 ? '1px solid #f1f5f9' : 'none',
                   backgroundColor: !pedido.isRead ? '#f0fdf4' : '#ffffff',
                   transition: 'background-color 0.2s ease'
                 }}
@@ -309,6 +359,14 @@ export default function PedidosPage() {
                             style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'finalizado' ? '#d1fae5' : '#ffffff', borderColor: pedido.status === 'finalizado' ? '#10b981' : '#cbd5e1', opacity: syncingStatus === pedido.id ? 0.5 : 1 }}
                           >
                             Finalizado
+                          </button>
+                          <button 
+                            className="btn-outline"
+                            onClick={() => handleStatusChange(pedido.id, 'enviado')} 
+                            disabled={syncingStatus === pedido.id}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', backgroundColor: pedido.status === 'enviado' ? '#e0f2fe' : '#ffffff', borderColor: pedido.status === 'enviado' ? '#0ea5e9' : '#cbd5e1', opacity: syncingStatus === pedido.id ? 0.5 : 1 }}
+                          >
+                            Enviado
                           </button>
                           <button 
                             className="btn-outline"
