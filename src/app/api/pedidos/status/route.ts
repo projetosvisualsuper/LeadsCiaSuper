@@ -114,14 +114,11 @@ export async function POST(request: Request) {
       const errorData = await wooResponse.text();
       console.error('Erro ao sincronizar com WooCommerce:', errorData);
       
-      // Salvar o erro no log do sistema
       await d1Api.saveSystemLog({
-        id: Math.random().toString(36).substr(2, 9),
-        servico: 'WooCommerce Sync',
-        mensagem: `Falha ao atualizar pedido ${pedido.pedidoReferencia} para ${wooStatus}: ${errorData}`,
-        dataCriacao: new Date().toISOString(),
-        isRead: false,
-        severidade: 'erro'
+        level: 'error',
+        source: 'WooCommerce Sync',
+        message: `Falha ao atualizar pedido ${pedido.pedidoReferencia} para ${wooStatus}: ${errorData}`,
+        details: null
       });
 
       return NextResponse.json({ 

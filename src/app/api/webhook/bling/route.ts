@@ -220,13 +220,11 @@ async function processBlingOrder(orderId: string) {
       }
 
       await d1Api.saveSystemLog({
-        id: Math.random().toString(36).substr(2, 9),
-        servico: 'Bling Integration',
-        mensagem: `Pedido #${orderNumber} atualizado para 'enviado'. Rastreamento: ${trackingCode || 'não informado'}.`,
-        dataCriacao: new Date().toISOString(),
-        isRead: false,
-        severidade: 'info'
-      } as any);
+        level: 'info',
+        source: 'Bling Integration',
+        message: `Pedido #${orderNumber} atualizado para 'enviado'. Rastreamento: ${trackingCode || 'não informado'}.`,
+        details: null
+      });
 
       return { 
         success: true, 
