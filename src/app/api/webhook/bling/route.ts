@@ -291,7 +291,15 @@ export async function POST(req: NextRequest) {
     console.error('### WEBHOOK RECEBIDO DO BLING ###');
     console.error(JSON.stringify(body, null, 2));
 
-    const orderId = body.data?.id || body.id;
+    let orderId = body.data?.id || body.id;
+
+    // Suporte ao webhook legado (v1/v2) do Bling que envia retorno.pedidos[0].pedido
+    if (!orderId && body.retorno?.pedidos && Array.isArray(body.retorno.pedidos)) {
+      const firstOrder = body.retorno.pedidos[0]?.pedido;
+      if (firstOrder) {
+        orderId = firstOrder.id || firstOrder.numero;
+      }
+    }
 
     if (!orderId) {
       return NextResponse.json({ error: 'ID do pedido não identificado no payload' }, { status: 400 });
