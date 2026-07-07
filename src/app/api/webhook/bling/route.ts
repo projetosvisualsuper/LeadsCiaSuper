@@ -2,7 +2,6 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
-import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,79 +96,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Limpar o número de telefone
-    const cleanPhone = clientPhone.replace(/\D/g, '');
-
-    if (!cleanPhone) {
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Pedido atualizado para Enviado, mas o cliente não possui telefone configurado para envio de notificação.' 
-      });
-    }
-
-    // 3. Carregar configurações do Bling no CRM para envio do WhatsApp
-    const settings = await d1Api.getSettings();
-    const blingConfig = settings.bling;
-
-    // Se estiver explicitamente desativado, encerra com sucesso
-    if (blingConfig && blingConfig.enabled === false) {
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Pedido atualizado para Enviado. Notificações do Bling estão desativadas nas configurações.' 
-      });
-    }
-
-    // 4. Disparar a notificação
-    const templateName = blingConfig?.templateName;
-    const templateLanguage = blingConfig?.templateLanguage || 'pt_BR';
-
-    let responseWhatsapp;
-    if (templateName) {
-      // Enviar usando template oficial homologado da Meta
-      responseWhatsapp = await sendOmnichannelMessageAction(
-        cleanPhone,
-        'whatsapp',
-        '',
-        undefined,
-        {
-          name: templateName,
-          language: templateLanguage,
-          components: [
-            {
-              type: 'body',
-              parameters: [
-                { type: 'text', text: clientName },
-                { type: 'text', text: orderNumber },
-                { type: 'text', text: trackingCode || 'Verificar com atendimento' }
-              ]
-            }
-          ]
-        }
-      );
-    } else {
-      // Enviar mensagem de texto padrão
-      const defaultText = `Olá *${clientName}*! Seu pedido *#${orderNumber}* foi postado e já está a caminho! 🚚\n\n*Código de Rastreamento:* ${trackingCode || 'Disponível em breve'}\n\nAcompanhe a entrega com carinho!`;
-      responseWhatsapp = await sendOmnichannelMessageAction(
-        cleanPhone,
-        'whatsapp',
-        defaultText
-      );
-    }
-
     // Registrar no Log do sistema
     await d1Api.saveSystemLog({
       id: Math.random().toString(36).substr(2, 9),
       servico: 'Bling Integration',
-      mensagem: `Pedido #${orderNumber} atualizado para 'enviado'. WhatsApp enviado para ${cleanPhone}. Resposta: ${JSON.stringify(responseWhatsapp)}`,
+      mensagem: `Pedido #${orderNumber} atualizado para 'enviado'. Rastreamento: ${trackingCode || 'não informado'}.`,
       dataCriacao: new Date().toISOString(),
       isRead: false,
-      severidade: responseWhatsapp.success ? 'info' : 'erro'
+      severidade: 'info'
     } as any);
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Status atualizado para Enviado e notificação enviada com sucesso.',
-      whatsapp: responseWhatsapp 
+      message: 'Status do pedido atualizado para Enviado e código de rastreio armazenado com sucesso.'
     });
 
   } catch (error: any) {
