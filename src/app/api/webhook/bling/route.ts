@@ -16,7 +16,6 @@ export async function POST(req: NextRequest) {
       if (dataParam) {
         body = JSON.parse(dataParam.toString());
       } else {
-        // Converter form data para objeto plano
         formData.forEach((value, key) => {
           body[key] = value.toString();
         });
@@ -34,54 +33,127 @@ export async function POST(req: NextRequest) {
     console.error('### WEBHOOK RECEBIDO DO BLING ###');
     console.error(JSON.stringify(body, null, 2));
 
-    const data = body.data || body.retorno || body;
+    // No Bling v3, o ID do pedido vem em body.data.id ou body.id
+    const orderId = body.data?.id || body.id;
 
-    // Obter dados principais do pedido
-    const orderNumber = (data.numero || data.numeroPedido || '').toString();
-    const statusName = (data.situacao?.nome || data.situacao?.descricao || data.status || '').toString().toLowerCase();
+    if (!orderId) {
+      return NextResponse.json({ error: 'ID do pedido não identificado no payload' }, { status: 400 });
+    }
+
+    // 1. Carregar credenciais e tokens do Bling nas configurações do CRM
+    const settings = await d1Api.getSettings();
+    let accessToken = settings?.bling?.accessToken || '';
+    const refreshToken = settings?.bling?.refreshToken || '';
+    const clientId = settings?.bling?.clientId || '';
+    const clientSecret = settings?.bling?.clientSecret || '';
+    const tokenExpiresAt = settings?.bling?.tokenExpiresAt || '';
+
+    if (!accessToken) {
+      console.error('Token de acesso do Bling não configurado no CRM.');
+      return NextResponse.json({ error: 'Token de acesso do Bling não configurado' }, { status: 401 });
+    }
+
+    // 2. Renovar Token de Acesso se estiver expirado ou perto de expirar (menos de 5 minutos)
+    if (refreshToken && clientId && clientSecret && (!tokenExpiresAt || new Date(tokenExpiresAt).getTime() - Date.now() < 300000)) {
+      try {
+        console.error('Bling Access Token expirado ou prestes a expirar. Atualizando...');
+        const basicAuth = btoa(`${clientId}:${clientSecret}`);
+        const refreshResponse = await fetch('https://api.bling.com.br/Api/v3/oauth/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${basicAuth}`
+          },
+          body: JSON.stringify({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken
+          })
+        });
+
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          accessToken = refreshData.access_token;
+          const expiresIn = refreshData.expires_in || 3600;
+          const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+
+          // Salvar novos tokens
+          const updatedSettings = {
+            ...settings,
+            bling: {
+              ...(settings.bling || {}),
+              accessToken: refreshData.access_token,
+              refreshToken: refreshData.refresh_token || refreshToken,
+              tokenExpiresAt: expiresAt
+            }
+          };
+          await d1Api.saveSettings(updatedSettings);
+          console.error('Bling Access Token renovado com sucesso.');
+        } else {
+          console.error('Falha ao atualizar token do Bling:', await refreshResponse.text());
+        }
+      } catch (tokenErr) {
+        console.error('Erro de rede ao atualizar token do Bling:', tokenErr);
+      }
+    }
+
+    // 3. Consultar dados completos do pedido via API REST do Bling
+    console.error(`Buscando dados completos do pedido ID ${orderId} no Bling...`);
+    const getRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    if (!getRes.ok) {
+      const errText = await getRes.text();
+      console.error(`Erro ao consultar dados do pedido ${orderId} no Bling:`, errText);
+      return NextResponse.json({ error: `Erro na API do Bling: ${errText}` }, { status: getRes.status });
+    }
+
+    const orderPayload = await getRes.json();
+    const data = orderPayload.data;
+
+    if (!data) {
+      return NextResponse.json({ error: 'Nenhum dado retornado da API do Bling' }, { status: 404 });
+    }
+
+    // Obter dados do pedido de venda
+    const orderNumber = (data.numero || data.id || '').toString();
+    // A situação pode vir como ID ou nome: 'Em aberto' (1), 'Atendido' (2), 'Cancelado' (3), 'Despachado' (15) etc.
+    const statusName = (data.situacao?.nome || '').toString().toLowerCase() || (data.situacao?.id || '').toString();
     
     // Rastreamento
     let trackingCode = '';
     if (data.transporte?.volumes && Array.isArray(data.transporte.volumes)) {
       const volume = data.transporte.volumes[0];
       trackingCode = volume?.codigoRastreamento || volume?.rastreamento || '';
-    } else if (data.codigoRastreamento || data.rastreio) {
-      trackingCode = data.codigoRastreamento || data.rastreio || '';
     }
 
     // Cliente
-    const clientName = data.cliente?.nome || data.cliente?.razaoSocial || 'Cliente';
-    let clientPhone = data.cliente?.celular || data.cliente?.fone || data.cliente?.telefone || '';
+    const clientName = data.contato?.nome || 'Cliente';
+    let clientPhone = data.contato?.celular || data.contato?.telefone || '';
 
-    // Se não tiver número de pedido ou status, não prossegue
-    if (!orderNumber) {
-      return NextResponse.json({ error: 'Número do pedido não identificado' }, { status: 400 });
-    }
+    const isOpen = statusName.includes('aberto') || statusName === '1';
+    const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '2' || statusName === '15';
 
-    const isOpen = statusName.includes('aberto');
-    const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado');
-
-    // 1. Localizar o pedido correspondente no banco D1
+    // 4. Localizar o pedido correspondente no banco D1
     const pedidos = await d1Api.getPedidos();
     const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
 
     if (isOpen) {
       if (pedidoLocal) {
-        // Se o pedido já existe (por exemplo, na aba do site), apenas atualizamos informações necessárias
         const updateText = `\n[BLING ATUALIZAÇÃO] Pedido aberto no Bling em ${new Date().toLocaleString('pt-BR')}.`;
         const novaObs = (pedidoLocal.observacao || '') + updateText;
         await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
         return NextResponse.json({ 
           success: true, 
-          message: 'Pedido já existia. Apenas informações necessárias foram atualizadas.' 
+          message: 'Pedido já existia. Apenas observações atualizadas.' 
         });
       } else {
-        // Se não existe, criamos o pedido sob a aba de "Pedidos Mercos" com status "em_atendimento"
         const cleanPhone = clientPhone.replace(/\D/g, '');
         let targetLeadId = '';
 
-        // Tentar localizar lead pelo celular
         if (cleanPhone) {
           const { results } = await d1Api.runQuery(
             `SELECT id FROM leads WHERE celular = ? OR telefone = ? LIMIT 1`,
@@ -92,7 +164,6 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Se não achou lead, criamos um novo lead
         if (!targetLeadId) {
           targetLeadId = Math.random().toString(36).substr(2, 9);
           const agora = new Date().toISOString();
@@ -102,9 +173,8 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Criar o Pedido com origem 'mercos'
         const itensBling = data.itens ? (Array.isArray(data.itens) ? data.itens.map((i: any) => i.descricao || i.codigo).join(', ') : data.itens.toString()) : 'Produtos Mercos';
-        const valorBling = parseFloat(data.total || data.valorTotal || data.valor || '0');
+        const valorBling = parseFloat(data.total || '0');
 
         await d1Api.savePedido({
           leadId: targetLeadId,
@@ -114,7 +184,6 @@ export async function POST(req: NextRequest) {
           origem: 'mercos'
         } as any);
 
-        // Buscar o pedido recém-criado para atualizar o status para 'em_atendimento'
         const todosPedidos = await d1Api.getPedidos();
         const recemCriado = todosPedidos.find(p => p.pedidoReferencia === orderNumber && p.origem === 'mercos');
         if (recemCriado) {
@@ -130,15 +199,12 @@ export async function POST(req: NextRequest) {
 
     if (isFinalized) {
       if (pedidoLocal) {
-        // Atualiza o status do pedido localmente para 'enviado' (mantendo a origem original)
         await d1Api.updatePedidoStatus(pedidoLocal.id, 'enviado');
 
-        // Salva o código de rastreamento na observação
         const trackText = trackingCode ? `\n[BLING RASTREIO] Código de Rastreamento: ${trackingCode}` : '';
         const novaObs = (pedidoLocal.observacao || '') + trackText;
         await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
-        // Registrar no Log do sistema
         await d1Api.saveSystemLog({
           id: Math.random().toString(36).substr(2, 9),
           servico: 'Bling Integration',
@@ -150,7 +216,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ 
           success: true, 
-          message: 'Status do pedido atualizado para Enviado e código de rastreio armazenado com sucesso.' 
+          message: 'Status do pedido atualizado para Enviado e código de rastreio armazenado.' 
         });
       } else {
         return NextResponse.json({ 

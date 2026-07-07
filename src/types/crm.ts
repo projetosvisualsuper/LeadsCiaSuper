@@ -205,11 +205,16 @@ export interface Settings {
     syncEnabled: boolean;
   };
   bling?: {
+    enabled?: boolean;
+    clientId?: string;
+    clientSecret?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    tokenExpiresAt?: string;
     webhookToken?: string;
     templateName?: string;
     templateLanguage?: string;
     variablesMap?: string;
-    enabled?: boolean;
   };
 }
 

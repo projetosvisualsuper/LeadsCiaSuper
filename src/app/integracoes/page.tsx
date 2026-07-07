@@ -74,7 +74,7 @@ export default function IntegracoesPage() {
   const [formTikTok, setFormTikTok] = useState({ appId: '', token: '' });
   const [formYouTube, setFormYouTube] = useState({ apiKey: '', channelId: '', clientId: '', clientSecret: '' });
   const [formWhatsApp, setFormWhatsApp] = useState({ apiUrl: '', apiKey: '' });
-  const [formBling, setFormBling] = useState({ enabled: true, templateName: '', templateLanguage: 'pt_BR' });
+  const [formBling, setFormBling] = useState({ enabled: true, clientId: '', clientSecret: '', templateName: '', templateLanguage: 'pt_BR' });
 
   useEffect(() => {
     setPublicLink(`${window.location.origin}/captura`);
@@ -114,6 +114,8 @@ export default function IntegracoesPage() {
         });
         setFormBling({
           enabled: data.bling?.enabled !== false,
+          clientId: data.bling?.clientId || '',
+          clientSecret: data.bling?.clientSecret || '',
           templateName: data.bling?.templateName || '',
           templateLanguage: data.bling?.templateLanguage || 'pt_BR'
         });
@@ -153,8 +155,13 @@ export default function IntegracoesPage() {
       } else if (pluginId === 'bling') {
         updatedBling = {
           enabled: formBling.enabled,
+          clientId: formBling.clientId,
+          clientSecret: formBling.clientSecret,
           templateName: formBling.templateName,
-          templateLanguage: formBling.templateLanguage
+          templateLanguage: formBling.templateLanguage,
+          accessToken: settings.bling?.accessToken || '',
+          refreshToken: settings.bling?.refreshToken || '',
+          tokenExpiresAt: settings.bling?.tokenExpiresAt || ''
         };
       }
 
@@ -940,6 +947,67 @@ export default function IntegracoesPage() {
                             />
                             <label htmlFor="bling-enabled" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155', cursor: 'pointer' }}>Ativar Envio de Notificações</label>
                           </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>Client ID do Aplicativo Bling</label>
+                              <input 
+                                type="text" 
+                                value={formBling.clientId} 
+                                onChange={(e) => setFormBling({ ...formBling, clientId: e.target.value })}
+                                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
+                                placeholder="Insira o Client ID do Bling Developers"
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>Client Secret do Aplicativo Bling</label>
+                              <input 
+                                type="password" 
+                                value={formBling.clientSecret} 
+                                onChange={(e) => setFormBling({ ...formBling, clientSecret: e.target.value })}
+                                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
+                                placeholder="Insira o Client Secret do Bling Developers"
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div>
+                              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>Autenticação de Conta Bling (OAuth)</p>
+                              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '4px 0 0 0' }}>Salve as credenciais acima antes de clicar em Conectar.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!formBling.clientId || !formBling.clientSecret) {
+                                  alert('Por favor, insira o Client ID e Client Secret do seu aplicativo Bling antes de conectar.');
+                                  return;
+                                }
+                                try {
+                                  // Salvar antes de ir para o OAuth
+                                  await handleSaveIntegration('bling');
+                                  window.location.href = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${formBling.clientId}&state=bling_oauth`;
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}
+                              style={{
+                                background: '#f59e0b',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Globe size={14} /> {settings?.bling?.accessToken ? 'Reconectar Conta Bling' : 'Conectar Conta Bling'}
+                            </button>
+                          </div>
+
                           <div>
                             <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>Nome do Modelo de WhatsApp da Meta (Opcional)</label>
                             <input 
