@@ -587,7 +587,8 @@ export const d1Api = {
         appUrl: settings.appUrl || '',
         autoresponder: settings.autoresponder || { enabled: false, message: '' },
         gtmId: settings.gtmId || '',
-        woocommerce: settings.woocommerce || { url: '', consumerKey: '', consumerSecret: '', syncEnabled: false }
+        woocommerce: settings.woocommerce || { url: '', consumerKey: '', consumerSecret: '', syncEnabled: false },
+        bling: settings.bling || { enabled: false, templateName: '', templateLanguage: 'pt_BR' }
       } as Settings;
     } catch (error) {
       console.error('Erro ao carregar configurações do D1:', error);
