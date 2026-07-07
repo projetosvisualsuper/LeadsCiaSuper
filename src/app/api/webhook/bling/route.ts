@@ -104,9 +104,23 @@ async function processBlingOrder(orderId: string) {
   const pedidos = await d1Api.getPedidos();
   const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
 
+  const statusNamesMap: Record<string, string> = {
+    '6': 'Em aberto',
+    '9': 'Atendido',
+    '12': 'Cancelado',
+    '15': 'Despachado',
+    '18': 'Em andamento',
+    '1': 'Em aberto',
+    '2': 'Atendido',
+    '3': 'Cancelado'
+  };
+
+  const prettyStatus = data.situacao?.nome || statusNamesMap[statusName] || statusName;
+  const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
   if (isOpen) {
     if (pedidoLocal) {
-      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido aberto no Bling em ${new Date().toLocaleString('pt-BR')}.`;
+      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
       const novaObs = (pedidoLocal.observacao || '') + updateText;
       await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
@@ -146,7 +160,8 @@ async function processBlingOrder(orderId: string) {
         pedidoReferencia: orderNumber,
         itens: itensBling,
         valor: valorBling,
-        origem: 'mercos'
+        origem: 'mercos',
+        observacao: `[BLING CRIAÇÃO] Pedido criado com status "${prettyStatus}" no Bling em ${formattedDate}.`
       } as any);
 
       const todosPedidos = await d1Api.getPedidos();
@@ -167,8 +182,9 @@ async function processBlingOrder(orderId: string) {
     if (pedidoLocal) {
       await d1Api.updatePedidoStatus(pedidoLocal.id, 'enviado');
 
-      const trackText = trackingCode ? `\n[BLING RASTREIO] Código de Rastreamento: ${trackingCode}` : '';
-      const novaObs = (pedidoLocal.observacao || '') + trackText;
+      const trackText = trackingCode ? ` (Rastreio: ${trackingCode})` : '';
+      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}${trackText}.`;
+      const novaObs = (pedidoLocal.observacao || '') + updateText;
       await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
       // Disparar mensagem de WhatsApp automática se ativado nas configurações
@@ -242,6 +258,11 @@ async function processBlingOrder(orderId: string) {
   if (isCanceled) {
     if (pedidoLocal) {
       await d1Api.updatePedidoStatus(pedidoLocal.id, 'cancelado');
+      
+      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
+      const novaObs = (pedidoLocal.observacao || '') + updateText;
+      await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
+
       return { 
         success: true, 
         message: 'Status do pedido atualizado para Cancelado no CRM.',
