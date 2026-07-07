@@ -171,6 +171,54 @@ async function processBlingOrder(orderId: string) {
       const novaObs = (pedidoLocal.observacao || '') + trackText;
       await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
+      // Disparar mensagem de WhatsApp automática se ativado nas configurações
+      if (settings.bling?.enabled) {
+        try {
+          const leadResult = await d1Api.runQuery(`SELECT nome, celular FROM leads WHERE id = ? LIMIT 1`, [pedidoLocal.leadId]);
+          const targetLead = leadResult.results?.[0];
+          
+          if (targetLead && targetLead.celular) {
+            const cleanPhone = targetLead.celular.replace(/\D/g, '');
+            if (cleanPhone) {
+              const msgText = `Olá, *${targetLead.nome}*! Seu pedido *#${orderNumber}* foi enviado com sucesso! 🚀\n\nVocê pode acompanhar a entrega e rastrear seu pedido através do nosso portal:\n🔗 https://portal.visualsuper.com.br\n\nObrigado pela confiança! 😊`;
+              
+              const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
+              
+              if (settings.bling.templateName) {
+                await sendOmnichannelMessageAction(
+                  cleanPhone,
+                  'whatsapp',
+                  msgText,
+                  undefined,
+                  {
+                    name: settings.bling.templateName,
+                    language: settings.bling.templateLanguage || 'pt_BR',
+                    components: [
+                      {
+                        type: "body",
+                        parameters: [
+                          { type: "text", text: targetLead.nome },
+                          { type: "text", text: orderNumber }
+                        ]
+                      }
+                    ]
+                  }
+                );
+              } else {
+                await sendOmnichannelMessageAction(
+                  cleanPhone,
+                  'whatsapp',
+                  msgText
+                );
+              }
+              console.error(`Notificação automática enviada com sucesso para ${targetLead.nome}`);
+            }
+          }
+        } catch (msgErr) {
+          console.error('Erro ao disparar notificação automática do Bling:', msgErr);
+        }
+      }
+
       await d1Api.saveSystemLog({
         id: Math.random().toString(36).substr(2, 9),
         servico: 'Bling Integration',
