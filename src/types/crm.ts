@@ -204,6 +204,13 @@ export interface Settings {
     consumerSecret: string;
     syncEnabled: boolean;
   };
+  bling?: {
+    webhookToken?: string;
+    templateName?: string;
+    templateLanguage?: string;
+    variablesMap?: string;
+    enabled?: boolean;
+  };
 }
 
 // --- LINK NA BIO ---

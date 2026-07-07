@@ -15,7 +15,8 @@ import {
   AlertCircle,
   X,
   ChevronRight,
-  Info
+  Info,
+  ShoppingBag
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
@@ -73,6 +74,7 @@ export default function IntegracoesPage() {
   const [formTikTok, setFormTikTok] = useState({ appId: '', token: '' });
   const [formYouTube, setFormYouTube] = useState({ apiKey: '', channelId: '', clientId: '', clientSecret: '' });
   const [formWhatsApp, setFormWhatsApp] = useState({ apiUrl: '', apiKey: '' });
+  const [formBling, setFormBling] = useState({ enabled: true, templateName: '', templateLanguage: 'pt_BR' });
 
   useEffect(() => {
     setPublicLink(`${window.location.origin}/captura`);
@@ -110,6 +112,11 @@ export default function IntegracoesPage() {
           apiUrl: omni.evolutionApiUrl || '',
           apiKey: omni.evolutionApiKey || ''
         });
+        setFormBling({
+          enabled: data.bling?.enabled !== false,
+          templateName: data.bling?.templateName || '',
+          templateLanguage: data.bling?.templateLanguage || 'pt_BR'
+        });
       }
     } catch (e) {
       console.error('Erro ao carregar configurações de integração:', e);
@@ -124,6 +131,7 @@ export default function IntegracoesPage() {
       setSaveLoading(true);
       
       const updatedOmni = { ...(settings.omnichannel || {}) };
+      let updatedBling = { ...(settings.bling || {}) };
 
       if (pluginId === 'instagram') {
         updatedOmni.instagramAccessToken = formInstagram.token;
@@ -142,11 +150,18 @@ export default function IntegracoesPage() {
       } else if (pluginId === 'whatsapp') {
         updatedOmni.evolutionApiUrl = formWhatsApp.apiUrl;
         updatedOmni.evolutionApiKey = formWhatsApp.apiKey;
+      } else if (pluginId === 'bling') {
+        updatedBling = {
+          enabled: formBling.enabled,
+          templateName: formBling.templateName,
+          templateLanguage: formBling.templateLanguage
+        };
       }
 
       const updatedSettings = {
         ...settings,
-        omnichannel: updatedOmni
+        omnichannel: updatedOmni,
+        bling: updatedBling
       };
 
       await api.saveSettings(updatedSettings);
@@ -321,6 +336,21 @@ export default function IntegracoesPage() {
         'Integração com respostas via OAuth Google',
         'Filtro por canal e engajamento do lead',
         'Notificação instantânea para novos comentários'
+      ]
+    },
+    {
+      id: 'bling',
+      name: 'Bling ERP',
+      description: 'Envie notificações de rastreamento e altere status de pedidos automaticamente.',
+      longDescription: 'Integre o Bling ERP para atualizar o status dos pedidos para Enviado e disparar o código de rastreio aos seus clientes via WhatsApp automaticamente quando o pedido for despachado.',
+      color: '#f59e0b',
+      icon: ShoppingBag,
+      status: settings?.bling?.enabled ? 'connected' : 'disconnected',
+      features: [
+        'Sincronização automática do código de rastreamento',
+        'Atualização automática de status de pedidos',
+        'Disparo automático de WhatsApp ao faturar/despachar',
+        'Suporte a templates da Meta e mensagens de texto padrão'
       ]
     }
   ];
@@ -892,6 +922,64 @@ export default function IntegracoesPage() {
                           <div style={{ background: '#eff6ff', padding: '1rem', borderRadius: '12px', border: '1px solid #bfdbfe', marginTop: '0.5rem' }}>
                             <p style={{ fontSize: '0.8rem', color: '#1d4ed8', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
                               💡 <strong>Importante:</strong> As conexões individuais de instância e QR Code de WhatsApp devem ser gerenciados no menu lateral <strong>Conexões</strong>. Este formulário define as credenciais base da sua API Global.
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {/* BLING FORM */}
+                      {activeModal === 'bling' && (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <input 
+                              type="checkbox" 
+                              id="bling-enabled"
+                              checked={formBling.enabled} 
+                              onChange={(e) => setFormBling({ ...formBling, enabled: e.target.checked })}
+                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            />
+                            <label htmlFor="bling-enabled" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155', cursor: 'pointer' }}>Ativar Envio de Notificações</label>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>Nome do Modelo de WhatsApp da Meta (Opcional)</label>
+                            <input 
+                              type="text" 
+                              value={formBling.templateName} 
+                              onChange={(e) => setFormBling({ ...formBling, templateName: e.target.value })}
+                              style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
+                              placeholder="Ex: order_status_update (Deixe em branco para usar mensagem padrão)"
+                            />
+                            <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>Caso configurado, enviaremos este template oficial. Caso contrário, enviaremos uma mensagem de texto simples.</p>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>Idioma do Template</label>
+                            <input 
+                              type="text" 
+                              value={formBling.templateLanguage} 
+                              onChange={(e) => setFormBling({ ...formBling, templateLanguage: e.target.value })}
+                              style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
+                              placeholder="Ex: pt_BR"
+                            />
+                          </div>
+                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', marginTop: '0.5rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.825rem', fontWeight: 700, color: '#475569' }}>URL do Webhook para configurar no Bling</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', background: '#ffffff', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                              <input 
+                                readOnly 
+                                type="text" 
+                                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhook/bling`} 
+                                style={{ background: 'transparent', border: 'none', width: '100%', outline: 'none', color: '#1e293b', fontSize: '0.8rem', fontWeight: 600 }}
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => copyToClipboard(`${window.location.origin}/api/webhook/bling`, setCopiedWa)} 
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                              >
+                                <Copy size={16} />
+                              </button>
+                            </div>
+                            <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '6px', lineHeight: 1.4 }}>
+                              Copie esta URL e cole nas configurações de Webhooks do Bling para o evento de alteração de situação de vendas.
                             </p>
                           </div>
                         </>
