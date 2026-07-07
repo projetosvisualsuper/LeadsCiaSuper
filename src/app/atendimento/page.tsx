@@ -139,6 +139,7 @@ function AtendimentoContent() {
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -2097,7 +2098,26 @@ function AtendimentoContent() {
                       flexDirection: 'column',
                       gap: '0.5rem'
                     }}>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Modelos Pré-Aprovados (Meta)</p>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.25rem' }}>Modelos Pré-Aprovados (Meta)</p>
+                      
+                      {/* CAIXA DE PESQUISA */}
+                      <input 
+                        type="text"
+                        placeholder="Pesquisar modelo..."
+                        value={templateSearchQuery}
+                        onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          fontSize: '0.85rem',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          marginBottom: '0.5rem',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+
                       {(() => {
                         const activeChat = chats.find(c => c.id === selectedChatId);
                         const templatesToShow = dbTemplates.filter(t => {
@@ -2109,13 +2129,27 @@ function AtendimentoContent() {
                           ? templatesToShow.map(t => ({ name: t.name, content: t.content })) 
                           : META_TEMPLATES.map(text => ({ name: 'Padrão', content: text }));
 
-                        return finalTemplates.map((template, idx) => (
+                        const filteredTemplates = finalTemplates.filter(t => 
+                          (t.name || '').toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+                          (t.content || '').toLowerCase().includes(templateSearchQuery.toLowerCase())
+                        );
+
+                        if (filteredTemplates.length === 0) {
+                          return (
+                            <p style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center', padding: '1rem', margin: 0 }}>
+                              Nenhum modelo encontrado.
+                            </p>
+                          );
+                        }
+
+                        return filteredTemplates.map((template, idx) => (
                           <button 
                             key={idx} 
                             type="button" 
                             onClick={() => {
                               setNewMessage(template.content);
                               setShowTemplatePicker(false);
+                              setTemplateSearchQuery('');
                             }}
                             style={{ 
                               fontSize: '0.875rem', 
