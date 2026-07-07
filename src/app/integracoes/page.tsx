@@ -983,11 +983,27 @@ export default function IntegracoesPage() {
                                   return;
                                 }
                                 try {
-                                  // Salvar antes de ir para o OAuth
-                                  await handleSaveIntegration('bling');
-                                  window.location.href = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${formBling.clientId}&state=bling_oauth`;
+                                  setSaveLoading(true);
+                                  const updatedSettings = {
+                                    ...settings,
+                                    bling: {
+                                      ...(settings?.bling || {}),
+                                      enabled: formBling.enabled,
+                                      clientId: formBling.clientId,
+                                      clientSecret: formBling.clientSecret,
+                                      templateName: formBling.templateName,
+                                      templateLanguage: formBling.templateLanguage
+                                    }
+                                  };
+                                  await api.saveSettings(updatedSettings as any);
+                                  
+                                  const redirectUri = `${window.location.origin}/api/auth/callback/bling`;
+                                  window.location.href = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${formBling.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=bling_oauth`;
                                 } catch (e) {
                                   console.error(e);
+                                  alert('Erro ao conectar com o Bling. Tente novamente.');
+                                } finally {
+                                  setSaveLoading(false);
                                 }
                               }}
                               style={{
