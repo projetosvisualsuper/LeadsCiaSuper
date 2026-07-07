@@ -8,7 +8,8 @@ const statusMap: Record<string, string> = {
   'pendente': 'pending',
   'em_atendimento': 'processing',
   'finalizado': 'completed',
-  'cancelado': 'cancelled'
+  'cancelado': 'cancelled',
+  'enviado': 'completed'
 };
 
 export async function POST(request: Request) {
