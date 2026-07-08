@@ -308,6 +308,28 @@ function AtendimentoContent() {
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
   const hasLoadedInitialMessages = useRef(false);
 
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFilePreview, setPendingFilePreview] = useState<string>('');
+  const [pendingFileCaption, setPendingFileCaption] = useState('');
+
+  useEffect(() => {
+    return () => {
+      if (pendingFilePreview) {
+        URL.revokeObjectURL(pendingFilePreview);
+      }
+    };
+  }, [pendingFilePreview]);
+
+  const handleFileSelect = (file: File) => {
+    setPendingFile(file);
+    setPendingFileCaption('');
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      setPendingFilePreview(URL.createObjectURL(file));
+    } else {
+      setPendingFilePreview('');
+    }
+  };
+
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
@@ -451,7 +473,7 @@ function AtendimentoContent() {
     }
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, caption?: string) => {
     const chat = chats.find(c => c.id === selectedChatId);
     if (!file || !selectedChatId || !chat) return;
 
@@ -479,12 +501,14 @@ function AtendimentoContent() {
       else if (file.type.startsWith('video/')) msgType = 'video';
       else if (file.type.startsWith('audio/')) msgType = 'audio';
 
+      const msgContent = caption || file.name;
+
       const msg: any = {
         id: Math.random().toString(36).substr(2, 9),
         chatId: selectedChatId,
         senderId: 'atendente_admin',
         senderName: 'Atendente',
-        content: file.name,
+        content: msgContent,
         timestamp: new Date().toISOString(),
         type: msgType,
         status: 'sent',
@@ -517,7 +541,7 @@ function AtendimentoContent() {
             action: 'sendOmnichannel',
             recipient,
             channel: chat.channel,
-            message: `Arquivo enviado: ${file.name}`,
+            message: caption || `Arquivo enviado: ${file.name}`,
             connectionId: chat.connectionId,
             mediaUrl: url,
             mediaMimeType: mimeType || file.type,
@@ -537,7 +561,7 @@ function AtendimentoContent() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) await uploadFile(file);
+    if (file) handleFileSelect(file);
   };
 
   const handleInputPaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -545,7 +569,7 @@ function AtendimentoContent() {
     if (files && files.length > 0) {
       e.preventDefault();
       const file = files[0];
-      await uploadFile(file);
+      handleFileSelect(file);
     }
   };
 
@@ -2026,8 +2050,15 @@ function AtendimentoContent() {
                         <span>Emoji</span>
                       </button>
 
-                      <label
-                        htmlFor="file-upload"
+                      <button
+                        type="button"
+                        disabled={uploading}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                          setShowActionsDropdown(false);
+                        }}
                         style={{
                           width: '100%',
                           padding: '0.6rem 0.75rem',
@@ -2040,14 +2071,13 @@ function AtendimentoContent() {
                           alignItems: 'center',
                           gap: '0.5rem',
                           color: '#475569',
-                          borderRadius: '8px',
-                          pointerEvents: uploading ? 'none' : 'auto'
+                          borderRadius: '8px'
                         }}
                         className="hover-bg"
                       >
                         <Paperclip size={18} color="#64748b" />
                         <span>{uploading ? 'Enviando...' : 'Anexo'}</span>
-                      </label>
+                      </button>
 
                       {activeChat?.channel === 'whatsapp' && (
                         <button
@@ -2708,6 +2738,75 @@ function AtendimentoContent() {
           }
         }
       `}</style>
+
+      {/* Modal de Pré-visualização de Anexo */}
+      {pendingFile && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '500px', maxWidth: '90%', background: 'white', padding: '1.5rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#1e293b', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Enviar Anexo</span>
+              <button onClick={() => { setPendingFile(null); setPendingFilePreview(''); }} style={{ color: '#64748b', cursor: 'pointer', background: 'none', border: 'none' }}><X size={20} /></button>
+            </h3>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc', borderRadius: '12px', padding: '1rem', minHeight: '200px', maxHeight: '300px', overflow: 'hidden' }}>
+              {pendingFilePreview ? (
+                pendingFile.type.startsWith('video/') ? (
+                  <video src={pendingFilePreview} controls style={{ maxWidth: '100%', maxHeight: '260px', borderRadius: '8px' }} />
+                ) : (
+                  <img src={pendingFilePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '260px', objectFit: 'contain', borderRadius: '8px' }} />
+                )
+              ) : (
+                <div style={{ textAlign: 'center', color: '#64748b' }}>
+                  <Paperclip size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1e293b' }}>{pendingFile.name}</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{(pendingFile.size / 1024 / 1024).toFixed(2)} MB</div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textAlign: 'left' }}>Legenda da Mensagem</label>
+              <input 
+                type="text" 
+                placeholder="Adicione uma legenda..." 
+                value={pendingFileCaption}
+                onChange={e => setPendingFileCaption(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const btn = document.getElementById('send-pending-file-btn');
+                    if (btn) btn.click();
+                  }
+                }}
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', color: '#1e293b' }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => { setPendingFile(null); setPendingFilePreview(''); }}
+                style={{ flex: 1, background: '#f1f5f9', color: '#334155', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                id="send-pending-file-btn"
+                onClick={async () => {
+                  const file = pendingFile;
+                  const caption = pendingFileCaption;
+                  setPendingFile(null);
+                  setPendingFilePreview('');
+                  await uploadFile(file, caption);
+                }}
+                style={{ flex: 1, background: 'var(--primary)', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Confirmação de Exclusão */}
       {deleteConfirmOpen && (

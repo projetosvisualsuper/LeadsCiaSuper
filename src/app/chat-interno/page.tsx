@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { InternalChat, InternalMessage, UserProfile } from '@/types/crm';
-import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward, ChevronLeft, Upload, Phone } from 'lucide-react';
+import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward, ChevronLeft, ChevronDown, Upload, Phone } from 'lucide-react';
 
 const EMOJIS = ['😀','😂','😍','😭','🙏','👍','🔥','❤️','🎉','😊','😎','🤔','😡','🥺','✨','💯','🙌','👏','👀','🚀'];
 
@@ -320,30 +320,75 @@ export default function ChatInternoPage() {
     return connections.filter(conn => ids.has(conn.id));
   };
 
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const hasLoadedInitialMessages = useRef(false);
+
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFilePreview, setPendingFilePreview] = useState<string>('');
+  const [pendingFileCaption, setPendingFileCaption] = useState('');
+
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingFilePreview) {
+        URL.revokeObjectURL(pendingFilePreview);
+      }
+    };
+  }, [pendingFilePreview]);
+
+  const handleFileSelect = (file: File) => {
+    setPendingFile(file);
+    setPendingFileCaption('');
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      setPendingFilePreview(URL.createObjectURL(file));
+    } else {
+      setPendingFilePreview('');
+    }
+  };
+
   const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    } else {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+      }, 80);
+    }
+  };
+
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    setShowScrollBottomBtn(!isNearBottom);
   };
 
   useEffect(() => {
-    if (messages.length > 0) scrollToBottom();
-  }, [messages.length]);
+    hasLoadedInitialMessages.current = false;
+    setShowScrollBottomBtn(false);
+    scrollToBottom();
+  }, [selectedChat, selectedWhatsappChat, activeTab]);
 
   useEffect(() => {
-    if (whatsappMessages.length > 0) {
-      scrollToBottom();
+    const msgs = activeTab === 'whatsapp' ? whatsappMessages : messages;
+    if (msgs.length > 0 && !hasLoadedInitialMessages.current) {
+      setTimeout(scrollToBottom, 100);
+      hasLoadedInitialMessages.current = true;
     }
-  }, [whatsappMessages.length, selectedConnectionId]);
+  }, [messages.length, whatsappMessages.length, activeTab]);
 
-  const handleSendWhatsappMessage = async (mediaUrl?: string, mediaMimeType?: string) => {
-    if ((!newMessage.trim() && !mediaUrl) || !selectedWhatsappChat || !me) return;
+  const handleSendWhatsappMessage = async (mediaUrl?: string, mediaMimeType?: string, caption?: string) => {
+    const finalContent = caption !== undefined ? caption : newMessage.trim();
+    if ((!finalContent && !mediaUrl) || !selectedWhatsappChat || !me) return;
 
     try {
       const msgPayload = {
         chatId: selectedWhatsappChat.id,
         leadId: selectedWhatsappChat.leadId,
-        content: newMessage.trim(),
+        content: finalContent,
         isIncoming: false,
         mediaUrl: mediaUrl || null,
         mediaMimeType: mediaMimeType || null,
@@ -358,7 +403,7 @@ export default function ChatInternoPage() {
         chatId: selectedWhatsappChat.id,
         senderId: 'vendedor',
         senderName: 'Você',
-        content: newMessage.trim(),
+        content: finalContent,
         timestamp: new Date().toISOString(),
         isIncoming: 0,
         mediaUrl: mediaUrl || null,
@@ -366,7 +411,7 @@ export default function ChatInternoPage() {
       };
       setWhatsappMessages(prev => [...prev, localMsg]);
       setNewMessage('');
-      scrollToBottom();
+      setTimeout(scrollToBottom, 50);
 
       const res = await fetch('/api/chats', {
         method: 'POST',
@@ -382,16 +427,18 @@ export default function ChatInternoPage() {
     }
   };
 
-  const handleSendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
+  const handleSendMessage = async (attachmentUrl?: string, attachmentName?: string, caption?: string) => {
     if (activeTab === 'whatsapp') {
       let mimeType = 'image/png';
       if (attachmentName?.endsWith('.pdf')) mimeType = 'application/pdf';
       else if (attachmentName?.endsWith('.webm') || attachmentName?.endsWith('.mp3')) mimeType = 'audio/webm';
-      await handleSendWhatsappMessage(attachmentUrl, attachmentUrl ? mimeType : undefined);
+      await handleSendWhatsappMessage(attachmentUrl, attachmentUrl ? mimeType : undefined, caption);
       return;
     }
 
-    if ((!newMessage.trim() && !attachmentUrl) || !selectedChat || !me) return;
+    const finalContent = caption !== undefined ? caption : newMessage.trim();
+
+    if ((!finalContent && !attachmentUrl) || !selectedChat || !me) return;
     
     if (editingMessageId) {
       // Edição de mensagem
@@ -399,9 +446,9 @@ export default function ChatInternoPage() {
         await fetch(`/api/internal-chats/${selectedChat.id}/messages/${editingMessageId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: newMessage.trim() })
+          body: JSON.stringify({ content: finalContent })
         });
-        setMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, content: newMessage.trim(), isEdited: true } : m));
+        setMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, content: finalContent, isEdited: true } : m));
         setEditingMessageId(null);
         setNewMessage('');
       } catch (e) {
@@ -427,7 +474,7 @@ export default function ChatInternoPage() {
       id: Math.random().toString(36).substr(2, 9),
       senderId: me.uid,
       senderName: me.name || me.email,
-      content: newMessage.trim() || (attachmentUrl ? (msgType === 'audio' ? '🎵 Áudio' : msgType === 'image' ? '📷 Imagem' : msgType === 'video' ? '🎥 Vídeo' : '📁 Arquivo anexo') : ''),
+      content: finalContent || (attachmentUrl ? (msgType === 'audio' ? '🎵 Áudio' : msgType === 'image' ? '📷 Imagem' : msgType === 'video' ? '🎥 Vídeo' : '📁 Arquivo anexo') : ''),
       attachmentUrl,
       attachmentName,
       type: msgType,
@@ -442,7 +489,7 @@ export default function ChatInternoPage() {
     setReplyingToMessage(null);
 
     setMessages(prev => [...prev, { ...msg, chatId: selectedChat.id, timestamp: new Date().toISOString(), readByJson: '[]' }]);
-    scrollToBottom();
+    setTimeout(scrollToBottom, 50);
 
     try {
       await fetch(`/api/internal-chats/${selectedChat.id}/messages`, {
@@ -581,7 +628,7 @@ export default function ChatInternoPage() {
     showAlert('Mensagem excluída apenas para você!');
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, caption?: string) => {
     if (file.size > 2 * 1024 * 1024) {
       showAlert("Arquivo muito grande. O limite é de 2MB.", "error");
       return;
@@ -596,7 +643,7 @@ export default function ChatInternoPage() {
       const data = await res.json();
       
       if (data.success && data.url) {
-        await handleSendMessage(data.url, file.name);
+        await handleSendMessage(data.url, file.name, caption);
       } else {
         showAlert("Erro ao enviar arquivo.", "error");
       }
@@ -611,7 +658,16 @@ export default function ChatInternoPage() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) await uploadFile(file);
+    if (file) handleFileSelect(file);
+  };
+
+  const handleInputPaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      e.preventDefault();
+      const file = files[0];
+      handleFileSelect(file);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -628,7 +684,7 @@ export default function ChatInternoPage() {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) await uploadFile(file);
+    if (file) handleFileSelect(file);
   };
 
   const handleCreateChat = async () => {
@@ -844,6 +900,14 @@ export default function ChatInternoPage() {
 
   return (
     <div className="chat-interno-container">
+      <input 
+        type="file" 
+        id="file-upload-internal"
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        onChange={handleFileUpload} 
+        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+      />
       {/* Sidebar */}
       <div style={{ 
         width: isMobile ? '100%' : '320px', 
@@ -1131,19 +1195,23 @@ export default function ChatInternoPage() {
               </div>
 
               {/* WhatsApp Messages Area */}
-              <div style={{ 
-                flex: 1, 
-                overflowY: 'auto', 
-                minHeight: 0,
-                padding: '1.5rem 5%', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.5rem',
-                backgroundColor: '#efeae2',
-                backgroundImage: 'url("https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-solid-color-whatsapp-bg-whatsapp-dark-whatsapp-theme.jpg")',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}>
+              <div 
+                ref={messagesContainerRef}
+                onScroll={handleScroll}
+                style={{ 
+                  flex: 1, 
+                  overflowY: 'auto', 
+                  minHeight: 0,
+                  padding: '1.5rem 5%', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.5rem',
+                  backgroundColor: '#efeae2',
+                  backgroundImage: 'url("https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-solid-color-whatsapp-bg-whatsapp-dark-whatsapp-theme.jpg")',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              >
                 {(() => {
                   const visibleWaMessages = whatsappMessages.filter(m => {
                     if (!selectedConnectionId) return true;
@@ -1258,7 +1326,12 @@ export default function ChatInternoPage() {
                     <Smile size={24} />
                   </button>
                   <button 
-                    onClick={() => fileInputRef.current?.click()} 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }} 
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#54656f', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Paperclip size={24} />
@@ -1277,6 +1350,7 @@ export default function ChatInternoPage() {
                         handleSendMessage();
                       }
                     }}
+                    onPaste={handleInputPaste}
                     style={{ 
                       width: '100%', 
                       padding: '0.6rem 1rem', 
@@ -1373,19 +1447,23 @@ export default function ChatInternoPage() {
             </div>
 
             {/* Messages Area */}
-            <div style={{ 
-              flex: 1, 
-              overflowY: 'auto', 
-              minHeight: 0,
-              padding: '1.5rem 5%', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '0.5rem',
-              backgroundColor: '#efeae2',
-              backgroundImage: 'url("https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-solid-color-whatsapp-bg-whatsapp-dark-whatsapp-theme.jpg")',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}>
+            <div 
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+              style={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                minHeight: 0,
+                padding: '1.5rem 5%', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.5rem',
+                backgroundColor: '#efeae2',
+                backgroundImage: 'url("https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-solid-color-whatsapp-bg-whatsapp-dark-whatsapp-theme.jpg")',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            >
               {visibleMessages.map((msg, index) => {
                 const isMe = msg.senderId === me?.uid;
                 const prevMsg = visibleMessages[index - 1];
@@ -1627,16 +1705,18 @@ export default function ChatInternoPage() {
                   <Smile size={24} />
                 </button>
                 
-                <button onClick={() => fileInputRef.current?.click()} style={{ padding: '0.5rem', color: '#54656f' }} disabled={isUploading}>
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }} 
+                  style={{ padding: '0.5rem', color: '#54656f' }} 
+                  disabled={isUploading}
+                >
                   <Paperclip size={24} />
                 </button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  style={{ display: 'none' }} 
-                  onChange={handleFileUpload} 
-                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                />
 
                 {isRecording ? (
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', height: '40px' }}>
@@ -1667,6 +1747,7 @@ export default function ChatInternoPage() {
                         value={newMessage}
                         onChange={handleInputChange}
                         onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                        onPaste={handleInputPaste}
                       />
                     )}
                   </div>
@@ -1709,7 +1790,36 @@ export default function ChatInternoPage() {
                   </button>
                 )}
               </div>
+              </div>
             </footer>
+
+            {showScrollBottomBtn && (
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                style={{
+                  position: 'absolute',
+                  bottom: '75px',
+                  right: '12px',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: 'white',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  border: '1px solid #e2e8f0',
+                  zIndex: 99,
+                  color: '#64748b',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Ir para a última mensagem"
+              >
+                <ChevronDown size={22} />
+              </button>
+            )}
           </>
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#667781', flexDirection: 'column', gap: '1rem', background: '#f0f2f5' }}>
@@ -1947,6 +2057,75 @@ export default function ChatInternoPage() {
           }
         }
       `}</style>
+
+      {/* Modal de Pré-visualização de Anexo */}
+      {pendingFile && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '500px', maxWidth: '90%', background: 'white', padding: '1.5rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: 'none' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#1e293b', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Enviar Anexo</span>
+              <button onClick={() => { setPendingFile(null); setPendingFilePreview(''); }} style={{ color: '#64748b', cursor: 'pointer', background: 'none', border: 'none' }}><X size={20} /></button>
+            </h3>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8fafc', borderRadius: '12px', padding: '1rem', minHeight: '200px', maxHeight: '300px', overflow: 'hidden' }}>
+              {pendingFilePreview ? (
+                pendingFile.type.startsWith('video/') ? (
+                  <video src={pendingFilePreview} controls style={{ maxWidth: '100%', maxHeight: '260px', borderRadius: '8px' }} />
+                ) : (
+                  <img src={pendingFilePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '260px', objectFit: 'contain', borderRadius: '8px' }} />
+                )
+              ) : (
+                <div style={{ textAlign: 'center', color: '#64748b' }}>
+                  <Paperclip size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1e293b' }}>{pendingFile.name}</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{(pendingFile.size / 1024 / 1024).toFixed(2)} MB</div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textAlign: 'left' }}>Legenda da Mensagem</label>
+              <input 
+                type="text" 
+                placeholder="Adicione uma legenda..." 
+                value={pendingFileCaption}
+                onChange={e => setPendingFileCaption(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const btn = document.getElementById('send-pending-file-btn');
+                    if (btn) btn.click();
+                  }
+                }}
+                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', color: '#1e293b' }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => { setPendingFile(null); setPendingFilePreview(''); }}
+                style={{ flex: 1, background: '#f1f5f9', color: '#334155', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                id="send-pending-file-btn"
+                onClick={async () => {
+                  const file = pendingFile;
+                  const caption = pendingFileCaption;
+                  setPendingFile(null);
+                  setPendingFilePreview('');
+                  await uploadFile(file, caption);
+                }}
+                style={{ flex: 1, background: 'var(--primary)', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Confirmação de Exclusão */}
       {deleteConfirmOpen && (
