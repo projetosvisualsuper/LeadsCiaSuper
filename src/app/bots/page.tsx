@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Bot, MessageCircle, Clock, Zap, Plus, Settings2, Power, Copy, Trash2 } from 'lucide-react';
+import { api } from '@/services/api';
 
 interface BotTemplate {
   id: string;
@@ -47,22 +48,38 @@ export default function BotsPage() {
 
   useEffect(() => {
     if (activeTab === 'meus_bots') {
-      const bots = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('bot_flow_')) {
+      api.getBots().then((dbBots) => {
+        const formatted = dbBots.map((b) => {
+          let nodesCount = 0;
           try {
-            const data = JSON.parse(localStorage.getItem(key) || '{}');
-            const id = key.replace('bot_flow_', '');
-            bots.push({
-              id,
-              name: data.name || `Bot ${id}`,
-              nodesCount: data.nodes?.length || 0
-            });
+            nodesCount = JSON.parse(b.nodesJson || '[]').length;
           } catch(e) {}
+          return {
+            id: b.id,
+            name: b.name,
+            nodesCount
+          };
+        });
+        setSavedBots(formatted);
+      }).catch((err) => {
+        console.error("Erro ao carregar bots:", err);
+        const bots = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('bot_flow_')) {
+            try {
+              const data = JSON.parse(localStorage.getItem(key) || '{}');
+              const id = key.replace('bot_flow_', '');
+              bots.push({
+                id,
+                name: data.name || `Bot ${id}`,
+                nodesCount: data.nodes?.length || 0
+              });
+            } catch(e) {}
+          }
         }
-      }
-      setSavedBots(bots);
+        setSavedBots(bots);
+      });
     }
   }, [activeTab]);
 
@@ -198,10 +215,16 @@ export default function BotsPage() {
                 Cancelar
               </button>
               <button 
-                onClick={() => {
-                  localStorage.removeItem(`bot_flow_${botToDelete}`);
-                  setSavedBots(savedBots.filter(b => b.id !== botToDelete));
-                  setBotToDelete(null);
+                onClick={async () => {
+                  try {
+                    localStorage.removeItem(`bot_flow_${botToDelete}`);
+                    await api.deleteBot(botToDelete);
+                    setSavedBots(savedBots.filter(b => b.id !== botToDelete));
+                  } catch (err) {
+                    console.error("Erro ao deletar bot:", err);
+                  } finally {
+                    setBotToDelete(null);
+                  }
                 }} 
                 style={{ padding: '8px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
                 Sim, Excluir

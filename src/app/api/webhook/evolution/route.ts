@@ -559,6 +559,22 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // 6.B Disparar automações de atendimento de lead do tipo 'mensagem_entrada'
+      if (!isFromMe) {
+        try {
+          const { automationEngine } = await import('@/services/automation-engine');
+          const opps = await d1Api.getOpportunities();
+          const leadOpp = opps.find(o => o.leadId === leadId);
+          const stage = leadOpp ? leadOpp.status : 'novo';
+          
+          (async () => {
+            await automationEngine.processLeadAutomation(leadId, stage, 'mensagem_entrada', messageText);
+          })();
+        } catch (err) {
+          console.error('Erro ao disparar automação por mensagem de entrada:', err);
+        }
+      }
+
       return new NextResponse('Webhook processed successfully', { status: 200 });
     }
 

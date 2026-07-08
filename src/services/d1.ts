@@ -1871,6 +1871,92 @@ export const d1Api = {
     return results && results.length > 0 ? results[0].count : 0;
   },
 
+  // --- BOTS ---
+  getBots: async (): Promise<any[]> => {
+    const { results } = await runQuery(`SELECT * FROM bots ORDER BY dataAtualizacao DESC`);
+    return results || [];
+  },
+
+  getBotById: async (id: string): Promise<any | null> => {
+    const { results } = await runQuery(`SELECT * FROM bots WHERE id = ? LIMIT 1`, [id]);
+    return results && results.length > 0 ? results[0] : null;
+  },
+
+  saveBot: async (bot: { id: string; name: string; nodesJson: string; edgesJson: string; ativo?: number }): Promise<void> => {
+    const exists = await d1Api.getBotById(bot.id);
+    const agora = new Date().toISOString();
+    if (exists) {
+      await executeRun(
+        `UPDATE bots SET name = ?, nodesJson = ?, edgesJson = ?, ativo = ?, dataAtualizacao = ? WHERE id = ?`,
+        [bot.name, bot.nodesJson, bot.edgesJson, bot.ativo !== undefined ? bot.ativo : 1, agora, bot.id]
+      );
+    } else {
+      await executeRun(
+        `INSERT INTO bots (id, name, nodesJson, edgesJson, ativo, dataCriacao, dataAtualizacao) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [bot.id, bot.name, bot.nodesJson, bot.edgesJson, bot.ativo !== undefined ? bot.ativo : 1, agora, agora]
+      );
+    }
+  },
+
+  deleteBot: async (id: string): Promise<void> => {
+    await executeRun(`DELETE FROM bots WHERE id = ?`, [id]);
+  },
+
+  // --- PIPELINE AUTOMATIONS ---
+  getPipelineAutomations: async (statusOrigem?: string): Promise<any[]> => {
+    let query = `SELECT * FROM pipeline_automations`;
+    const params: any[] = [];
+    if (statusOrigem) {
+      query += ` WHERE statusOrigem = ?`;
+      params.push(statusOrigem);
+    }
+    query += ` ORDER BY dataCriacao DESC`;
+    const { results } = await runQuery(query, params);
+    return results || [];
+  },
+
+  getPipelineAutomationById: async (id: string): Promise<any | null> => {
+    const { results } = await runQuery(`SELECT * FROM pipeline_automations WHERE id = ? LIMIT 1`, [id]);
+    return results && results.length > 0 ? results[0] : null;
+  },
+
+  savePipelineAutomation: async (auto: {
+    id: string;
+    statusOrigem: string;
+    nome: string;
+    ativo?: number;
+    condicoesJson: string;
+    tipoGatilho: string;
+    gatilhoConfigJson: string;
+    restricaoHorarioJson: string;
+    destinatarioTipo: string;
+    whatsappConnectionId?: string;
+    salesbotId?: string;
+    deixarSemResposta?: number;
+    aplicarExistentes?: number;
+    alterarEtapaPara?: string;
+    adicionarTags?: string;
+    atribuirUsuarioId?: string;
+  }): Promise<void> => {
+    const exists = await d1Api.getPipelineAutomationById(auto.id);
+    const agora = new Date().toISOString();
+    if (exists) {
+      await executeRun(
+        `UPDATE pipeline_automations SET statusOrigem = ?, nome = ?, ativo = ?, condicoesJson = ?, tipoGatilho = ?, gatilhoConfigJson = ?, restricaoHorarioJson = ?, destinatarioTipo = ?, whatsappConnectionId = ?, salesbotId = ?, deixarSemResposta = ?, aplicarExistentes = ?, alterarEtapaPara = ?, adicionarTags = ?, atribuirUsuarioId = ? WHERE id = ?`,
+        [auto.statusOrigem, auto.nome, auto.ativo !== undefined ? auto.ativo : 1, auto.condicoesJson, auto.tipoGatilho, auto.gatilhoConfigJson, auto.restricaoHorarioJson, auto.destinatarioTipo, auto.whatsappConnectionId || null, auto.salesbotId || null, auto.deixarSemResposta || 0, auto.aplicarExistentes || 0, auto.alterarEtapaPara || null, auto.adicionarTags || null, auto.atribuirUsuarioId || null, auto.id]
+      );
+    } else {
+      await executeRun(
+        `INSERT INTO pipeline_automations (id, statusOrigem, nome, ativo, condicoesJson, tipoGatilho, gatilhoConfigJson, restricaoHorarioJson, destinatarioTipo, whatsappConnectionId, salesbotId, deixarSemResposta, aplicarExistentes, alterarEtapaPara, adicionarTags, atribuirUsuarioId, dataCriacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [auto.id, auto.statusOrigem, auto.nome, auto.ativo !== undefined ? auto.ativo : 1, auto.condicoesJson, auto.tipoGatilho, auto.gatilhoConfigJson, auto.restricaoHorarioJson, auto.destinatarioTipo, auto.whatsappConnectionId || null, auto.salesbotId || null, auto.deixarSemResposta || 0, auto.aplicarExistentes || 0, auto.alterarEtapaPara || null, auto.adicionarTags || null, auto.atribuirUsuarioId || null, agora]
+      );
+    }
+  },
+
+  deletePipelineAutomation: async (id: string): Promise<void> => {
+    await executeRun(`DELETE FROM pipeline_automations WHERE id = ?`, [id]);
+  },
+
   // Database Execution Helpers
   runQuery: async (sql: string, params: any[] = []): Promise<any> => {
     return runQuery(sql, params);

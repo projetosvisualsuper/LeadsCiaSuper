@@ -8,6 +8,41 @@ export async function GET() {
     const db = (globalThis as any).DB || process.env.DB;
     if (!db) return NextResponse.json({ error: 'DB binding not found' });
     
+    // Criação das tabelas de automação de leads e bots
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS pipeline_automations (
+        id TEXT PRIMARY KEY,
+        statusOrigem TEXT NOT NULL,
+        nome TEXT NOT NULL,
+        ativo INTEGER DEFAULT 1,
+        condicoesJson TEXT NOT NULL,
+        tipoGatilho TEXT NOT NULL,
+        gatilhoConfigJson TEXT NOT NULL,
+        restricaoHorarioJson TEXT NOT NULL,
+        destinatarioTipo TEXT NOT NULL,
+        whatsappConnectionId TEXT,
+        salesbotId TEXT,
+        deixarSemResposta INTEGER DEFAULT 0,
+        aplicarExistentes INTEGER DEFAULT 0,
+        alterarEtapaPara TEXT,
+        adicionarTags TEXT,
+        atribuirUsuarioId TEXT,
+        dataCriacao TEXT NOT NULL
+      );
+    `).run();
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS bots (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        nodesJson TEXT NOT NULL,
+        edgesJson TEXT NOT NULL,
+        ativo INTEGER DEFAULT 1,
+        dataCriacao TEXT NOT NULL,
+        dataAtualizacao TEXT NOT NULL
+      );
+    `).run();
+
     // Criação das tabelas de chat interno
     await db.prepare(`
       CREATE TABLE IF NOT EXISTS internal_chats (

@@ -71,6 +71,16 @@ export async function POST(request: Request) {
     }
 
     await d1Api.saveOpportunity({ leadId, assignedTo });
+
+    try {
+      const { automationEngine } = await import('@/services/automation-engine');
+      (async () => {
+        await automationEngine.processLeadAutomation(leadId, 'pendente', 'quando_criado');
+      })();
+    } catch (err) {
+      console.error('Erro ao disparar automação na criação da oportunidade:', err);
+    }
+
     return NextResponse.json({ success: true, message: 'Oportunidade criada com sucesso.' });
   } catch (error: any) {
     console.error('Erro no POST /api/opportunities:', error);
@@ -92,6 +102,19 @@ export async function PUT(request: Request) {
 
     if (status) {
       await d1Api.updateOpportunityStatus(id, status);
+
+      try {
+        const opps = await d1Api.getOpportunities();
+        const opp = opps.find(o => o.id === id);
+        if (opp && opp.leadId) {
+          const { automationEngine } = await import('@/services/automation-engine');
+          (async () => {
+            await automationEngine.processLeadAutomation(opp.leadId, status, 'quando_criado');
+          })();
+        }
+      } catch (err) {
+        console.error('Erro ao disparar automação na mudança de status da oportunidade:', err);
+      }
     }
 
     if (observacao !== undefined) {

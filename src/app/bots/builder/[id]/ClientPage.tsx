@@ -6,6 +6,8 @@ import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
 import { ArrowLeft, Save, Play } from 'lucide-react';
 import BotSidebar from '@/components/bots/BotSidebar';
+import { api } from '@/services/api';
+import { useRouter } from 'next/navigation';
 import SendMessageNode from '@/components/bots/nodes/SendMessageNode';
 import ConditionNode from '@/components/bots/nodes/ConditionNode';
 
@@ -94,6 +96,7 @@ const templatesData: Record<string, { nodes: any[], edges: any[] }> = {
 
 export default function BotBuilder({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const initialData = templatesData[id] || templatesData['novo'];
   const [nodes, setNodes, onNodesChange] = useNodesState(initialData.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
@@ -104,26 +107,75 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
   const [rfInstance, setRfInstance] = useState<any>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`bot_flow_${id}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.nodes && parsed.nodes.length > 0) {
-          setNodes(parsed.nodes);
-          setEdges(parsed.edges);
-          if (parsed.name) setBotName(parsed.name);
+    if (id !== 'novo') {
+      api.getBotById(id).then((dbBot) => {
+        if (dbBot) {
+          try {
+            const nds = JSON.parse(dbBot.nodesJson);
+            const eds = JSON.parse(dbBot.edgesJson);
+            setNodes(nds);
+            setEdges(eds);
+            setBotName(dbBot.name);
+            return;
+          } catch (e) {
+            console.error("Erro ao converter JSON do bot:", e);
+          }
         }
-      } catch(e) {}
+        
+        const saved = localStorage.getItem(`bot_flow_${id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.nodes && parsed.nodes.length > 0) {
+            setNodes(parsed.nodes);
+            setEdges(parsed.edges);
+            if (parsed.name) setBotName(parsed.name);
+          }
+        }
+      }).catch((err) => {
+        console.error("Erro ao carregar bot do banco:", err);
+        const saved = localStorage.getItem(`bot_flow_${id}`);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.nodes && parsed.nodes.length > 0) {
+              setNodes(parsed.nodes);
+              setEdges(parsed.edges);
+              if (parsed.name) setBotName(parsed.name);
+            }
+          } catch(e) {}
+        }
+      });
     }
   }, [id, setNodes, setEdges]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaveStatus('Salvando...');
-    setTimeout(() => {
-      localStorage.setItem(`bot_flow_${id}`, JSON.stringify({ nodes, edges, name: botName }));
+    try {
+      const targetId = id === 'novo' ? `bot_${Math.random().toString(36).substr(2, 9)}` : id;
+
+      localStorage.setItem(`bot_flow_${targetId}`, JSON.stringify({ nodes, edges, name: botName }));
+
+      await api.saveBot({
+        id: targetId,
+        name: botName,
+        nodesJson: JSON.stringify(nodes),
+        edgesJson: JSON.stringify(edges),
+        ativo: 1
+      });
+
       setSaveStatus('Salvo! ✓');
       setTimeout(() => setSaveStatus('Salvar Fluxo'), 2500);
-    }, 600);
+
+      if (id === 'novo') {
+        setTimeout(() => {
+          router.push(`/bots/builder/${targetId}`);
+        }, 1000);
+      }
+    } catch (err) {
+      console.error("Erro ao salvar:", err);
+      setSaveStatus('Erro! ✗');
+      setTimeout(() => setSaveStatus('Salvar Fluxo'), 2500);
+    }
   };
 
   const handleTest = () => {

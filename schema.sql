@@ -252,3 +252,33 @@ CREATE TABLE IF NOT EXISTS pedidos (
   observacao TEXT,
   origem TEXT DEFAULT 'site'
 );
+
+CREATE TABLE IF NOT EXISTS pipeline_automations (
+  id TEXT PRIMARY KEY,
+  statusOrigem TEXT NOT NULL,
+  nome TEXT NOT NULL,
+  ativo INTEGER DEFAULT 1,
+  condicoesJson TEXT NOT NULL,
+  tipoGatilho TEXT NOT NULL,
+  gatilhoConfigJson TEXT NOT NULL,
+  restricaoHorarioJson TEXT NOT NULL,
+  destinatarioTipo TEXT NOT NULL,
+  whatsappConnectionId TEXT,
+  salesbotId TEXT,
+  deixarSemResposta INTEGER DEFAULT 0,
+  aplicarExistentes INTEGER DEFAULT 0,
+  alterarEtapaPara TEXT,
+  adicionarTags TEXT,
+  atribuirUsuarioId TEXT,
+  dataCriacao TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bots (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  nodesJson TEXT NOT NULL,
+  edgesJson TEXT NOT NULL,
+  ativo INTEGER DEFAULT 1,
+  dataCriacao TEXT NOT NULL,
+  dataAtualizacao TEXT NOT NULL
+);
