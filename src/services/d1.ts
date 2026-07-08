@@ -1971,6 +1971,26 @@ export const d1Api = {
     await executeRun(`DELETE FROM pipeline_automations WHERE id = ?`, [id]);
   },
 
+  getServiceStages: async (): Promise<any[]> => {
+    const { results } = await runQuery(`SELECT valueJson FROM settings WHERE key = 'service_stages' LIMIT 1`);
+    if (results && results.length > 0) {
+      return JSON.parse(results[0].valueJson);
+    }
+    return [
+      { id: 'novo', name: 'Novo / Aguardando' },
+      { id: 'em_atendimento', name: 'Em Atendimento' },
+      { id: 'pendente', name: 'Pendente' },
+      { id: 'finalizado', name: 'Finalizado' }
+    ];
+  },
+
+  saveServiceStages: async (stages: any[]): Promise<void> => {
+    await executeRun(
+      `INSERT INTO settings (key, valueJson) VALUES ('service_stages', ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`,
+      [JSON.stringify(stages)]
+    );
+  },
+
   // Database Execution Helpers
   runQuery: async (sql: string, params: any[] = []): Promise<any> => {
     return runQuery(sql, params);

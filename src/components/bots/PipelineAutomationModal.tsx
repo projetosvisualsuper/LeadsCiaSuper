@@ -45,19 +45,30 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
   const [adicionarTags, setAdicionarTags] = useState('');
   const [atribuirUsuarioId, setAtribuirUsuarioId] = useState('');
 
+  const [pipelineStages, setPipelineStages] = useState<any[]>([
+    { id: 'novo', name: 'Novo / Aguardando' },
+    { id: 'em_atendimento', name: 'Em Atendimento' },
+    { id: 'pendente', name: 'Pendente' },
+    { id: 'finalizado', name: 'Finalizado' }
+  ]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [autosData, botsData, usersData, connsData] = await Promise.all([
+      const [autosData, botsData, usersData, connsData, stagesData] = await Promise.all([
         api.getPipelineAutomations(),
         api.getBots(),
         api.getAllUserProfiles(),
-        api.getWhatsappConnections()
+        api.getWhatsappConnections(),
+        api.getServiceStages()
       ]);
       setAutomations(autosData || []);
       setBots(botsData || []);
       setUsers(usersData || []);
       setConnections(connsData || []);
+      if (stagesData && stagesData.length > 0) {
+        setPipelineStages(stagesData);
+      }
     } catch (e) {
       console.error('Erro ao carregar dados de automação:', e);
     } finally {
@@ -186,12 +197,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
     );
   };
 
-  const pipelineStages = [
-    { id: 'novo', name: 'Novo / Aguardando' },
-    { id: 'em_atendimento', name: 'Em Atendimento' },
-    { id: 'pendente', name: 'Pendente' },
-    { id: 'finalizado', name: 'Finalizado' }
-  ];
+
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
