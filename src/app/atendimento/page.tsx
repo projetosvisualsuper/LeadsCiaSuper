@@ -1468,68 +1468,158 @@ function AtendimentoContent() {
         {selectedChatId ? (
           <>
             {/* Header do Chat */}
-            <header className="chat-header">
-              <div className="chat-header-left">
-                <button 
-                  className="mobile-back-button"
-                  onClick={() => setSelectedChatId(null)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0.25rem 0.5rem 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
-                >
-                  <ChevronLeft size={24} />
-                </button>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                  {activeChat?.leadAvatar ? (
-                    <img src={activeChat.leadAvatar} alt={activeChat.leadName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <User size={18} color="#94a3b8" />
-                  )}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <h3 className="chat-lead-name" style={{ margin: 0 }}>{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
-                    {activeChat?.isInternal === 1 && (
-                      <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
-                        Interno
-                      </span>
+            <header className="chat-header" style={{ padding: '0.75rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
+              {/* Row 1: User Info & Control Buttons */}
+              <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="chat-header-left">
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                    {activeChat?.leadAvatar ? (
+                      <img src={activeChat.leadAvatar} alt={activeChat.leadName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <User size={18} color="#94a3b8" />
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981' }}>
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
-                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <h3 className="chat-lead-name" style={{ margin: 0 }}>{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
+                      {activeChat?.isInternal === 1 && (
+                        <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                          Interno
+                        </span>
+                      )}
                     </div>
-                    {unansweredTimeStr && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#ef4444' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }}></div>
-                        <span>Sem resposta há {unansweredTimeStr}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}</span>
+                      </div>
+                      {unansweredTimeStr && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#ef4444' }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }}></div>
+                          <span>Sem resposta há {unansweredTimeStr}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="chat-header-right" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button 
+                    onClick={() => setShowLeadDetails(!showLeadDetails)}
+                    style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: showLeadDetails ? 'var(--primary)' : 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Detalhes do Lead"
+                  >
+                    <Filter size={18} />
+                  </button>
+                  <div style={{ position: 'relative', display: 'flex' }} ref={chatMenuRef}>
+                    <button 
+                      onClick={() => setShowChatMenu(!showChatMenu)}
+                      style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <MoreVertical size={18} />
+                    </button>
+                    {showChatMenu && (
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: '100%', 
+                        right: 0, 
+                        background: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                        zIndex: 1000,
+                        width: '180px',
+                        marginTop: '0.5rem',
+                        overflow: 'hidden'
+                      }}>
+                        {activeChat?.lastMessageIsIncoming === 1 && (
+                          <button 
+                            onClick={() => {
+                              setShowChatMenu(false);
+                              handleMarkAsAnswered();
+                            }}
+                            style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
+                          >
+                            <CheckCheck size={14} color="#10b981" /> Marcar como Respondido
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => {
+                            setShowChatMenu(false);
+                            handleToggleInternalContact();
+                          }}
+                          style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: activeChat?.isInternal === 1 ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
+                        >
+                          <Users size={14} color={activeChat?.isInternal === 1 ? '#3b82f6' : '#64748b'} />
+                          {activeChat?.isInternal === 1 ? 'Marcar como Externo' : 'Marcar como Interno'}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setShowChatMenu(false);
+                            handleArchiveChat();
+                          }}
+                          style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
+                        >
+                          <Clock size={14} /> Arquivar Conversa
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setShowChatMenu(false);
+                            handleDeleteChat();
+                          }}
+                          style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                          <Trash2 size={14} /> Excluir Conversa
+                        </button>
                       </div>
                     )}
                   </div>
+
+                  {/* Close button with X icon */}
+                  <button 
+                    onClick={() => setSelectedChatId(null)}
+                    style={{ 
+                      padding: '0.5rem', 
+                      borderRadius: '8px', 
+                      border: '1px solid #ef4444', 
+                      background: '#fef2f2', 
+                      cursor: 'pointer', 
+                      color: '#ef4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
+                    title="Fechar Conversa"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Row 2: Connection Badge & Stage Dropdown */}
+              <div style={{ display: 'flex', width: '100%', gap: '1rem', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
                 {chats.find(c => c.id === selectedChatId)?.connectionName && (
-                  <div className="connection-badge-container">
-                    <div style={{ 
-                      background: '#f8fafc', 
-                      border: '1px solid #e2e8f0', 
-                      padding: '0.4rem 1rem', 
-                      borderRadius: '20px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem',
-                      color: '#475569',
-                      fontSize: '0.85rem',
-                      fontWeight: 600
-                    }}>
-                      <MessageCircle size={14} color="#10b981" />
-                      Conexão: <span style={{ color: '#0f172a' }}>{chats.find(c => c.id === selectedChatId)?.connectionName}</span>
-                    </div>
+                  <div style={{ 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    padding: '0.35rem 0.75rem', 
+                    borderRadius: '20px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.4rem',
+                    color: '#475569',
+                    fontSize: '0.8rem',
+                    fontWeight: 600
+                  }}>
+                    <MessageCircle size={14} color="#10b981" />
+                    Conexão: <span style={{ color: '#0f172a' }}>{chats.find(c => c.id === selectedChatId)?.connectionName}</span>
                   </div>
                 )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: 'auto' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Etapa:</span>
                   <select
                     value={activeChat?.etapaAtendimento || 'novo'}
@@ -1550,85 +1640,26 @@ function AtendimentoContent() {
                       }
                     }}
                     style={{
-                      padding: '0.35rem 0.75rem',
+                      padding: '0.25rem 0.5rem',
                       borderRadius: '20px',
                       border: '1px solid #e2e8f0',
                       background: '#f8fafc',
                       color: '#0f172a',
-                      fontSize: '0.85rem',
+                      fontSize: '0.8rem',
                       fontWeight: 600,
                       cursor: 'pointer',
                       outline: 'none'
                     }}
                   >
-                    <option value="novo">Novo / Aguardando</option>
-                    <option value="em_atendimento">Em Atendimento</option>
-                    <option value="pendente">Pendente</option>
-                    <option value="finalizado">Finalizado</option>
+                    {serviceStages.map(stg => (
+                      <option key={stg.id} value={stg.id}>{stg.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
-
-              <div className="chat-header-right">
-                <button 
-                  onClick={() => setShowLeadDetails(!showLeadDetails)}
-                  style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: showLeadDetails ? 'var(--primary)' : 'inherit' }}
-                >
-                  <Filter size={18} />
-                </button>
-                <div style={{ position: 'relative' }} ref={chatMenuRef}>
-                  <button 
-                    onClick={() => setShowChatMenu(!showChatMenu)}
-                    style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer' }}
-                  >
-                    <MoreVertical size={18} />
-                  </button>
-                  {showChatMenu && (
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '100%', 
-                      right: 0, 
-                      marginTop: '0.5rem', 
-                      background: 'white', 
-                      borderRadius: '12px', 
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)', 
-                      border: '1px solid #e2e8f0',
-                      zIndex: 100,
-                      width: '180px',
-                      overflow: 'hidden'
-                    }}>
-                      {activeChat?.lastMessageIsIncoming === 1 && (
-                        <button 
-                          onClick={handleMarkAsAnswered}
-                          style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
-                        >
-                          <CheckCheck size={14} color="#10b981" /> Marcar como Respondido
-                        </button>
-                      )}
-                      <button 
-                        onClick={handleToggleInternalContact}
-                        style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: activeChat?.isInternal === 1 ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
-                      >
-                        <Users size={14} color={activeChat?.isInternal === 1 ? '#3b82f6' : '#64748b'} />
-                        {activeChat?.isInternal === 1 ? 'Marcar como Externo' : 'Marcar como Interno'}
-                      </button>
-                      <button 
-                        onClick={handleArchiveChat}
-                        style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                      >
-                        <Clock size={14} /> Arquivar Conversa
-                      </button>
-                      <button 
-                        onClick={handleDeleteChat}
-                        style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                      >
-                        <Trash2 size={14} /> Excluir Conversa
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
             </header>
+
+
 
             {/* Mensagens */}
             <div ref={messagesContainerRef} className="messages-container custom-scrollbar" onScroll={handleScroll}>
