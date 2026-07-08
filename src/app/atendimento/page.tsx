@@ -31,8 +31,10 @@ import {
   Mic,
   Square,
   Plus,
-  Upload
+  Upload,
+  Zap
 } from 'lucide-react';
+import PipelineAutomationModal from '@/components/bots/PipelineAutomationModal';
 
 const renderSocialIcon = (platform: string, size: number = 24, color?: string) => {
   const svgPaths: Record<string, string> = {
@@ -101,6 +103,7 @@ function AtendimentoContent() {
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+  const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
 
   useEffect(() => {
     api.getAllUserProfiles()
@@ -1062,7 +1065,15 @@ function AtendimentoContent() {
         <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b' }}>Mensagens</h2>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button 
+                type="button"
+                onClick={() => setIsAutomationModalOpen(true)}
+                title="Configurar Automações"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7, padding: '5px', color: 'var(--primary)' }}
+              >
+                <Zap size={18} />
+              </button>
               <button 
                 onClick={async () => {
                   if (syncingYoutube) return;
@@ -2833,6 +2844,11 @@ function AtendimentoContent() {
           </div>
         </div>
       )}
+
+      <PipelineAutomationModal 
+        isOpen={isAutomationModalOpen}
+        onClose={() => setIsAutomationModalOpen(false)}
+      />
 
       {/* Notificação Toast Customizada */}
       {customAlert && (

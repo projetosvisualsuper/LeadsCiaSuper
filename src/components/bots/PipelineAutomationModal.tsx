@@ -103,6 +103,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
   };
 
   const handleNew = () => {
+    console.log("handleNew called, activeTab:", activeTab);
     setEditingAuto({ id: 'new', statusOrigem: activeTab });
     setNome('Nova Automação');
     setTipoGatilho('quando_criado');
@@ -201,7 +202,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
           <div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Zap size={20} color="var(--primary)" />
-              Configurar Automações de Leads (Estilo Kommo)
+              Configurar Automações de Leads
             </h2>
             <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '4px 0 0 0' }}>Configure gatilhos e robôs automatizados por etapa do pipeline.</p>
           </div>
@@ -248,6 +249,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
 
             <div style={{ marginTop: 'auto', padding: '1rem' }}>
               <button 
+                type="button"
                 onClick={handleNew}
                 style={{ 
                   width: '100%', 
@@ -549,6 +551,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
                     Automações para Etapa: {pipelineStages.find(s => s.id === activeTab)?.name}
                   </h3>
                   <button 
+                    type="button"
                     onClick={handleNew}
                     style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', fontWeight: 700 }}
                   >

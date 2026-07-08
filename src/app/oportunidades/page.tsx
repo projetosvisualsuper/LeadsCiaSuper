@@ -25,7 +25,6 @@ import {
   Zap
 } from 'lucide-react';
 import Link from 'next/link';
-import PipelineAutomationModal from '@/components/bots/PipelineAutomationModal';
 
 const renderMessageContent = (msg: ChatMessage, leadNome: string) => {
   const isImage = msg.type === 'image';
@@ -82,7 +81,6 @@ export default function OportunidadesPage() {
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas'>('novas');
   const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
-  const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
 
   const fetchOpportunities = async () => {
     setLoading(true);
@@ -274,25 +272,15 @@ export default function OportunidadesPage() {
             Gerencie os leads qualificados encaminhados para atendimento humano comercial.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
-            onClick={() => setIsAutomationModalOpen(true)}
-            className="btn"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#3b82f6', color: 'white' }}
-          >
-            <Zap size={16} />
-            Automações
-          </button>
-          <button 
-            onClick={fetchOpportunities} 
-            disabled={loading}
-            className="btn"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
-          >
-            <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-            {loading ? 'Atualizando...' : 'Atualizar'}
-          </button>
-        </div>
+        <button 
+          onClick={fetchOpportunities} 
+          disabled={loading}
+          className="btn"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
+        >
+          <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+          {loading ? 'Atualizando...' : 'Atualizar'}
+        </button>
       </div>
 
       {/* TABS */}
@@ -719,10 +707,7 @@ export default function OportunidadesPage() {
         </div>
       )}
 
-      <PipelineAutomationModal 
-        isOpen={isAutomationModalOpen}
-        onClose={() => setIsAutomationModalOpen(false)}
-      />
+
 
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin {
