@@ -180,7 +180,10 @@ async function processBlingOrder(orderId: string) {
 
   if (isFinalized) {
     if (pedidoLocal) {
-      await d1Api.updatePedidoStatus(pedidoLocal.id, 'enviado');
+      const isAtendido = statusName.includes('atendido') || statusName.includes('finalizado') || statusName === '9' || statusName === '2';
+      const crmStatus = isAtendido ? 'finalizado' : 'enviado';
+      
+      await d1Api.updatePedidoStatus(pedidoLocal.id, crmStatus);
 
       const trackText = trackingCode ? ` (Rastreio: ${trackingCode})` : '';
       const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}${trackText}.`;
@@ -238,13 +241,13 @@ async function processBlingOrder(orderId: string) {
       await d1Api.saveSystemLog({
         level: 'info',
         source: 'Bling Integration',
-        message: `Pedido #${orderNumber} atualizado para 'enviado'. Rastreamento: ${trackingCode || 'não informado'}.`,
+        message: `Pedido #${orderNumber} atualizado para '${crmStatus}'. Rastreamento: ${trackingCode || 'não informado'}.`,
         details: null
       });
 
       return { 
         success: true, 
-        message: 'Status do pedido atualizado para Enviado e código de rastreio armazenado.',
+        message: `Status do pedido atualizado para ${crmStatus === 'finalizado' ? 'Finalizado' : 'Enviado'} e código de rastreio armazenado.`,
         pedido: pedidoLocal
       };
     } else {
