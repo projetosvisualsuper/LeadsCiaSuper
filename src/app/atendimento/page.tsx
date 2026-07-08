@@ -306,6 +306,7 @@ function AtendimentoContent() {
   }, [selectedChatId, chats.length]);
 
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const hasLoadedInitialMessages = useRef(false);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -322,16 +323,16 @@ function AtendimentoContent() {
 
   useEffect(() => {
     if (selectedChatId) {
-      scrollToBottom();
+      hasLoadedInitialMessages.current = false;
       setShowScrollBottomBtn(false);
+      scrollToBottom();
     }
   }, [selectedChatId]);
 
   useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    const sentByMe = lastMessage && !lastMessage.isIncoming;
-    if (!showScrollBottomBtn || sentByMe) {
-      scrollToBottom();
+    if (messages.length > 0 && !hasLoadedInitialMessages.current) {
+      setTimeout(scrollToBottom, 100);
+      hasLoadedInitialMessages.current = true;
     }
   }, [messages]);
 
@@ -444,6 +445,7 @@ function AtendimentoContent() {
           console.log('Mensagem processada em modo simulação.');
         }
       }
+      setTimeout(scrollToBottom, 50);
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
     }
@@ -523,6 +525,7 @@ function AtendimentoContent() {
           })
         });
       }
+      setTimeout(scrollToBottom, 50);
     } catch (error: any) {
       console.error('Erro no upload:', error);
       alert('Erro ao enviar arquivo: ' + (error.message || error));
@@ -2269,7 +2272,7 @@ function AtendimentoContent() {
                 style={{
                   position: 'absolute',
                   bottom: '90px',
-                  right: '25px',
+                  right: '12px',
                   width: '42px',
                   height: '42px',
                   borderRadius: '50%',
