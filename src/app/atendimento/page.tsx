@@ -540,6 +540,15 @@ function AtendimentoContent() {
     if (file) await uploadFile(file);
   };
 
+  const handleInputPaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      e.preventDefault();
+      const file = files[0];
+      await uploadFile(file);
+    }
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -1941,6 +1950,16 @@ function AtendimentoContent() {
                 </div>
               )}
               <form onSubmit={handleSendMessage} className="chat-form" style={{ paddingTop: replyingToMessage ? '0.75rem' : '' }}>
+                <input 
+                  type="file" 
+                  id="file-upload"
+                  ref={fileInputRef} 
+                  style={{ display: 'none' }} 
+                  onChange={(e) => {
+                    handleFileUpload(e);
+                    setShowActionsDropdown(false);
+                  }} 
+                />
                 <div className="actions-dropdown-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <button 
                     type="button" 
@@ -2007,18 +2026,8 @@ function AtendimentoContent() {
                         <span>Emoji</span>
                       </button>
 
-                      <input 
-                        type="file" 
-                        id="file-upload"
-                        ref={fileInputRef} 
-                        style={{ display: 'none' }} 
-                        onChange={handleFileUpload} 
-                      />
                       <label
                         htmlFor="file-upload"
-                        onClick={() => {
-                          setShowActionsDropdown(false);
-                        }}
                         style={{
                           width: '100%',
                           padding: '0.6rem 0.75rem',
@@ -2225,6 +2234,7 @@ function AtendimentoContent() {
                     style={{ flex: 1, minWidth: 0, padding: '0.8rem 1.2rem', borderRadius: '30px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.95rem' }}
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
+                    onPaste={handleInputPaste}
                   />
                 )}
                 
