@@ -305,9 +305,33 @@ function AtendimentoContent() {
     };
   }, [selectedChatId, chats.length]);
 
-  useEffect(() => {
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+
+  const scrollToBottom = () => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  };
+
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    setShowScrollBottomBtn(!isNearBottom);
+  };
+
+  useEffect(() => {
+    if (selectedChatId) {
+      scrollToBottom();
+      setShowScrollBottomBtn(false);
+    }
+  }, [selectedChatId]);
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    const sentByMe = lastMessage && !lastMessage.isIncoming;
+    if (!showScrollBottomBtn || sentByMe) {
+      scrollToBottom();
     }
   }, [messages]);
 
@@ -1665,7 +1689,7 @@ function AtendimentoContent() {
             </header>
 
             {/* Mensagens */}
-            <div ref={messagesContainerRef} className="messages-container custom-scrollbar">
+            <div ref={messagesContainerRef} className="messages-container custom-scrollbar" onScroll={handleScroll}>
               {visibleMessages.length === 0 && (
                 <div style={{ textAlign: 'center', margin: '2rem 0', opacity: 0.4 }}>
                   <p style={{ fontSize: '0.875rem' }}>Início da conversa</p>
@@ -2238,6 +2262,34 @@ function AtendimentoContent() {
                   </button>
                 )}
               </form>
+            {showScrollBottomBtn && (
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                style={{
+                  position: 'absolute',
+                  bottom: '90px',
+                  right: '25px',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: 'white',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  border: '1px solid #e2e8f0',
+                  zIndex: 99,
+                  color: '#64748b',
+                  transition: 'all 0.2s ease',
+                }}
+                className="hover-bg"
+                title="Ir para a última mensagem"
+              >
+                <ChevronDown size={22} />
+              </button>
+            )}
             </footer>
           </>
         ) : (
