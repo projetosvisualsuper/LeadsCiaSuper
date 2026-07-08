@@ -1001,7 +1001,7 @@ function AtendimentoContent() {
       <div className={`conversas-sidebar ${selectedChatId ? 'hidden-on-mobile' : ''}`}>
         <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Mensagens</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b' }}>Mensagens</h2>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button 
                 onClick={async () => {
@@ -1406,7 +1406,7 @@ function AtendimentoContent() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', alignItems: 'center' }}>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, color: (chat.unreadCount || 0) > 0 ? '#1e293b' : 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: (chat.unreadCount || 0) > 0 ? 700 : 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       {chat.leadName}
                       {chat.isInternal === 1 && (
                         <span style={{ fontSize: '0.6rem', background: '#dbeafe', color: '#1e40af', padding: '0px 3px', borderRadius: '3px', fontWeight: 600, lineHeight: 1 }}>
@@ -1415,7 +1415,7 @@ function AtendimentoContent() {
                       )}
                     </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                      <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400, color: (chat.unreadCount || 0) > 0 ? '#22c55e' : 'inherit' }}>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: (chat.unreadCount || 0) > 0 ? 600 : 400, color: (chat.unreadCount || 0) > 0 ? '#22c55e' : '#64748b' }}>
                         {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                       {chat.lastMessageIsIncoming === 1 && (() => {
@@ -2269,7 +2269,7 @@ function AtendimentoContent() {
           animation: 'slideInRight 0.3s ease-out' 
         }}>
           <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontWeight: 800 }}>Sobre o Lead</h3>
+            <h3 style={{ fontWeight: 800, color: '#1e293b' }}>Sobre o Lead</h3>
             <button onClick={() => setShowLeadDetails(false)} style={{ opacity: 0.4 }}><X size={20} /></button>
           </header>
           
@@ -2282,8 +2282,8 @@ function AtendimentoContent() {
                   <User size={40} color="#94a3b8" />
                 )}
               </div>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 800 }}>{selectedLead?.nome}</h4>
-              <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>{selectedLead?.email || 'Sem e-mail cadastrado'}</p>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>{selectedLead?.nome}</h4>
+              <p style={{ fontSize: '0.85rem', opacity: 0.6, color: '#64748b' }}>{selectedLead?.email || 'Sem e-mail cadastrado'}</p>
             </div>
 
             {unansweredTimeStr && (
@@ -2528,6 +2528,7 @@ function AtendimentoContent() {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          color: #1e293b;
         }
         .chat-footer {
           padding: 0 1.5rem 1.5rem;

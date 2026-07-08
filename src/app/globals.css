@@ -20,7 +20,7 @@
   --glass: rgba(255, 255, 255, 0.8);
 }
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   :root {
     --background: #020617;
     --foreground: #f8fafc;
@@ -33,7 +33,7 @@
     --accent: #1e293b;
     --accent-foreground: #f8fafc;
   }
-}
+} */
 
 * {
   box-sizing: border-box;
