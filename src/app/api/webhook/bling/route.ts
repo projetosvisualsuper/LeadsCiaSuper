@@ -85,12 +85,7 @@ async function processBlingOrder(orderId: string) {
   // A situação pode vir como ID ou nome
   const statusName = (data.situacao?.nome || '').toString().toLowerCase() || (data.situacao?.id || '').toString();
   
-  // Rastreamento
-  let trackingCode = '';
-  if (data.transporte?.volumes && Array.isArray(data.transporte.volumes)) {
-    const volume = data.transporte.volumes[0];
-    trackingCode = volume?.codigoRastreamento || volume?.rastreamento || '';
-  }
+
 
   // Cliente
   const clientName = data.contato?.nome || 'Cliente';
@@ -185,8 +180,7 @@ async function processBlingOrder(orderId: string) {
       
       await d1Api.updatePedidoStatus(pedidoLocal.id, crmStatus);
 
-      const trackText = trackingCode ? ` (Rastreio: ${trackingCode})` : '';
-      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}${trackText}.`;
+      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
       const novaObs = (pedidoLocal.observacao || '') + updateText;
       await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
@@ -241,19 +235,19 @@ async function processBlingOrder(orderId: string) {
       await d1Api.saveSystemLog({
         level: 'info',
         source: 'Bling Integration',
-        message: `Pedido #${orderNumber} atualizado para '${crmStatus}'. Rastreamento: ${trackingCode || 'não informado'}.`,
+        message: `Pedido #${orderNumber} atualizado para '${crmStatus}'.`,
         details: null
       });
 
       return { 
         success: true, 
-        message: `Status do pedido atualizado para ${crmStatus === 'finalizado' ? 'Finalizado' : 'Enviado'} e código de rastreio armazenado.`,
+        message: `Status do pedido atualizado para ${crmStatus === 'finalizado' ? 'Finalizado' : 'Enviado'}.`,
         pedido: pedidoLocal
       };
     } else {
       return { 
         success: true, 
-        message: 'Pedido não localizado no CRM para atualização de rastreamento.' 
+        message: 'Pedido não localizado no CRM.' 
       };
     }
   }
