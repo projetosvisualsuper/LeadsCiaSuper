@@ -1978,7 +1978,7 @@ function AtendimentoContent() {
                   type="file" 
                   id="file-upload"
                   ref={fileInputRef} 
-                  style={{ display: 'none' }} 
+                  style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} 
                   onChange={(e) => {
                     handleFileUpload(e);
                     setShowActionsDropdown(false);
@@ -2052,9 +2052,6 @@ function AtendimentoContent() {
 
                       <label
                         htmlFor="file-upload"
-                        onClick={() => {
-                          setTimeout(() => setShowActionsDropdown(false), 50);
-                        }}
                         style={{
                           width: '100%',
                           padding: '0.6rem 0.75rem',

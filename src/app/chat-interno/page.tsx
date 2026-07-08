@@ -904,7 +904,7 @@ export default function ChatInternoPage() {
         type="file" 
         id="file-upload-internal"
         ref={fileInputRef} 
-        style={{ display: 'none' }} 
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }} 
         onChange={handleFileUpload} 
         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
       />
