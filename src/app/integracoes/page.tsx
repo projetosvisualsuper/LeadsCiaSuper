@@ -75,6 +75,8 @@ export default function IntegracoesPage() {
   const [formYouTube, setFormYouTube] = useState({ apiKey: '', channelId: '', clientId: '', clientSecret: '' });
   const [formWhatsApp, setFormWhatsApp] = useState({ apiUrl: '', apiKey: '' });
   const [formBling, setFormBling] = useState({ enabled: true, clientId: '', clientSecret: '', templateName: '', templateLanguage: 'pt_BR' });
+  const [testPhone, setTestPhone] = useState('');
+  const [testingMessage, setTestingMessage] = useState(false);
 
   useEffect(() => {
     setPublicLink(`${window.location.origin}/captura`);
@@ -1080,6 +1082,61 @@ export default function IntegracoesPage() {
                             <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '6px', lineHeight: 1.4 }}>
                               Copie esta URL e cole nas configurações de Webhooks do Bling para o evento de alteração de situação de vendas.
                             </p>
+                          </div>
+
+                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', marginTop: '0.5rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.825rem', fontWeight: 700, color: '#475569' }}>🧪 Teste Manual de Envio de Notificação</label>
+                            <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                              Envie uma notificação de teste de envio de pedido para um número de celular específico (WhatsApp) para validar a integração e o template.
+                            </p>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <input 
+                                type="text" 
+                                value={testPhone} 
+                                onChange={(e) => setTestPhone(e.target.value)}
+                                placeholder="DDD + Número (ex: 5549999999999)"
+                                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                              />
+                              <button
+                                type="button"
+                                disabled={testingMessage}
+                                onClick={async () => {
+                                  const clean = testPhone.replace(/\D/g, '');
+                                  if (!clean) {
+                                    alert('Por favor, informe um número de celular válido para o teste.');
+                                    return;
+                                  }
+                                  setTestingMessage(true);
+                                  try {
+                                    const { sendBlingTestMessageAction } = await import('@/app/actions/bling-test');
+                                    const res = await sendBlingTestMessageAction(clean);
+                                    if (res.success) {
+                                      alert('Mensagem de teste disparada com sucesso!');
+                                    } else {
+                                      alert(`Falha ao disparar mensagem: ${res.error}`);
+                                    }
+                                  } catch (err: any) {
+                                    console.error(err);
+                                    alert(`Erro ao enviar teste: ${err.message || err}`);
+                                  } finally {
+                                    setTestingMessage(false);
+                                  }
+                                }}
+                                style={{
+                                  background: '#10b981',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  padding: '0.5rem 1rem',
+                                  borderRadius: '8px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  opacity: testingMessage ? 0.7 : 1
+                                }}
+                              >
+                                {testingMessage ? 'Enviando...' : 'Enviar Teste'}
+                              </button>
+                            </div>
                           </div>
                         </>
                       )}
