@@ -24,9 +24,11 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  GitMerge
+  GitMerge,
+  ShoppingBag
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import Link from 'next/link';
 
 const WhatsAppIcon = ({ size = 18, color = 'currentColor' }) => (
   <svg viewBox="0 0 24 24" fill={color} width={size} height={size} style={{ display: 'inline-block', verticalAlign: 'middle', marginTop: '-2px' }}>
@@ -122,7 +124,21 @@ function LeadsContent() {
   const [importStatus, setImportStatus] = useState('');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
+  const [leadPedidos, setLeadPedidos] = useState<any[]>([]);
+  const [loadingPedidos, setLoadingPedidos] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+  useEffect(() => {
+    if (isDetailsOpen && viewingLead) {
+      setLoadingPedidos(true);
+      api.getPedidosByLeadId(viewingLead.id)
+        .then(setLeadPedidos)
+        .catch(err => console.error('Erro ao buscar pedidos do lead:', err))
+        .finally(() => setLoadingPedidos(false));
+    } else {
+      setLeadPedidos([]);
+    }
+  }, [isDetailsOpen, viewingLead]);
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
   const [importAnalysis, setImportAnalysis] = useState<{
     total: number;
@@ -1069,6 +1085,95 @@ function LeadsContent() {
                     <p>{viewingLead.utm_campaign || '---'}</p>
                   </div>
                 </div>
+              </section>
+
+              {/* Seção Histórico de Pedidos */}
+              <section style={{ background: 'var(--background)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontWeight: 600, color: 'var(--primary)' }}>
+                  <ShoppingBag size={18} /> Histórico de Pedidos
+                </h4>
+                
+                {loadingPedidos ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.9rem', padding: '0.5rem' }}>
+                    <Loader2 className="animate-spin" size={16} />
+                    Carregando pedidos...
+                  </div>
+                ) : leadPedidos.length === 0 ? (
+                  <p style={{ fontStyle: 'italic', color: '#94a3b8', fontSize: '0.9rem', margin: '0.5rem 0' }}>
+                    Nenhum pedido encontrado para este lead.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    {leadPedidos.map((pedido) => {
+                      const statusColors: Record<string, { bg: string, color: string, label: string }> = {
+                        pendente: { bg: '#fef3c7', color: '#b45309', label: 'Pendente' },
+                        em_atendimento: { bg: '#dbeafe', color: '#1d4ed8', label: 'Em Atendimento' },
+                        finalizado: { bg: '#d1fae5', color: '#047857', label: 'Finalizado' },
+                        cancelado: { bg: '#fee2e2', color: '#b91c1c', label: 'Cancelado' },
+                        enviado: { bg: '#e0f2fe', color: '#0369a1', label: 'Enviado' },
+                      };
+                      const statusInfo = statusColors[pedido.status] || { bg: '#f1f5f9', color: '#475569', label: pedido.status || 'Pendente' };
+                      
+                      return (
+                        <Link
+                          key={pedido.id}
+                          href={`/pedidos?pedidoId=${pedido.id}&leadId=${viewingLead.id}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.75rem 1rem',
+                            background: 'var(--card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            transition: 'all 0.2s ease',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--border)';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>
+                              Ref: {pedido.pedidoReferencia || pedido.id}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {new Date(pedido.dataCriacao).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {pedido.valor ? (
+                              <span style={{ fontWeight: '600', fontSize: '0.9rem', color: '#059669' }}>
+                                R$ {Number(pedido.valor).toFixed(2)}
+                              </span>
+                            ) : null}
+                            <span style={{
+                              padding: '3px 8px',
+                              backgroundColor: statusInfo.bg,
+                              color: statusInfo.color,
+                              borderRadius: '999px',
+                              fontSize: '0.7rem',
+                              fontWeight: 'bold',
+                              textTransform: 'uppercase'
+                            }}>
+                              {statusInfo.label}
+                            </span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
 
               {/* Seção Status e Obs */}

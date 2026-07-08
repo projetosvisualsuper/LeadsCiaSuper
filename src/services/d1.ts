@@ -1778,6 +1778,19 @@ export const d1Api = {
     return (results || []) as Pedido[];
   },
 
+  getPedidosByLeadId: async (leadId: string): Promise<Pedido[]> => {
+    await d1Api.ensureOrigemColumn();
+    const query = `
+      SELECT p.*, l.nome as leadNome, l.celular as leadCelular
+      FROM pedidos p
+      LEFT JOIN leads l ON p.leadId = l.id
+      WHERE p.leadId = ?
+      ORDER BY p.dataCriacao DESC
+    `;
+    const { results } = await runQuery(query, [leadId]);
+    return (results || []) as Pedido[];
+  },
+
   markPedidoAsRead: async (pedidoId: string): Promise<void> => {
     await executeRun(`UPDATE pedidos SET isRead = 1 WHERE id = ?`, [pedidoId]);
   },

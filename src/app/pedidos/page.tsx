@@ -2,19 +2,53 @@
 
 export const runtime = 'edge';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { api } from '@/services/api';
 import { Pedido } from '@/types/crm';
 import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
-export default function PedidosPage() {
+function PedidosContent() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPedidoId, setExpandedPedidoId] = useState<string | null>(null);
   const [observacoesInput, setObservacoesInput] = useState<Record<string, string>>({});
   const [savingObs, setSavingObs] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'site' | 'mercos'>('site');
+
+  const searchParams = useSearchParams();
+  const leadIdParam = searchParams.get('leadId') || '';
+  const pedidoIdParam = searchParams.get('pedidoId') || '';
+
+  useEffect(() => {
+    if (pedidos.length > 0) {
+      if (pedidoIdParam) {
+        const found = pedidos.find(p => p.id === pedidoIdParam);
+        if (found) {
+          setActiveTab(found.origem === 'mercos' ? 'mercos' : 'site');
+          setExpandedPedidoId(found.id);
+          setObservacoesInput(prev => ({ ...prev, [found.id]: found.observacao || '' }));
+          
+          if (!found.isRead) {
+            api.markPedidoAsRead(found.id).then(() => {
+              setPedidos(prev => prev.map(p => p.id === found.id ? { ...p, isRead: true } : p));
+              window.dispatchEvent(new Event('pedidos-read'));
+            }).catch(console.error);
+          }
+        }
+      } else if (leadIdParam) {
+        const leadOrders = pedidos.filter(p => p.leadId === leadIdParam);
+        if (leadOrders.length > 0) {
+          const hasMercos = leadOrders.some(p => p.origem === 'mercos');
+          const hasSite = leadOrders.some(p => p.origem !== 'mercos');
+          if (hasMercos && !hasSite) {
+            setActiveTab('mercos');
+          }
+        }
+      }
+    }
+  }, [pedidos, pedidoIdParam, leadIdParam]);
 
   const handleSaveObservacao = async (pedidoId: string) => {
     const obs = observacoesInput[pedidoId] || '';
@@ -137,6 +171,9 @@ export default function PedidosPage() {
   };
 
   const filteredPedidos = pedidos.filter(p => {
+    if (leadIdParam && p.leadId !== leadIdParam) {
+      return false;
+    }
     if (activeTab === 'mercos') {
       return p.origem === 'mercos';
     }
@@ -169,6 +206,28 @@ export default function PedidosPage() {
           {loading ? 'Atualizando...' : 'Atualizar'}
         </button>
       </div>
+
+      {leadIdParam && (
+        <div style={{
+          padding: '0.75rem 1rem',
+          backgroundColor: '#e0f2fe',
+          border: '1px solid #bae6fd',
+          borderRadius: '8px',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: '#0369a1',
+          fontSize: '0.9rem'
+        }}>
+          <span>
+            Exibindo pedidos do lead: <strong>{pedidos.find(p => p.leadId === leadIdParam)?.leadNome || 'Carregando...'}</strong>
+          </span>
+          <Link href="/pedidos" style={{ color: '#0284c7', fontWeight: 'bold', textDecoration: 'underline' }}>
+            Ver todos os pedidos
+          </Link>
+        </div>
+      )}
 
       {/* Navigation Tabs */}
       <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '1.5rem', width: 'fit-content' }}>
@@ -440,5 +499,13 @@ export default function PedidosPage() {
         }
       `}} />
     </div>
+  );
+}
+
+export default function PedidosPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Carregando...</div>}>
+      <PedidosContent />
+    </Suspense>
   );
 }
