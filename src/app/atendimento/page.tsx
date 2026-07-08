@@ -2009,15 +2009,14 @@ function AtendimentoContent() {
 
                       <input 
                         type="file" 
+                        id="file-upload"
                         ref={fileInputRef} 
                         style={{ display: 'none' }} 
                         onChange={handleFileUpload} 
                       />
-                      <button
-                        type="button"
-                        disabled={uploading}
+                      <label
+                        htmlFor="file-upload"
                         onClick={() => {
-                          fileInputRef.current?.click();
                           setShowActionsDropdown(false);
                         }}
                         style={{
@@ -2026,19 +2025,20 @@ function AtendimentoContent() {
                           textAlign: 'left',
                           border: 'none',
                           background: 'none',
-                          cursor: 'pointer',
+                          cursor: uploading ? 'not-allowed' : 'pointer',
                           fontSize: '0.875rem',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.5rem',
                           color: '#475569',
-                          borderRadius: '8px'
+                          borderRadius: '8px',
+                          pointerEvents: uploading ? 'none' : 'auto'
                         }}
                         className="hover-bg"
                       >
                         <Paperclip size={18} color="#64748b" />
                         <span>{uploading ? 'Enviando...' : 'Anexo'}</span>
-                      </button>
+                      </label>
 
                       {activeChat?.channel === 'whatsapp' && (
                         <button
