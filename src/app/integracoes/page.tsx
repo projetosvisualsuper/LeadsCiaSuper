@@ -21,7 +21,6 @@ import {
 import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import { Settings } from '@/types/crm';
-import { sendBlingTestMessageAction } from '@/app/actions/bling-test';
 
 const Instagram = (props: any) => (
   <svg viewBox="0 0 24 24" width={props.size || 24} height={props.size || 24} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -1109,11 +1108,16 @@ export default function IntegracoesPage() {
                                   }
                                   setTestingMessage(true);
                                   try {
-                                    const res = await sendBlingTestMessageAction(clean);
-                                    if (res.success) {
+                                    const response = await fetch('/api/pedidos/test-send', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ phone: clean })
+                                    });
+                                    const res = await response.json();
+                                    if (response.ok && res.success) {
                                       alert('Mensagem de teste disparada com sucesso!');
                                     } else {
-                                      alert(`Falha ao disparar mensagem: ${res.error}`);
+                                      alert(`Falha ao disparar mensagem: ${res.error || 'Erro desconhecido'}`);
                                     }
                                   } catch (err: any) {
                                     console.error(err);
