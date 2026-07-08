@@ -1790,7 +1790,6 @@ export default function ChatInternoPage() {
                   </button>
                 )}
               </div>
-              </div>
             </footer>
 
             {showScrollBottomBtn && (
