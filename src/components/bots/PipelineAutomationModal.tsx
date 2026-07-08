@@ -19,7 +19,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
   const [connections, setConnections] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('pendente'); // stage filter
+  const [activeTab, setActiveTab] = useState<string>('novo'); // stage filter
   const [editingAuto, setEditingAuto] = useState<any | null>(null);
 
   // Form states
@@ -187,10 +187,10 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
   };
 
   const pipelineStages = [
-    { id: 'pendente', name: 'Novas Opportunities' },
-    { id: 'em_atendimento', name: 'Atendidas' },
-    { id: 'finalizado', name: 'Ganhas' },
-    { id: 'cancelado', name: 'Perdidas' }
+    { id: 'novo', name: 'Novo / Aguardando' },
+    { id: 'em_atendimento', name: 'Em Atendimento' },
+    { id: 'pendente', name: 'Pendente' },
+    { id: 'finalizado', name: 'Finalizado' }
   ];
 
   return (

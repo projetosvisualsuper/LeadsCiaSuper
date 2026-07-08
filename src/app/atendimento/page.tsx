@@ -1654,25 +1654,66 @@ function AtendimentoContent() {
                 </div>
               </div>
 
-              {chats.find(c => c.id === selectedChatId)?.connectionName && (
-                <div className="connection-badge-container">
-                  <div style={{ 
-                    background: '#f8fafc', 
-                    border: '1px solid #e2e8f0', 
-                    padding: '0.4rem 1rem', 
-                    borderRadius: '20px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.5rem',
-                    color: '#475569',
-                    fontSize: '0.85rem',
-                    fontWeight: 600
-                  }}>
-                    <MessageCircle size={14} color="#10b981" />
-                    Conexão: <span style={{ color: '#0f172a' }}>{chats.find(c => c.id === selectedChatId)?.connectionName}</span>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {chats.find(c => c.id === selectedChatId)?.connectionName && (
+                  <div className="connection-badge-container">
+                    <div style={{ 
+                      background: '#f8fafc', 
+                      border: '1px solid #e2e8f0', 
+                      padding: '0.4rem 1rem', 
+                      borderRadius: '20px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.5rem',
+                      color: '#475569',
+                      fontSize: '0.85rem',
+                      fontWeight: 600
+                    }}>
+                      <MessageCircle size={14} color="#10b981" />
+                      Conexão: <span style={{ color: '#0f172a' }}>{chats.find(c => c.id === selectedChatId)?.connectionName}</span>
+                    </div>
                   </div>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Etapa:</span>
+                  <select
+                    value={activeChat?.etapaAtendimento || 'novo'}
+                    onChange={async (e) => {
+                      const newStage = e.target.value;
+                      setChats(prev => prev.map(c => c.id === selectedChatId ? { ...c, etapaAtendimento: newStage } : c));
+                      await fetch('/api/chats', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: selectedChatId, etapaAtendimento: newStage })
+                      });
+                      if (activeChat?.leadId) {
+                        await fetch('/api/pipeline-automations/test', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ leadId: activeChat.leadId, currentStage: newStage, eventType: 'quando_criado' })
+                        });
+                      }
+                    }}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '20px',
+                      border: '1px solid #e2e8f0',
+                      background: '#f8fafc',
+                      color: '#0f172a',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="novo">Novo / Aguardando</option>
+                    <option value="em_atendimento">Em Atendimento</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="finalizado">Finalizado</option>
+                  </select>
                 </div>
-              )}
+              </div>
 
               <div className="chat-header-right">
                 <button 

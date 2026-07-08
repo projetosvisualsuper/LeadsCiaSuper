@@ -402,6 +402,7 @@ export interface ChatSession {
   dataCriacao: string;
   lastMessageIsIncoming?: number;
   isInternal?: number;
+  etapaAtendimento?: string;
 }
 
 export interface InternalChat {

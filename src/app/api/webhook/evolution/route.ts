@@ -563,9 +563,8 @@ export async function POST(req: NextRequest) {
       if (!isFromMe) {
         try {
           const { automationEngine } = await import('@/services/automation-engine');
-          const opps = await d1Api.getOpportunities();
-          const leadOpp = opps.find(o => o.leadId === leadId);
-          const stage = leadOpp ? leadOpp.status : 'novo';
+          const { results: chatResults } = await d1Api.runQuery(`SELECT etapaAtendimento FROM chats WHERE leadId = ? OR id = ? LIMIT 1`, [leadId, `whatsapp_${leadId}`]);
+          const stage = chatResults && chatResults.length > 0 ? chatResults[0].etapaAtendimento || 'novo' : 'novo';
           
           (async () => {
             await automationEngine.processLeadAutomation(leadId, stage, 'mensagem_entrada', messageText);

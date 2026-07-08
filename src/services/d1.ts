@@ -870,8 +870,22 @@ export const d1Api = {
     await executeRun(`DELETE FROM popups WHERE id = ?`, [id]);
   },
 
+  ensureEtapaAtendimentoColumn: async (): Promise<void> => {
+    try {
+      await executeRun(`ALTER TABLE chats ADD COLUMN etapaAtendimento TEXT DEFAULT 'novo'`);
+    } catch (e) {
+      // Ignora se a coluna já existir
+    }
+  },
+
+  updateChatEtapa: async (chatId: string, etapa: string): Promise<void> => {
+    await d1Api.ensureEtapaAtendimentoColumn();
+    await executeRun(`UPDATE chats SET etapaAtendimento = ? WHERE id = ?`, [etapa, chatId]);
+  },
+
   // Chats / Inbox
   getChats: async (assignedTo?: string): Promise<ChatSession[]> => {
+    await d1Api.ensureEtapaAtendimentoColumn();
     let sql = `
       SELECT c.*, 
         (SELECT m.isIncoming FROM messages m WHERE m.chatId = c.id ORDER BY m.timestamp DESC LIMIT 1) as lastMessageIsIncoming
