@@ -81,7 +81,15 @@ async function processBlingOrder(orderId: string) {
   }
 
   // Obter dados do pedido de venda
-  const orderNumber = (data.numero || data.id || '').toString();
+  let orderNumber = (data.numero || data.id || '').toString();
+  if (data.numeroPedidoLojaVirtual) {
+    const virtualStoreOrder = data.numeroPedidoLojaVirtual.toString();
+    if (virtualStoreOrder.includes('_')) {
+      orderNumber = virtualStoreOrder.split('_')[0];
+    } else if (virtualStoreOrder.trim()) {
+      orderNumber = virtualStoreOrder.trim();
+    }
+  }
   // A situação pode vir como ID ou nome
   const statusName = (data.situacao?.nome || '').toString().toLowerCase() || (data.situacao?.id || '').toString();
   
