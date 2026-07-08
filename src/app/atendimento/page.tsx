@@ -2050,14 +2050,10 @@ function AtendimentoContent() {
                         <span>Emoji</span>
                       </button>
 
-                      <button
-                        type="button"
-                        disabled={uploading}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          fileInputRef.current?.click();
-                          setShowActionsDropdown(false);
+                      <label
+                        htmlFor="file-upload"
+                        onClick={() => {
+                          setTimeout(() => setShowActionsDropdown(false), 50);
                         }}
                         style={{
                           width: '100%',
@@ -2071,13 +2067,14 @@ function AtendimentoContent() {
                           alignItems: 'center',
                           gap: '0.5rem',
                           color: '#475569',
-                          borderRadius: '8px'
+                          borderRadius: '8px',
+                          pointerEvents: uploading ? 'none' : 'auto'
                         }}
                         className="hover-bg"
                       >
                         <Paperclip size={18} color="#64748b" />
                         <span>{uploading ? 'Enviando...' : 'Anexo'}</span>
-                      </button>
+                      </label>
 
                       {activeChat?.channel === 'whatsapp' && (
                         <button

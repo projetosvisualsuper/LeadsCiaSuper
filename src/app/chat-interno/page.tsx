@@ -1325,17 +1325,12 @@ export default function ChatInternoPage() {
                   >
                     <Smile size={24} />
                   </button>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }} 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#54656f', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <label 
+                    htmlFor="file-upload-internal" 
+                    style={{ cursor: 'pointer', color: '#54656f', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Paperclip size={24} />
-                  </button>
+                  </label>
                 </div>
 
                 <div style={{ flex: 1, position: 'relative' }}>
@@ -1705,18 +1700,20 @@ export default function ChatInternoPage() {
                   <Smile size={24} />
                 </button>
                 
-                <button 
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    fileInputRef.current?.click();
-                  }} 
-                  style={{ padding: '0.5rem', color: '#54656f' }} 
-                  disabled={isUploading}
+                <label 
+                  htmlFor="file-upload-internal" 
+                  style={{ 
+                    padding: '0.5rem', 
+                    color: '#54656f', 
+                    cursor: isUploading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: isUploading ? 'none' : 'auto'
+                  }}
                 >
                   <Paperclip size={24} />
-                </button>
+                </label>
 
                 {isRecording ? (
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', height: '40px' }}>
