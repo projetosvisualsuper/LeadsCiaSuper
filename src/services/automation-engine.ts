@@ -33,9 +33,19 @@ export const automationEngine = {
       const lead = leadResults && leadResults.length > 0 ? leadResults[0] as Lead : null;
       if (!lead) return;
 
-      // 2. Buscar todas as automações ativas para a etapa atual
+      // 2. Buscar todas as automações ativas para o canal atual e também para 'all_channels' (todos os canais)
       const automations = await d1Api.getPipelineAutomations(currentStage);
       const activeAutomations = automations.filter(a => a.ativo === 1 && a.tipoGatilho === eventType);
+
+      if (currentStage !== 'all_channels') {
+        try {
+          const allChannelsAutos = await d1Api.getPipelineAutomations('all_channels');
+          const activeAllChannelsAutos = allChannelsAutos.filter(a => a.ativo === 1 && a.tipoGatilho === eventType);
+          activeAutomations.push(...activeAllChannelsAutos);
+        } catch (e) {
+          console.error('Erro ao buscar automações gerais para all_channels:', e);
+        }
+      }
 
       for (const auto of activeAutomations) {
         // 3. Avaliar as condições da automação

@@ -563,11 +563,10 @@ export async function POST(req: NextRequest) {
       if (!isFromMe) {
         try {
           const { automationEngine } = await import('@/services/automation-engine');
-          const { results: chatResults } = await d1Api.runQuery(`SELECT etapaAtendimento FROM chats WHERE leadId = ? OR id = ? LIMIT 1`, [leadId, `whatsapp_${leadId}`]);
-          const stage = chatResults && chatResults.length > 0 ? chatResults[0].etapaAtendimento || 'novo' : 'novo';
+          const channelId = connectionId ? `whatsapp_${connectionId}` : 'all_channels';
           
           (async () => {
-            await automationEngine.processLeadAutomation(leadId, stage, 'mensagem_entrada', messageText);
+            await automationEngine.processLeadAutomation(leadId, channelId, 'mensagem_entrada', messageText);
           })();
         } catch (err) {
           console.error('Erro ao disparar automação por mensagem de entrada:', err);

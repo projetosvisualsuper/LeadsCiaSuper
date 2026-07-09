@@ -19,7 +19,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
   const [connections, setConnections] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('novo'); // stage filter
+  const [activeTab, setActiveTab] = useState<string>('all_channels'); // channel/connection filter
   const [editingAuto, setEditingAuto] = useState<any | null>(null);
 
   // Form states
@@ -46,29 +46,35 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
   const [atribuirUsuarioId, setAtribuirUsuarioId] = useState('');
 
   const [pipelineStages, setPipelineStages] = useState<any[]>([
-    { id: 'novo', name: 'Novo / Aguardando' },
-    { id: 'em_atendimento', name: 'Em Atendimento' },
-    { id: 'pendente', name: 'Pendente' },
-    { id: 'finalizado', name: 'Finalizado' }
+    { id: 'all_channels', name: 'Todos os Canais' }
   ]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [autosData, botsData, usersData, connsData, stagesData] = await Promise.all([
+      const [autosData, botsData, usersData, connsData] = await Promise.all([
         api.getPipelineAutomations(),
         api.getBots(),
         api.getAllUserProfiles(),
-        api.getWhatsappConnections(),
-        api.getServiceStages()
+        api.getWhatsappConnections()
       ]);
       setAutomations(autosData || []);
       setBots(botsData || []);
       setUsers(usersData || []);
       setConnections(connsData || []);
-      if (stagesData && stagesData.length > 0) {
-        setPipelineStages(stagesData);
-      }
+      
+      const channels = [
+        { id: 'all_channels', name: 'Todos os Canais' },
+        ...(connsData || []).map((conn: any) => ({
+          id: `whatsapp_${conn.id}`,
+          name: conn.name || conn.evolutionInstanceName || 'WhatsApp'
+        })),
+        { id: 'instagram', name: 'Instagram' },
+        { id: 'facebook', name: 'Facebook Messenger' },
+        { id: 'youtube', name: 'YouTube' },
+        { id: 'tiktok', name: 'TikTok' }
+      ];
+      setPipelineStages(channels);
     } catch (e) {
       console.error('Erro ao carregar dados de automação:', e);
     } finally {
@@ -210,7 +216,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
               <Zap size={20} color="var(--primary)" />
               Configurar Automações de Leads
             </h2>
-            <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '4px 0 0 0' }}>Configure gatilhos e robôs automatizados por etapa do pipeline.</p>
+            <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '4px 0 0 0' }}>Configure gatilhos e robôs automatizados por canal de entrada.</p>
           </div>
           <button onClick={onClose} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b', padding: '4px' }}>
             <X size={22} />
@@ -223,7 +229,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
           {/* Sidebar stages list */}
           <div style={{ width: '220px', borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
             <div style={{ padding: '1rem 0.75rem', borderBottom: '1px solid #f1f5f9', fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Etapas do Funil
+              Canais de Entrada
             </div>
             {pipelineStages.map(stage => {
               const stageAutos = automations.filter(a => a.statusOrigem === stage.id);
@@ -408,7 +414,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
                       onChange={e => setTipoGatilho(e.target.value)}
                       style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
                     >
-                      <option value="quando_criado">Imediatamente quando criado nesta etapa</option>
+                      <option value="quando_criado">Imediatamente ao entrar neste canal / Novo contato</option>
                       <option value="mensagem_entrada">Quando receber uma mensagem de entrada</option>
                     </select>
                   </div>
@@ -554,7 +560,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', margin: 0 }}>
-                    Automações para Etapa: {pipelineStages.find(s => s.id === activeTab)?.name}
+                    Automações para Canal: {pipelineStages.find(s => s.id === activeTab)?.name}
                   </h3>
                   <button 
                     type="button"
@@ -568,7 +574,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
                 {automations.filter(a => a.statusOrigem === activeTab).length === 0 ? (
                   <div style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                     <Zap size={32} style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
-                    <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Sem Automações nesta Etapa</span>
+                    <span style={{ fontWeight: 600, display: 'block', marginBottom: '4px' }}>Sem Automações neste Canal</span>
                     <span style={{ fontSize: '0.8rem' }}>Adicione regras para disparar mensagens, mudar etapas ou designar responsáveis automaticamente.</span>
                   </div>
                 ) : (
@@ -598,7 +604,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
                             <span style={{ fontWeight: 600, display: 'block', fontSize: '0.9rem', color: '#1e293b' }}>{auto.nome}</span>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '6px', flexWrap: 'wrap' }}>
                               <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '8px', fontWeight: 600 }}>
-                                Gatilho: {isCreatedTrigger ? 'Ao entrar na etapa' : 'Mensagem recebida'}
+                                Gatilho: {isCreatedTrigger ? 'Lead criado / Novo contato' : 'Mensagem recebida'}
                               </span>
                               {auto.salesbotId && (
                                 <span style={{ background: '#ecfdf5', color: '#047857', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '8px', fontWeight: 600 }}>
