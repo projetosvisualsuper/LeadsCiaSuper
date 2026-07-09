@@ -252,13 +252,6 @@ async function processBlingOrder(orderId: string) {
         }
       }
 
-      await d1Api.saveSystemLog({
-        level: 'info',
-        source: 'Bling Integration',
-        message: `Pedido #${orderNumber} atualizado para '${crmStatus}'.`,
-        details: null
-      });
-
       return { 
         success: true, 
         message: `Status do pedido atualizado para ${crmStatus === 'finalizado' ? 'Finalizado' : 'Enviado'}.`,
