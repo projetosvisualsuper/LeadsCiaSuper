@@ -49,25 +49,28 @@ export default function SystemLogsPage() {
 
   const getLevelIcon = (level: string) => {
     switch (level) {
-      case 'error': return <AlertTriangle size={20} className="text-red-500" />;
-      case 'warning': return <AlertCircle size={20} className="text-amber-500" />;
-      case 'info': return <Info size={20} className="text-blue-500" />;
-      default: return <Info size={20} className="text-slate-500" />;
+      case 'error': return <AlertTriangle size={20} color="#ef4444" />;
+      case 'warning': return <AlertCircle size={20} color="#f59e0b" />;
+      case 'info': return <Info size={20} color="#3b82f6" />;
+      default: return <Info size={20} color="#64748b" />;
     }
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+    <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <AlertTriangle className="text-red-500" />
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <AlertTriangle color="#ef4444" size={28} />
             Logs do Sistema
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.4rem' }}>
             Monitoramento de erros e alertas técnicos dos serviços integrados.
           </p>
         </div>
+        
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {logs.some(log => !log.isRead) && (
             <button 
@@ -76,7 +79,6 @@ export default function SystemLogsPage() {
                 try {
                   await api.markAllSystemLogsAsRead();
                   setLogs(prev => prev.map(l => ({ ...l, isRead: true })));
-                  // Dispatch event to update sidebar badge
                   window.dispatchEvent(new Event('logs-read'));
                 } catch (e) {
                   console.error('Erro ao marcar todos como lidos:', e);
@@ -85,9 +87,22 @@ export default function SystemLogsPage() {
                 }
               }}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg transition-colors"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#ecfdf5',
+                color: '#065f46',
+                border: '1px solid #a7f3d0',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background-color 0.15s ease'
+              }}
             >
-              <CheckCircle2 size={18} />
+              <CheckCircle2 size={16} />
               Marcar como lidos
             </button>
           )}
@@ -95,73 +110,136 @@ export default function SystemLogsPage() {
           <button 
             onClick={fetchLogs} 
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#f1f5f9',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background-color 0.15s ease'
+            }}
           >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             {loading ? 'Atualizando...' : 'Atualizar'}
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* LOGS LIST */}
+      <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         {logs.length === 0 && !loading ? (
-          <div className="p-12 text-center text-slate-500 flex flex-col items-center">
-            <CheckCircle2 size={48} className="text-green-400 mb-4" />
-            <h3 className="text-lg font-medium text-slate-700">Tudo limpo!</h3>
-            <p>Nenhum erro ou alerta recente no sistema.</p>
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            <CheckCircle2 size={48} color="#22c55e" style={{ marginBottom: '0.5rem' }} />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#334155', margin: 0 }}>Tudo limpo!</h3>
+            <p style={{ margin: 0, fontSize: '0.875rem' }}>Nenhum erro ou alerta recente no sistema.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {logs.map((log) => (
-              <div 
-                key={log.id} 
-                className={`transition-colors ${!log.isRead ? 'bg-red-50/50' : 'hover:bg-slate-50'}`}
-              >
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {logs.map((log) => {
+              const isUnread = !log.isRead;
+              const isExpanded = expandedLogId === log.id;
+              
+              return (
                 <div 
-                  className="p-4 flex items-center gap-4 cursor-pointer"
-                  onClick={() => handleToggleLog(log)}
+                  key={log.id} 
+                  style={{
+                    borderBottom: '1px solid #f1f5f9',
+                    background: isUnread ? 'rgba(239, 68, 68, 0.02)' : 'white',
+                    transition: 'background-color 0.2s'
+                  }}
                 >
-                  <div className="shrink-0 mt-1 self-start">
-                    {getLevelIcon(log.level)}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider
-                        ${log.level === 'error' ? 'bg-red-100 text-red-700' : 
-                          log.level === 'warning' ? 'bg-amber-100 text-amber-700' : 
-                          'bg-blue-100 text-blue-700'}`}
-                      >
-                        {log.level}
-                      </span>
-                      <span className="text-sm font-medium text-slate-600 truncate">{log.source}</span>
-                      {!log.isRead && (
-                        <span className="flex h-2 w-2 relative">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  <div 
+                    onClick={() => handleToggleLog(log)}
+                    style={{
+                      padding: '1.25rem 1.5rem',
+                      display: 'flex',
+                      gap: '1rem',
+                      alignItems: 'center',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      {getLevelIcon(log.level)}
+                    </div>
+                    
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ 
+                          fontSize: '0.7rem', 
+                          fontWeight: 800, 
+                          padding: '2px 8px', 
+                          borderRadius: '12px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          backgroundColor: log.level === 'error' ? '#fee2e2' : log.level === 'warning' ? '#fef3c7' : '#dbeafe',
+                          color: log.level === 'error' ? '#b91c1c' : log.level === 'warning' ? '#b45309' : '#1d4ed8'
+                        }}>
+                          {log.level}
                         </span>
-                      )}
-                    </div>
-                    <p className={`text-sm truncate ${!log.isRead ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>
-                      {log.message}
-                    </p>
-                  </div>
-                  
-                  <div className="shrink-0 text-xs text-slate-400 flex flex-col items-end gap-2">
-                    {new Date(log.dataCriacao).toLocaleString('pt-BR')}
-                    {expandedLogId === log.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </div>
-                </div>
+                        
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>
+                          {log.source}
+                        </span>
 
-                {expandedLogId === log.id && (
-                  <div className="px-14 pb-5 pt-1">
-                    <div className="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap">
-                      {log.details || 'Nenhum detalhe adicional fornecido pelo sistema.'}
+                        {isUnread && (
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
+                        )}
+                      </div>
+                      
+                      <p style={{ 
+                        margin: '0.4rem 0 0 0', 
+                        fontSize: '0.875rem', 
+                        color: isUnread ? '#0f172a' : '#475569',
+                        fontWeight: isUnread ? 700 : 400,
+                        lineHeight: '1.4',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: isExpanded ? 'block' : '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical'
+                      }}>
+                        {log.message}
+                      </p>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                        {new Date(log.dataCriacao).toLocaleString('pt-BR')}
+                      </span>
+                      <div style={{ color: '#94a3b8' }}>
+                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {isExpanded && (
+                    <div style={{ padding: '0 1.5rem 1.25rem 3.5rem' }}>
+                      <div style={{ 
+                        background: '#0f172a', 
+                        color: '#cbd5e1', 
+                        padding: '1rem', 
+                        borderRadius: '8px', 
+                        fontFamily: 'monospace', 
+                        fontSize: '0.75rem', 
+                        overflowX: 'auto', 
+                        whiteSpace: 'pre-wrap',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)',
+                        border: '1px solid #1e293b',
+                        lineHeight: '1.5'
+                      }}>
+                        {log.details || 'Nenhum detalhe adicional fornecido pelo sistema.'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
