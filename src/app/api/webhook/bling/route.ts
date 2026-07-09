@@ -81,16 +81,17 @@ async function processBlingOrder(orderId: string) {
   }
 
   // Obter dados do pedido de venda
-  let orderNumber = (data.numero || data.id || '').toString();
+  const orderNumber = (data.numero || data.id || '').toString();
   let numeroLojaVirtual = '';
-  if (data.numeroPedidoLojaVirtual) {
-    const virtualStoreOrder = data.numeroPedidoLojaVirtual.toString();
+  
+  // Buscar no campo 'numeroLoja' retornado pela API v3 do Bling (com fallback)
+  const rawNumeroLoja = data.numeroLoja || data.numeroPedidoLojaVirtual;
+  if (rawNumeroLoja) {
+    const virtualStoreOrder = rawNumeroLoja.toString();
     if (virtualStoreOrder.includes('_')) {
       numeroLojaVirtual = virtualStoreOrder.split('_')[0];
-      orderNumber = numeroLojaVirtual;
-    } else if (virtualStoreOrder.trim()) {
+    } else {
       numeroLojaVirtual = virtualStoreOrder.trim();
-      orderNumber = numeroLojaVirtual;
     }
   }
   // A situação pode vir como ID ou nome
