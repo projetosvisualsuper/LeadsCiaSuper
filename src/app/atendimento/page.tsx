@@ -1139,11 +1139,33 @@ function AtendimentoContent() {
         <header style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
           {/* Header Row 1 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <MessageSquare size={24} color="var(--primary)" />
                 Funil de Atendimento
               </h2>
+              
+              {maxUnansweredTimeStr && (
+                <div style={{ 
+                  padding: '0.35rem 0.65rem', 
+                  borderRadius: '8px', 
+                  border: '1px solid', 
+                  borderColor: maxUnansweredTimeStr === 'Respondido' ? '#e2e8f0' : 'rgba(239, 68, 68, 0.2)', 
+                  fontSize: '0.8rem', 
+                  fontWeight: 600, 
+                  color: maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444',
+                  background: maxUnansweredTimeStr === 'Respondido' ? '#f8fafc' : 'rgba(239, 68, 68, 0.05)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  whiteSpace: 'nowrap',
+                  height: '30px',
+                  boxSizing: 'border-box'
+                }} title="Maior tempo de espera por resposta do cliente da lista atual">
+                  <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
+                  <span>Espera: <strong>{maxUnansweredTimeStr}</strong></span>
+                </div>
+              )}
             </div>
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
