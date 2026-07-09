@@ -512,13 +512,18 @@ export default function ClientLayout({
     }
 
     fetch('/api/auth/me')
-      .then(res => res.json())
+      .then(res => res.json().catch(() => ({ authenticated: false })))
       .then(data => {
         if (!data.authenticated) {
           router.push('/login');
         } else {
           setUserProfile(data.user);
         }
+      })
+      .catch(() => {
+        router.push('/login');
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, [router, isCapturePage]);

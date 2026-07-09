@@ -68,14 +68,39 @@ export default function SystemLogsPage() {
             Monitoramento de erros e alertas técnicos dos serviços integrados.
           </p>
         </div>
-        <button 
-          onClick={fetchLogs} 
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
-        >
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Atualizando...' : 'Atualizar'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {logs.some(log => !log.isRead) && (
+            <button 
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  await api.markAllSystemLogsAsRead();
+                  setLogs(prev => prev.map(l => ({ ...l, isRead: true })));
+                  // Dispatch event to update sidebar badge
+                  window.dispatchEvent(new Event('logs-read'));
+                } catch (e) {
+                  console.error('Erro ao marcar todos como lidos:', e);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg transition-colors"
+            >
+              <CheckCircle2 size={18} />
+              Marcar como lidos
+            </button>
+          )}
+
+          <button 
+            onClick={fetchLogs} 
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Atualizando...' : 'Atualizar'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

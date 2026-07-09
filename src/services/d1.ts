@@ -1,4 +1,4 @@
-import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage, WhatsappConnection, WhatsappTemplate, Pedido, Opportunity } from '@/types/crm';
+import { Lead, Campaign, FilaEnvio, Settings, LandingPageInstance, LandingPageSettings, BioLink, UserProfile, Segmentation, PopupConfig, ChatSession, ChatMessage, WhatsappConnection, WhatsappTemplate, Pedido, Opportunity, SystemLog } from '@/types/crm';
 
 
 // Get the D1 database binding from process.env (or global context in Cloudflare Pages)
@@ -1752,6 +1752,10 @@ export const d1Api = {
 
   markSystemLogAsRead: async (logId: string): Promise<void> => {
     await executeRun(`UPDATE system_logs SET isRead = 1 WHERE id = ?`, [logId]);
+  },
+
+  markAllSystemLogsAsRead: async (): Promise<void> => {
+    await executeRun(`UPDATE system_logs SET isRead = 1 WHERE isRead = 0`);
   },
 
   getUnreadLogsCount: async (): Promise<number> => {
