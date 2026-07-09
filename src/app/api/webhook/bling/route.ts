@@ -99,8 +99,8 @@ async function processBlingOrder(orderId: string) {
   const clientName = data.contato?.nome || 'Cliente';
   let clientPhone = data.contato?.celular || data.contato?.telefone || '';
 
-  const isOpen = statusName.includes('aberto') || statusName.includes('andamento') || statusName === '6' || statusName === '18' || statusName === '1';
-  const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '9' || statusName === '15' || statusName === '2';
+  const isOpen = statusName.includes('aberto') || statusName.includes('andamento') || statusName === '6' || statusName === '18' || statusName === '1' || statusName === '15';
+  const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '9' || statusName === '2';
   const isCanceled = statusName.includes('cancelado') || statusName === '12' || statusName === '3';
 
   // 4. Localizar o pedido correspondente no banco D1
@@ -111,7 +111,7 @@ async function processBlingOrder(orderId: string) {
     '6': 'Em aberto',
     '9': 'Atendido',
     '12': 'Cancelado',
-    '15': 'Despachado',
+    '15': 'Em andamento',
     '18': 'Em andamento',
     '1': 'Em aberto',
     '2': 'Atendido',
@@ -123,7 +123,7 @@ async function processBlingOrder(orderId: string) {
 
   if (isOpen) {
     if (pedidoLocal) {
-      const isAndamento = statusName.includes('andamento') || statusName === '18';
+      const isAndamento = statusName.includes('andamento') || statusName === '18' || statusName === '15';
       if (isAndamento) {
         await d1Api.updatePedidoStatus(pedidoLocal.id, 'em_atendimento');
       }
