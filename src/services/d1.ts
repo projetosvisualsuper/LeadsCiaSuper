@@ -1896,6 +1896,10 @@ export const d1Api = {
     return results && results.length > 0 ? results[0].count : 0;
   },
 
+  deleteOpportunity: async (oppId: string): Promise<void> => {
+    await executeRun(`DELETE FROM opportunities WHERE id = ?`, [oppId]);
+  },
+
   // --- BOTS ---
   getBots: async (): Promise<any[]> => {
     const { results } = await runQuery(`SELECT * FROM bots ORDER BY dataAtualizacao DESC`);

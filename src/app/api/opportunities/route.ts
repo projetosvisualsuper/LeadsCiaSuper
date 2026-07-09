@@ -135,3 +135,28 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+
+    if (user.role !== 'admin' && user.role !== 'master') {
+      return NextResponse.json({ error: 'Apenas administradores podem excluir oportunidades.' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'ID da oportunidade é obrigatório' }, { status: 400 });
+    }
+
+    await d1Api.deleteOpportunity(id);
+    return NextResponse.json({ success: true, message: 'Oportunidade excluída com sucesso.' });
+  } catch (error: any) {
+    console.error('Erro no DELETE /api/opportunities:', error);
+    return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
+  }
+}

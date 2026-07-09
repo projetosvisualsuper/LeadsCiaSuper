@@ -22,7 +22,8 @@ import {
   ExternalLink,
   Info,
   Paperclip,
-  Zap
+  Zap,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -82,6 +83,7 @@ export default function OportunidadesPage() {
   const [connections, setConnections] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas'>('novas');
   const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Filtros de busca e atribuição
   const [filterUser, setFilterUser] = useState<string>('todos');
@@ -103,7 +105,34 @@ export default function OportunidadesPage() {
     }
   };
 
+  const handleDeleteOpportunity = async (oppId: string) => {
+    if (!confirm('Deseja realmente excluir esta oportunidade? Esta ação não pode ser desfeita.')) return;
+    try {
+      const res = await fetch(`/api/opportunities?id=${oppId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setOpportunities(prev => prev.filter(o => o.id !== oppId));
+        alert('Oportunidade excluída com sucesso!');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Erro ao excluir: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao se conectar com o servidor.');
+    }
+  };
+
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error();
+      })
+      .then(data => setCurrentUser(data))
+      .catch(() => {});
+
     fetchOpportunities();
     api.getAllUserProfiles()
       .then(setSystemUsers)
@@ -554,8 +583,34 @@ export default function OportunidadesPage() {
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
                       {new Date(opp.dataCriacao).toLocaleString('pt-BR')}
                     </span>
-                    <div style={{ color: '#94a3b8' }}>
-                      {expandedOppId === opp.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {(currentUser?.role === 'admin' || currentUser?.role === 'master') && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOpportunity(opp.id);
+                          }}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            color: '#ef4444',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s'
+                          }}
+                          title="Excluir Oportunidade"
+                          className="hover-scale"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      <div style={{ color: '#94a3b8' }}>
+                        {expandedOppId === opp.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </div>
                     </div>
                   </div>
                 </div>
