@@ -1230,7 +1230,7 @@ function AtendimentoContent() {
           </div>
 
           {/* Header Row 2 (Search and Filters) */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr 1fr', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1.1fr 1.1fr 0.9fr 0.9fr', gap: '0.75rem', alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
               <input 
                 type="text" 
@@ -1287,6 +1287,46 @@ function AtendimentoContent() {
               {chats.filter(c => c.lastMessageIsIncoming === 1).length > 0 && (
                 <span style={{ background: 'var(--primary)', color: 'white', fontSize: '0.65rem', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
                   {chats.filter(c => c.lastMessageIsIncoming === 1).length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setFilterUnreadOnly(!filterUnreadOnly)}
+              style={{
+                width: '100%',
+                padding: '0.45rem',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: filterUnreadOnly ? '#22c55e' : '#cbd5e1',
+                background: filterUnreadOnly ? 'rgba(34, 197, 94, 0.1)' : '#ffffff',
+                color: filterUnreadOnly ? '#22c55e' : '#475569',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                height: '32px',
+                boxSizing: 'border-box'
+              }}
+            >
+              Não lidas
+              {chats.filter(c => (c.unreadCount || 0) > 0).length > 0 && (
+                <span style={{ 
+                  background: '#22c55e', 
+                  color: 'white', 
+                  fontSize: '0.65rem', 
+                  borderRadius: '50%', 
+                  width: '16px', 
+                  height: '16px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontWeight: 800
+                }}>
+                  {chats.filter(c => (c.unreadCount || 0) > 0).length}
                 </span>
               )}
             </button>
@@ -1391,9 +1431,37 @@ function AtendimentoContent() {
 
                           {/* Card Footer */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                            <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
-                              {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                                {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                              {chat.lastMessageIsIncoming === 1 && (() => {
+                                const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+                                const diffMins = Math.floor(ms / 60000);
+                                let timeStr = 'Aguardando';
+                                if (diffMins >= 1) {
+                                  if (diffMins < 60) timeStr = `${diffMins}m`;
+                                  else {
+                                    const diffHours = Math.floor(diffMins / 60);
+                                    if (diffHours < 24) timeStr = `${diffHours}h`;
+                                    else timeStr = `${Math.floor(diffHours / 24)}d`;
+                                  }
+                                }
+                                return (
+                                  <span style={{ 
+                                    fontSize: '0.65rem', 
+                                    background: 'rgba(239, 68, 68, 0.1)', 
+                                    color: '#ef4444', 
+                                    padding: '1px 5px', 
+                                    borderRadius: '4px', 
+                                    fontWeight: 700,
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {timeStr}
+                                  </span>
+                                );
+                              })()}
+                            </div>
                             {hasUnread && (
                               <span style={{ background: '#22c55e', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
                                 {chat.unreadCount}
