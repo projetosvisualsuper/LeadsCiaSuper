@@ -91,14 +91,23 @@ async function processMetaMessage(
 
   let leadName = tempLeadName || ('Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook'));
   let leadAvatar = null;
+  let profile: any = null;
 
-  const profile = await getMetaProfile(leadId, channel);
-  if (profile) {
-    leadName = profile.name || leadName;
-    leadAvatar = profile.avatar || leadAvatar;
+  // 1. Verificar se o lead já existe localmente e possui um perfil válido (não genérico)
+  const { results: existingLeads } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
+  const hasValidProfile = existingLeads && existingLeads.length > 0 && existingLeads[0].nome && !existingLeads[0].nome.startsWith('Lead via');
+
+  if (!hasValidProfile) {
+    profile = await getMetaProfile(leadId, channel);
+    if (profile) {
+      leadName = profile.name || leadName;
+      leadAvatar = profile.avatar || leadAvatar;
+    }
+  } else {
+    leadName = existingLeads[0].nome || leadName;
+    leadAvatar = existingLeads[0].avatar || leadAvatar;
   }
 
-  const { results: existingLeads } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
   const agora = new Date().toISOString();
 
   if (!existingLeads || existingLeads.length === 0) {
