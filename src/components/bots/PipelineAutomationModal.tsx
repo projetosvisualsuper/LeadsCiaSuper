@@ -227,7 +227,7 @@ export default function PipelineAutomationModal({ isOpen, onClose }: PipelineAut
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           
           {/* Sidebar stages list */}
-          <div style={{ width: '220px', borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+          <div style={{ width: '220px', borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', background: '#f8fafc', overflowY: 'auto' }}>
             <div style={{ padding: '1rem 0.75rem', borderBottom: '1px solid #f1f5f9', fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Canais de Entrada
             </div>
