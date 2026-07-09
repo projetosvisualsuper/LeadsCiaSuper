@@ -960,28 +960,42 @@ function AtendimentoContent() {
     e.dataTransfer.setData('text/plain', chatId);
   };
 
-  const handleDropCard = async (e: React.DragEvent, targetStageId: string) => {
+  const handleDropCard = async (e: React.DragEvent, targetColumnId: string) => {
     e.preventDefault();
     const chatId = e.dataTransfer.getData('text/plain');
     if (!chatId) return;
 
-    // 1. Atualizar no estado local
-    setChats(prev => prev.map(c => c.id === chatId ? { ...c, etapaAtendimento: targetStageId } : c));
+    if (targetColumnId.startsWith('whatsapp_')) {
+      const connId = targetColumnId.replace('whatsapp_', '');
+      const conn = connections.find((c: any) => c.id === connId);
+      
+      // 1. Atualizar no estado local
+      setChats(prev => prev.map(c => c.id === chatId ? { 
+        ...c, 
+        channel: 'whatsapp', 
+        connectionId: connId,
+        connectionName: conn?.name || conn?.evolutionInstanceName || 'WhatsApp'
+      } : c));
 
-    // 2. Chamar a API para persistir
-    await fetch('/api/chats', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: chatId, etapaAtendimento: targetStageId })
-    });
-
-    // 3. Disparar automações de entrada na etapa (quando_criado)
-    const chatObj = chats.find(c => c.id === chatId);
-    if (chatObj && chatObj.leadId) {
-      await fetch('/api/pipeline-automations/test', {
-        method: 'POST',
+      // 2. Chamar a API para persistir
+      await fetch('/api/chats', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: chatObj.leadId, currentStage: targetStageId, eventType: 'quando_criado' })
+        body: JSON.stringify({ 
+          id: chatId, 
+          connectionId: connId,
+          connectionName: conn?.name || conn?.evolutionInstanceName || 'WhatsApp'
+        })
+      });
+    } else if (['instagram', 'facebook', 'youtube', 'tiktok'].includes(targetColumnId)) {
+      // 1. Atualizar no estado local
+      setChats(prev => prev.map(c => c.id === chatId ? { ...c, channel: targetColumnId as any } : c));
+
+      // 2. Chamar a API para persistir
+      await fetch('/api/chats', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: chatId, channel: targetColumnId })
       });
     }
   };
@@ -1055,6 +1069,30 @@ function AtendimentoContent() {
     return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection && matchesContactType && matchesUnreadOnly;
   });
 
+  const getColumnMaxUnansweredTime = (columnChats: ChatSession[]) => {
+    let maxMs = 0;
+    columnChats.forEach(chat => {
+      if (chat.lastMessageIsIncoming === 1) {
+        const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+        if (ms > maxMs) {
+          maxMs = ms;
+        }
+      }
+    });
+
+    if (maxMs === 0) return null;
+    
+    const diffMins = Math.floor(maxMs / 60000);
+    if (diffMins < 1) return 'Menos de 1 min';
+    if (diffMins < 60) return `${diffMins} min`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} h`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} d`;
+  };
+
   const getMaxUnansweredTime = () => {
     let maxMs = 0;
     filteredChats.forEach(chat => {
@@ -1080,6 +1118,19 @@ function AtendimentoContent() {
   };
   
   const maxUnansweredTimeStr = getMaxUnansweredTime();
+
+  // Colunas Dinâmicas do Kanban (Canais de entrada)
+  const kanbanColumns = [
+    { id: 'all_channels', name: 'Todos os Canais' },
+    ...connections.map(conn => ({
+      id: `whatsapp_${conn.id}`,
+      name: conn.name || conn.evolutionInstanceName || 'WhatsApp'
+    })),
+    { id: 'instagram', name: 'Instagram' },
+    { id: 'facebook', name: 'Facebook Messenger' },
+    { id: 'youtube', name: 'YouTube' },
+    { id: 'tiktok', name: 'TikTok' }
+  ];
 
   const activeChat = chats.find(c => c.id === selectedChatId);
 
@@ -1154,27 +1205,7 @@ function AtendimentoContent() {
                 Funil de Atendimento
               </h2>
               
-              {maxUnansweredTimeStr && (
-                <div style={{ 
-                  padding: '0.35rem 0.65rem', 
-                  borderRadius: '8px', 
-                  border: '1px solid', 
-                  borderColor: maxUnansweredTimeStr === 'Respondido' ? '#e2e8f0' : 'rgba(239, 68, 68, 0.2)', 
-                  fontSize: '0.8rem', 
-                  fontWeight: 600, 
-                  color: maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444',
-                  background: maxUnansweredTimeStr === 'Respondido' ? '#f8fafc' : 'rgba(239, 68, 68, 0.05)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  whiteSpace: 'nowrap',
-                  height: '30px',
-                  boxSizing: 'border-box'
-                }} title="Maior tempo de espera por resposta do cliente da lista atual">
-                  <Clock size={12} color={maxUnansweredTimeStr === 'Respondido' ? '#64748b' : '#ef4444'} />
-                  <span>Espera: <strong>{maxUnansweredTimeStr}</strong></span>
-                </div>
-              )}
+
             </div>
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1366,18 +1397,27 @@ function AtendimentoContent() {
 
         {/* KANBAN BOARD BODY */}
         <div style={{ flex: 1, display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem', background: '#f1f5f9' }}>
-          {serviceStages.map(stage => {
+          {kanbanColumns.map(col => {
             const stageChats = filteredChats.filter(chat => {
-              const chatStage = chat.etapaAtendimento || 'novo';
-              return chatStage === stage.id;
+              if (col.id === 'all_channels') return true;
+              if (col.id === 'instagram') return chat.channel === 'instagram';
+              if (col.id === 'facebook') return chat.channel === 'facebook';
+              if (col.id === 'youtube') return chat.channel === 'youtube';
+              if (col.id === 'tiktok') return chat.channel === 'tiktok';
+              if (col.id.startsWith('whatsapp_')) {
+                const connId = col.id.replace('whatsapp_', '');
+                return chat.channel === 'whatsapp' && chat.connectionId === connId;
+              }
+              return false;
             });
-            const isDefaultStage = ['novo', 'em_atendimento', 'pendente', 'finalizado'].includes(stage.id);
+
+            const maxTimeStr = getColumnMaxUnansweredTime(stageChats);
 
             return (
               <div 
-                key={stage.id}
+                key={col.id}
                 onDragOver={handleDragOver}
-                onDrop={(e) => handleDropCard(e, stage.id)}
+                onDrop={(e) => handleDropCard(e, col.id)}
                 style={{
                   width: '280px',
                   minWidth: '280px',
@@ -1392,7 +1432,7 @@ function AtendimentoContent() {
               >
                 {/* Column Header */}
                 <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
                     <span 
                       style={{ 
                         fontWeight: 700, 
@@ -1400,36 +1440,31 @@ function AtendimentoContent() {
                         color: '#1e293b', 
                         whiteSpace: 'nowrap', 
                         overflow: 'hidden', 
-                        textOverflow: 'ellipsis',
-                        cursor: 'pointer'
+                        textOverflow: 'ellipsis'
                       }}
-                      onClick={() => handleEditStage(stage.id, stage.name)}
-                      title="Clique para editar nome"
                     >
-                      {stage.name}
+                      {col.name}
                     </span>
                     <span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>
                       {stageChats.length}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <button 
-                      onClick={() => handleEditStage(stage.id, stage.name)}
-                      title="Editar nome da etapa"
-                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b', padding: '2px', display: 'flex', alignItems: 'center' }}
+                  {maxTimeStr && (
+                    <span 
+                      style={{ 
+                        background: 'rgba(239, 68, 68, 0.1)', 
+                        color: '#ef4444', 
+                        fontSize: '0.65rem', 
+                        fontWeight: 700, 
+                        padding: '2px 6px', 
+                        borderRadius: '6px',
+                        whiteSpace: 'nowrap'
+                      }}
+                      title="Maior tempo de espera por resposta nesta coluna"
                     >
-                      <Edit2 size={12} />
-                    </button>
-                    {!isDefaultStage && (
-                      <button 
-                        onClick={() => handleDeleteStage(stage.id)}
-                        title="Excluir etapa"
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', padding: '2px', display: 'flex', alignItems: 'center' }}
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
+                      Espera: {maxTimeStr}
+                    </span>
+                  )}
                 </div>
 
                 {/* Column Cards List */}
