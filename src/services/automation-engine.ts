@@ -119,14 +119,14 @@ export const automationEngine = {
           await d1Api.executeRun(`UPDATE opportunities SET status = ? WHERE leadId = ?`, [auto.alterarEtapaPara, lead.id]);
         }
 
-        // 5. Executar o Salesbot (se configurado)
         if (auto.salesbotId) {
           await automationEngine.runSalesbot(
             auto.salesbotId,
             lead,
             auto.destinatarioTipo,
             auto.whatsappConnectionId || undefined,
-            auto.deixarSemResposta === 1
+            auto.deixarSemResposta === 1,
+            incomingMessage
           );
         }
       }
@@ -143,7 +143,8 @@ export const automationEngine = {
     lead: Lead,
     destinatarioTipo: string,
     connectionId?: string,
-    deixarSemResposta?: boolean
+    deixarSemResposta?: boolean,
+    incomingMessage?: string
   ): Promise<void> => {
     try {
       const bot = await d1Api.getBotById(botId);
@@ -155,6 +156,37 @@ export const automationEngine = {
       // Encontrar o nó inicial (geralmente tipo 'trigger')
       const triggerNode = nodes.find((n: any) => n.type === 'trigger');
       if (!triggerNode) return;
+
+      // Se houver uma mensagem recebida de entrada, valida a palavra-chave configurada no nó trigger
+      if (incomingMessage && triggerNode.data) {
+        const triggerType = triggerNode.data.triggerType || 'Palavra-chave Exata';
+        const triggerValue = triggerNode.data.triggerValue || '';
+        
+        if (triggerType !== 'Qualquer Mensagem' && triggerValue.trim()) {
+          const extractKeywords = (str: string): string[] => {
+            const matches = [...str.matchAll(/"([^"]+)"/g)].map(m => m[1].trim());
+            if (matches.length > 0) return matches;
+            return str.split(/ou|,|;/i).map(s => s.replace(/"/g, '').trim()).filter(Boolean);
+          };
+
+          const keywords = extractKeywords(triggerValue);
+          const text = incomingMessage.toLowerCase().trim();
+          let matches = false;
+
+          if (triggerType === 'Contém a Palavra') {
+            matches = keywords.some(kw => text.includes(kw.toLowerCase()));
+          } else if (triggerType === 'Inicia com') {
+            matches = keywords.some(kw => text.startsWith(kw.toLowerCase()));
+          } else { // Palavra-chave Exata
+            matches = keywords.some(kw => text === kw.toLowerCase());
+          }
+
+          if (!matches) {
+            console.log(`[Salesbot] Mensagem "${incomingMessage}" não corresponde ao gatilho do robô "${bot.name}" (Esperava: ${triggerType} "${triggerValue}").`);
+            return; // Aborta execução se a palavra-chave não corresponder
+          }
+        }
+      }
 
       // Executar sequencialmente a partir do nó inicial seguindo as arestas (edges)
       let currentNode = triggerNode;
