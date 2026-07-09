@@ -130,7 +130,7 @@ export default function OportunidadesPage() {
         if (res.ok) return res.json();
         throw new Error();
       })
-      .then(data => setCurrentUser(data))
+      .then(data => setCurrentUser(data?.user || data))
       .catch(() => {});
 
     fetchOpportunities();
