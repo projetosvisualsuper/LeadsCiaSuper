@@ -200,6 +200,7 @@ function AtendimentoContent() {
   // Canais visíveis no pipeline (customização do usuário)
   const [showChannelSettingsModal, setShowChannelSettingsModal] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
 
   // Estados para Exclusão Customizada e Notificações no Sistema
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -283,15 +284,35 @@ function AtendimentoContent() {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem('visible_kanban_columns');
-    if (saved) {
+    // 1. Carregar colunas visíveis
+    const savedVisible = localStorage.getItem('visible_kanban_columns');
+    if (savedVisible) {
       try {
-        setVisibleColumns(JSON.parse(saved));
+        setVisibleColumns(JSON.parse(savedVisible));
       } catch (e) {
         console.error(e);
       }
     } else if (connections.length > 0) {
       setVisibleColumns([
+        'all_channels',
+        ...connections.map(c => `whatsapp_${c.id}`),
+        'instagram',
+        'facebook',
+        'youtube',
+        'tiktok'
+      ]);
+    }
+
+    // 2. Carregar ordem das colunas
+    const savedOrder = localStorage.getItem('kanban_column_order');
+    if (savedOrder) {
+      try {
+        setColumnOrder(JSON.parse(savedOrder));
+      } catch (e) {
+        console.error(e);
+      }
+    } else if (connections.length > 0) {
+      setColumnOrder([
         'all_channels',
         ...connections.map(c => `whatsapp_${c.id}`),
         'instagram',
@@ -1216,6 +1237,15 @@ function AtendimentoContent() {
     { id: 'tiktok', name: 'TikTok' }
   ];
 
+  const orderedColumns = [...kanbanColumns].sort((a, b) => {
+    const idxA = columnOrder.indexOf(a.id);
+    const idxB = columnOrder.indexOf(b.id);
+    if (idxA === -1 && idxB === -1) return 0;
+    if (idxA === -1) return 1;
+    if (idxB === -1) return -1;
+    return idxA - idxB;
+  });
+
   const activeChat = chats.find(c => c.id === selectedChatId);
 
   const formatMessageDate = (timestamp: string) => {
@@ -1490,7 +1520,7 @@ function AtendimentoContent() {
 
         {/* KANBAN BOARD BODY */}
         <div style={{ flex: 1, display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem', background: '#f1f5f9' }}>
-          {kanbanColumns.filter(col => visibleColumns.includes(col.id)).map(col => {
+          {orderedColumns.filter(col => visibleColumns.includes(col.id)).map(col => {
             const stageChats = filteredChats.filter(chat => {
               if (col.id === 'all_channels') return true;
               if (col.id === 'instagram') return chat.channel === 'instagram';
@@ -2777,11 +2807,37 @@ function AtendimentoContent() {
             </p>
 
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem', marginBottom: '1.5rem' }}>
-              {kanbanColumns.map(col => {
+              {orderedColumns.map((col, index) => {
                 const isChecked = visibleColumns.includes(col.id);
                 return (
-                  <label 
+                  <div 
                     key={col.id} 
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', String(index));
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const sourceIndexStr = e.dataTransfer.getData('text/plain');
+                      if (!sourceIndexStr) return;
+                      const sourceIndex = parseInt(sourceIndexStr, 10);
+                      if (isNaN(sourceIndex) || sourceIndex === index) return;
+
+                      const newOrder = [...columnOrder];
+                      orderedColumns.forEach(c => {
+                        if (!newOrder.includes(c.id)) {
+                          newOrder.push(c.id);
+                        }
+                      });
+
+                      const [removed] = newOrder.splice(sourceIndex, 1);
+                      newOrder.splice(index, 0, removed);
+                      
+                      setColumnOrder(newOrder);
+                    }}
                     style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
@@ -2791,7 +2847,7 @@ function AtendimentoContent() {
                       border: '1px solid',
                       borderColor: isChecked ? 'var(--primary)' : '#e2e8f0', 
                       borderRadius: '10px', 
-                      cursor: 'pointer',
+                      cursor: 'grab',
                       fontSize: '0.85rem',
                       fontWeight: isChecked ? 700 : 500,
                       color: isChecked ? '#1e293b' : '#475569',
@@ -2812,10 +2868,13 @@ function AtendimentoContent() {
                           }
                         }
                       }}
-                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)', cursor: 'pointer' }}
                     />
-                    <span>{col.name}</span>
-                  </label>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', userSelect: 'none' }}>
+                      <span style={{ color: '#94a3b8', fontSize: '1rem', marginRight: '4px' }}>☰</span>
+                      {col.name}
+                    </span>
+                  </div>
                 );
               })}
             </div>
@@ -2843,6 +2902,7 @@ function AtendimentoContent() {
               <button 
                 onClick={() => {
                   localStorage.setItem('visible_kanban_columns', JSON.stringify(visibleColumns));
+                  localStorage.setItem('kanban_column_order', JSON.stringify(columnOrder));
                   setShowChannelSettingsModal(false);
                   showAlert('Configurações salvas com sucesso!', 'success');
                 }}
