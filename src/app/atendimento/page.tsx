@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Trash2,
   Edit2,
+  Settings,
   Loader2,
   Reply,
   Forward,
@@ -196,6 +197,10 @@ function AtendimentoContent() {
   const [filterContactType, setFilterContactType] = useState<string>('external'); // all | external | internal
   const [filterUnreadOnly, setFilterUnreadOnly] = useState<boolean>(false);
 
+  // Canais visíveis no pipeline (customização do usuário)
+  const [showChannelSettingsModal, setShowChannelSettingsModal] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+
   // Estados para Exclusão Customizada e Notificações no Sistema
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [messageToDeleteId, setMessageToDeleteId] = useState<string | null>(null);
@@ -272,11 +277,30 @@ function AtendimentoContent() {
           setConnections(list);
         }
       } catch (err) {
-        console.error('Erro ao buscar conexões:', err);
       }
     };
     fetchConnections();
   }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('visible_kanban_columns');
+    if (saved) {
+      try {
+        setVisibleColumns(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    } else if (connections.length > 0) {
+      setVisibleColumns([
+        'all_channels',
+        ...connections.map(c => `whatsapp_${c.id}`),
+        'instagram',
+        'facebook',
+        'youtube',
+        'tiktok'
+      ]);
+    }
+  }, [connections]);
 
   // Polling para mensagens do chat selecionado e dados do lead
   useEffect(() => {
@@ -1238,6 +1262,15 @@ function AtendimentoContent() {
                 <Zap size={14} /> Automações
               </button>
 
+              <button 
+                type="button"
+                onClick={() => setShowChannelSettingsModal(true)}
+                title="Personalizar Canais Visíveis"
+                style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', padding: '0.45rem 0.75rem', color: '#475569', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              >
+                <Settings size={14} /> Personalizar
+              </button>
+
               {/* Sync buttons */}
               <button 
                 onClick={async () => {
@@ -1397,7 +1430,7 @@ function AtendimentoContent() {
 
         {/* KANBAN BOARD BODY */}
         <div style={{ flex: 1, display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem', background: '#f1f5f9' }}>
-          {kanbanColumns.map(col => {
+          {kanbanColumns.filter(col => visibleColumns.includes(col.id)).map(col => {
             const stageChats = filteredChats.filter(chat => {
               if (col.id === 'all_channels') return true;
               if (col.id === 'instagram') return chat.channel === 'instagram';
@@ -2655,6 +2688,117 @@ function AtendimentoContent() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showChannelSettingsModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(4px)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '16px', padding: '1.75rem',
+            width: '90%', maxWidth: '450px', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e2e8f0'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800, color: '#1e293b' }}>
+              Personalizar Canais Visíveis
+              <button onClick={() => setShowChannelSettingsModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={20} />
+              </button>
+            </h3>
+            
+            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem', marginTop: 0 }}>
+              Marque quais canais/conexões você gostaria de visualizar como colunas no funil de atendimento.
+            </p>
+
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem', marginBottom: '1.5rem' }}>
+              {kanbanColumns.map(col => {
+                const isChecked = visibleColumns.includes(col.id);
+                return (
+                  <label 
+                    key={col.id} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.75rem', 
+                      padding: '0.75rem 1rem', 
+                      background: isChecked ? '#f8fafc' : '#ffffff', 
+                      border: '1px solid',
+                      borderColor: isChecked ? 'var(--primary)' : '#e2e8f0', 
+                      borderRadius: '10px', 
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: isChecked ? 700 : 500,
+                      color: isChecked ? '#1e293b' : '#475569',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={isChecked}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setVisibleColumns([...visibleColumns, col.id]);
+                        } else {
+                          if (visibleColumns.length > 1) {
+                            setVisibleColumns(visibleColumns.filter(id => id !== col.id));
+                          } else {
+                            alert('Você deve manter pelo menos um canal visível.');
+                          }
+                        }
+                      }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                    />
+                    <span>{col.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  const allIds = kanbanColumns.map(c => c.id);
+                  setVisibleColumns(allIds);
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#475569',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Marcar Todos
+              </button>
+              
+              <button 
+                onClick={() => {
+                  localStorage.setItem('visible_kanban_columns', JSON.stringify(visibleColumns));
+                  setShowChannelSettingsModal(false);
+                  showAlert('Configurações salvas com sucesso!', 'success');
+                }}
+                style={{
+                  padding: '0.5rem 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'var(--primary)',
+                  color: 'white',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Salvar Configurações
+              </button>
             </div>
           </div>
         </div>
