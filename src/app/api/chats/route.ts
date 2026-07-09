@@ -122,71 +122,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // 2. Meta (Instagram & Facebook) - Renova avatares temporários que expiraram
-      const metaChats = chats.filter(c => c.id.startsWith('instagram_') || c.id.startsWith('facebook_'));
-      if (metaChats.length > 0) {
-        if (!(globalThis as any).metaAvatarUpdateCache) {
-          (globalThis as any).metaAvatarUpdateCache = new Map<string, number>();
-        }
-        const metaCache = (globalThis as any).metaAvatarUpdateCache;
-        const nowMs = Date.now();
-        const SIX_HOURS = 6 * 60 * 60 * 1000;
 
-        const chatsToUpdate = metaChats.filter(chat => {
-          const lastUpdated = metaCache.get(chat.id) || 0;
-          return (nowMs - lastUpdated >= SIX_HOURS);
-        });
-
-        if (chatsToUpdate.length > 0) {
-          const promises = chatsToUpdate.slice(0, 5).map(async (chat) => {
-            const channel = chat.id.startsWith('instagram_') ? 'instagram' : 'facebook';
-            const leadId = chat.leadId;
-            const token = channel === 'instagram' 
-              ? (omnichannelSettings.instagramAccessToken || (globalSettings as any).instagramAccessToken)
-              : (omnichannelSettings.messengerAccessToken || (globalSettings as any).messengerAccessToken);
-
-            if (token && leadId) {
-              try {
-                const fields = channel === 'instagram' ? 'name,profile_pic' : 'name,first_name,last_name,profile_pic';
-                const res = await fetch(`https://graph.facebook.com/v19.0/${leadId}?fields=${fields}&access_token=${token}`);
-                if (res.ok) {
-                  const data = await res.json();
-                  const avatarUrl = data.profile_picture_url || data.profile_picture || data.profile_pic;
-                  if (avatarUrl && avatarUrl !== chat.leadAvatar) {
-                    await d1Api.executeRun(`UPDATE chats SET leadAvatar = ? WHERE id = ?`, [avatarUrl, chat.id]);
-                    await d1Api.executeRun(`UPDATE leads SET avatar = ? WHERE id = ?`, [avatarUrl, chat.leadId]);
-                    chat.leadAvatar = avatarUrl;
-                  }
-                  metaCache.set(chat.id, nowMs);
-                } else {
-                  const errBody = await res.json().catch(() => ({}));
-                  await d1Api.executeRun(`INSERT INTO settings (key, valueJson) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`, [
-                    'meta_debug_avatar',
-                    JSON.stringify({
-                      status: res.status,
-                      error: errBody,
-                      leadId,
-                      chatId: chat.id,
-                      timestamp: new Date().toISOString()
-                    })
-                  ]);
-                }
-              } catch (err: any) {
-                await d1Api.executeRun(`INSERT INTO settings (key, valueJson) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET valueJson = excluded.valueJson`, [
-                  'meta_debug_avatar',
-                  JSON.stringify({
-                    error: err?.message || String(err),
-                    leadId,
-                    chatId: chat.id,
-                    timestamp: new Date().toISOString()
-                  })
-                ]);
-              }
-            }
-          });
-          await Promise.all(promises);
-        }
-      }
     } catch (err) {
       // Silencioso
     }
