@@ -6,9 +6,14 @@ import { MessageSquare, Trash2, X, Mic, Paperclip, Link as LinkIcon, MousePointe
 
 export default memo(function SendMessageNode({ id, data, isConnectable }: any) {
   const { setNodes, setEdges } = useReactFlow();
-  const [buttons, setButtons] = useState<{id: number, text: string, type: 'action'|'url'}[]>([]);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState(data.note || '');
+
+  const buttons = data.buttons || [];
+
+  const setButtons = (newButtons: any) => {
+    setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, buttons: newButtons } } : n));
+  };
 
   const onNoteChange = (e: any) => {
     setNoteText(e.target.value);
@@ -20,8 +25,31 @@ export default memo(function SendMessageNode({ id, data, isConnectable }: any) {
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
   };
 
-  const addActionBtn = () => { if (buttons.length < 3) setButtons([...buttons, { id: Date.now(), text: 'Novo Botão', type: 'action' }]); };
-  const addUrlBtn = () => { if (buttons.length < 3) setButtons([...buttons, { id: Date.now(), text: 'https://', type: 'url' }]); };
+  const addActionBtn = () => { 
+    if (buttons.length < 3) {
+      setButtons([...buttons, { id: Date.now(), text: 'Novo Botão', type: 'action' }]); 
+    }
+  };
+  
+  const addUrlBtn = () => { 
+    if (buttons.length < 3) {
+      setButtons([...buttons, { id: Date.now(), text: 'https://', type: 'url' }]); 
+    }
+  };
+
+  const onMessageChange = (e: any) => {
+    setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, message: e.target.value } } : n));
+  };
+
+  const onButtonTextChange = (btnId: number, text: string) => {
+    const updated = buttons.map((b: any) => b.id === btnId ? { ...b, text } : b);
+    setButtons(updated);
+  };
+
+  const deleteButton = (btnId: number) => {
+    const updated = buttons.filter((b: any) => b.id !== btnId);
+    setButtons(updated);
+  };
 
   return (
     <div style={{
@@ -58,7 +86,8 @@ export default memo(function SendMessageNode({ id, data, isConnectable }: any) {
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
           <textarea 
-            defaultValue={data.message} 
+            value={data.message || ''} 
+            onChange={onMessageChange}
             placeholder="Escreva algo ou escolha um modelo..."
             style={{
               width: '100%',
@@ -89,14 +118,15 @@ export default memo(function SendMessageNode({ id, data, isConnectable }: any) {
         {/* Lista de Botões Adicionados */}
         {buttons.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-            {buttons.map((btn, i) => (
+            {buttons.map((btn: any, i: number) => (
               <div key={btn.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <input 
-                  defaultValue={btn.text} 
+                  value={btn.text || ''} 
+                  onChange={(e) => onButtonTextChange(btn.id, e.target.value)}
                   placeholder={btn.type === 'url' ? 'https://...' : 'Nome do botão'}
                   style={{ width: '100%', padding: '6px', fontSize: '11px', borderRadius: '4px', border: `1px solid ${btn.type === 'url' ? '#3b82f6' : 'var(--primary)'}`, outline: 'none' }} 
                 />
-                <button onClick={() => setButtons(buttons.filter(b => b.id !== btn.id))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--danger)', display: 'flex' }}>
+                <button onClick={() => deleteButton(btn.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--danger)', display: 'flex' }}>
                   <X size={14} />
                 </button>
                 <Handle 

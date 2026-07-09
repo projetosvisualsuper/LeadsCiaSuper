@@ -9,6 +9,14 @@ export default memo(function TriggerNode({ id, data, isConnectable }: any) {
     setNodes((nds) => nds.filter((n) => n.id !== id));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
   };
+  const onTriggerTypeChange = (e: any) => {
+    setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, triggerType: e.target.value } } : n));
+  };
+
+  const onTriggerValueChange = (e: any) => {
+    setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, triggerValue: e.target.value } } : n));
+  };
+
   const color = data.color || '#eab308';
 
   return (
@@ -22,13 +30,23 @@ export default memo(function TriggerNode({ id, data, isConnectable }: any) {
       </div>
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <p style={{ fontSize: '11px', color: 'var(--secondary)' }}>Disparar este bot quando o lead enviar:</p>
-        <select style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', fontWeight: 600 }}>
-          <option>Palavra-chave Exata</option>
-          <option>Contém a Palavra</option>
-          <option>Inicia com</option>
-          <option>Qualquer Mensagem</option>
+        <select 
+          value={data.triggerType || 'Palavra-chave Exata'} 
+          onChange={onTriggerTypeChange}
+          style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', fontWeight: 600 }}
+        >
+          <option value="Palavra-chave Exata">Palavra-chave Exata</option>
+          <option value="Contém a Palavra">Contém a Palavra</option>
+          <option value="Inicia com">Inicia com</option>
+          <option value="Qualquer Mensagem">Qualquer Mensagem</option>
         </select>
-        <input type="text" placeholder='Ex: "x" ou "z"' style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)' }} />
+        <input 
+          type="text" 
+          placeholder='Ex: "x" ou "z"' 
+          value={data.triggerValue || ''}
+          onChange={onTriggerValueChange}
+          style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)' }} 
+        />
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} style={{ background: color, width: '12px', height: '12px', border: '2px solid white' }} />
     </div>
