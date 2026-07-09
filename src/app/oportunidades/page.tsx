@@ -79,8 +79,14 @@ export default function OportunidadesPage() {
   const [chatHistories, setChatHistories] = useState<Record<string, ChatMessage[]>>({});
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas'>('novas');
   const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
+
+  // Filtros de busca e atribuição
+  const [filterUser, setFilterUser] = useState<string>('todos');
+  const [filterConnection, setFilterConnection] = useState<string>('todos');
+  const [filterDate, setFilterDate] = useState<string>('');
 
   const fetchOpportunities = async () => {
     setLoading(true);
@@ -102,6 +108,14 @@ export default function OportunidadesPage() {
     api.getAllUserProfiles()
       .then(setSystemUsers)
       .catch(err => console.error('Erro ao carregar usuários:', err));
+
+    fetch('/api/chats?type=connections')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Erro ao carregar conexões');
+      })
+      .then(setConnections)
+      .catch(err => console.error('Erro ao carregar conexões:', err));
   }, []);
 
   const handleToggleOpportunity = async (opp: Opportunity) => {
@@ -241,20 +255,46 @@ export default function OportunidadesPage() {
     return `https://web.whatsapp.com/send?phone=${cleanPhone}`;
   };
 
+  // Coletar origens/conexões únicas para usar no filtro
+  const uniqueConnections = Array.from(new Set(
+    opportunities
+      .map(o => o.leadOrigem)
+      .filter(Boolean)
+  )) as string[];
+
   const filteredOpportunities = opportunities.filter(opp => {
     const status = opp.status || 'pendente';
+    
+    let tabMatch = false;
     if (activeTab === 'novas') {
-      return status === 'pendente';
+      tabMatch = status === 'pendente';
+    } else if (activeTab === 'atendidas') {
+      tabMatch = status === 'em_atendimento';
+    } else if (activeTab === 'ganhas') {
+      tabMatch = status === 'ganha' || status === 'finalizado';
+    } else if (activeTab === 'perdidas') {
+      tabMatch = status === 'perdida' || status === 'cancelado';
+    } else {
+      tabMatch = true;
     }
-    if (activeTab === 'atendidas') {
-      return status === 'em_atendimento';
+
+    if (!tabMatch) return false;
+
+    // Filtro por Vendedor
+    if (filterUser !== 'todos' && opp.assignedTo !== filterUser) {
+      return false;
     }
-    if (activeTab === 'ganhas') {
-      return status === 'ganha' || status === 'finalizado';
+
+    // Filtro por Conexão
+    if (filterConnection !== 'todos' && opp.leadOrigem !== filterConnection) {
+      return false;
     }
-    if (activeTab === 'perdidas') {
-      return status === 'perdida' || status === 'cancelado';
+
+    // Filtro por Data
+    if (filterDate && !opp.dataCriacao.startsWith(filterDate)) {
+      return false;
     }
+
     return true;
   });
 
@@ -281,6 +321,106 @@ export default function OportunidadesPage() {
           <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           {loading ? 'Atualizando...' : 'Atualizar'}
         </button>
+      </div>
+
+      {/* BARRA DE FILTROS */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '1rem', 
+        marginBottom: '2rem', 
+        padding: '1.25rem', 
+        background: 'white', 
+        borderRadius: '12px', 
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        flexWrap: 'wrap',
+        alignItems: 'flex-end'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '180px', flex: 1 }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Vendedor / Responsável</label>
+          <select 
+            value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)}
+            style={{ 
+              padding: '0.45rem 0.75rem', 
+              borderRadius: '8px', 
+              border: '1px solid #cbd5e1', 
+              fontSize: '0.8rem', 
+              background: 'white',
+              outline: 'none',
+              height: '36px'
+            }}
+          >
+            <option value="todos">Todos os Vendedores</option>
+            {systemUsers.map(u => (
+              <option key={u.uid} value={u.uid}>{u.displayName || u.email}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '180px', flex: 1 }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Conexão / Canal</label>
+          <select 
+            value={filterConnection}
+            onChange={(e) => setFilterConnection(e.target.value)}
+            style={{ 
+              padding: '0.45rem 0.75rem', 
+              borderRadius: '8px', 
+              border: '1px solid #cbd5e1', 
+              fontSize: '0.8rem', 
+              background: 'white',
+              outline: 'none',
+              height: '36px'
+            }}
+          >
+            <option value="todos">Todas as Conexões</option>
+            {uniqueConnections.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '150px' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Data da Oportunidade</label>
+          <input 
+            type="date" 
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            style={{ 
+              padding: '0.45rem 0.75rem', 
+              borderRadius: '8px', 
+              border: '1px solid #cbd5e1', 
+              fontSize: '0.8rem', 
+              background: 'white',
+              outline: 'none',
+              height: '36px'
+            }}
+          />
+        </div>
+
+        {(filterUser !== 'todos' || filterConnection !== 'todos' || filterDate) && (
+          <button 
+            onClick={() => {
+              setFilterUser('todos');
+              setFilterConnection('todos');
+              setFilterDate('');
+            }}
+            style={{
+              padding: '0.45rem 1rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#ef444410',
+              color: '#ef4444',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              height: '36px',
+              transition: 'all 0.2s'
+            }}
+          >
+            Limpar Filtros
+          </button>
+        )}
       </div>
 
       {/* TABS */}
@@ -463,7 +603,22 @@ export default function OportunidadesPage() {
                               }}
                             >
                               <span style={{ display: 'block', fontWeight: 600, fontSize: '0.75rem', color: msg.isIncoming ? '#475569' : 'var(--primary)', marginBottom: '0.15rem' }}>
-                                {msg.isIncoming ? opp.leadNome : 'Sistema (IA)'}
+                                {msg.isIncoming 
+                                  ? opp.leadNome 
+                                  : (msg.senderName && msg.senderName !== 'Você' && msg.senderName !== 'Sistema' && msg.senderName !== 'Sistema (IA)'
+                                      ? msg.senderName 
+                                      : (msg.connectionId && connections.find(c => c.id === msg.connectionId)?.name
+                                          ? connections.find(c => c.id === msg.connectionId).name
+                                          : (opp.assignedTo && systemUsers.find(u => u.uid === opp.assignedTo)?.displayName
+                                              ? systemUsers.find(u => u.uid === opp.assignedTo).displayName
+                                              : (opp.assignedTo && systemUsers.find(u => u.uid === opp.assignedTo)?.email
+                                                  ? systemUsers.find(u => u.uid === opp.assignedTo).email
+                                                  : 'Sistema (IA)'
+                                                )
+                                            )
+                                        )
+                                    )
+                                }
                               </span>
                               {renderMessageContent(msg, opp.leadNome || 'Lead')}
                               <span style={{ display: 'block', textAlign: 'right', fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.25rem' }}>

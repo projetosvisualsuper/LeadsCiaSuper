@@ -382,6 +382,7 @@ export interface ChatMessage {
   quotedMessageId?: string;
   quotedMessageSender?: string;
   quotedMessageContent?: string;
+  connectionId?: string;
 }
 
 export interface ChatSession {

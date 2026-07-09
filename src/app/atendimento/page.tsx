@@ -22,6 +22,7 @@ import {
   X,
   MessageSquare,
   Trash2,
+  Edit2,
   Loader2,
   Reply,
   Forward,
@@ -947,6 +948,14 @@ function AtendimentoContent() {
     await api.saveServiceStages(updated);
   };
 
+  const handleEditStage = async (id: string, currentName: string) => {
+    const name = prompt('Novo nome para esta etapa de atendimento:', currentName);
+    if (!name || name.trim() === '') return;
+    const updated = serviceStages.map(s => s.id === id ? { ...s, name: name.trim() } : s);
+    setServiceStages(updated);
+    await api.saveServiceStages(updated);
+  };
+
   const handleDragStartCard = (e: React.DragEvent, chatId: string) => {
     e.dataTransfer.setData('text/plain', chatId);
   };
@@ -1383,22 +1392,44 @@ function AtendimentoContent() {
               >
                 {/* Column Header */}
                 <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1 }}>
+                    <span 
+                      style={{ 
+                        fontWeight: 700, 
+                        fontSize: '0.85rem', 
+                        color: '#1e293b', 
+                        whiteSpace: 'nowrap', 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => handleEditStage(stage.id, stage.name)}
+                      title="Clique para editar nome"
+                    >
                       {stage.name}
                     </span>
                     <span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>
                       {stageChats.length}
                     </span>
                   </div>
-                  {!isDefaultStage && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <button 
-                      onClick={() => handleDeleteStage(stage.id)}
-                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', padding: '2px' }}
+                      onClick={() => handleEditStage(stage.id, stage.name)}
+                      title="Editar nome da etapa"
+                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b', padding: '2px', display: 'flex', alignItems: 'center' }}
                     >
-                      <X size={14} />
+                      <Edit2 size={12} />
                     </button>
-                  )}
+                    {!isDefaultStage && (
+                      <button 
+                        onClick={() => handleDeleteStage(stage.id)}
+                        title="Excluir etapa"
+                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', padding: '2px', display: 'flex', alignItems: 'center' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Column Cards List */}
