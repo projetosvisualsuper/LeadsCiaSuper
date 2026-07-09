@@ -1543,7 +1543,7 @@ function AtendimentoContent() {
           top: 0,
           right: 0,
           bottom: 0,
-          width: selectedChatId ? (showLeadDetails ? '920px' : '600px') : '0px',
+          width: selectedChatId ? (showLeadDetails ? '1120px' : '800px') : '0px',
           maxWidth: '100%',
           background: 'white',
           boxShadow: selectedChatId ? '-10px 0 30px rgba(0,0,0,0.1)' : 'none',
