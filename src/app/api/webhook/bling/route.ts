@@ -123,14 +123,21 @@ async function processBlingOrder(orderId: string) {
 
   if (isOpen) {
     if (pedidoLocal) {
+      const isAndamento = statusName.includes('andamento') || statusName === '18';
+      if (isAndamento) {
+        await d1Api.updatePedidoStatus(pedidoLocal.id, 'em_atendimento');
+      }
+
       const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
       const novaObs = (pedidoLocal.observacao || '') + updateText;
       await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
       return { 
         success: true, 
-        message: 'Pedido já existia. Apenas observações atualizadas.',
-        pedido: pedidoLocal
+        message: isAndamento 
+          ? 'Pedido atualizado para Em Atendimento no CRM.' 
+          : 'Pedido já existia. Apenas observações atualizadas.',
+        pedido: isAndamento ? { ...pedidoLocal, status: 'em_atendimento' } : pedidoLocal
       };
     } else {
       const cleanPhone = clientPhone.replace(/\D/g, '');
