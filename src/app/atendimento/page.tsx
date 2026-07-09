@@ -1093,11 +1093,54 @@ function AtendimentoContent() {
     return matchesSearch && matchesChannel && matchesUnread && matchesStatus && matchesPeriod && matchesConnection && matchesContactType && matchesUnreadOnly;
   });
 
+  const getBusinessTimeMs = (startDate: Date, endDate: Date): number => {
+    if (startDate >= endDate) return 0;
+
+    const businessHours: { [key: number]: { startMin: number; endMin: number } | null } = {
+      0: null, // Domingo
+      1: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Segunda: 07:30 - 17:30
+      2: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Terça: 07:30 - 17:30
+      3: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Quarta: 07:30 - 17:30
+      4: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Quinta: 07:30 - 17:30
+      5: { startMin: 7 * 60 + 30, endMin: 16 * 60 + 15 }, // Sexta: 07:30 - 16:15
+      6: null // Sábado
+    };
+
+    let totalMs = 0;
+    let current = new Date(startDate.getTime());
+    const target = endDate.getTime();
+
+    while (current.getTime() < target) {
+      const day = current.getDay();
+      const schedule = businessHours[day];
+
+      if (schedule) {
+        const dayStart = new Date(current.getTime());
+        dayStart.setHours(Math.floor(schedule.startMin / 60), schedule.startMin % 60, 0, 0);
+
+        const dayEnd = new Date(current.getTime());
+        dayEnd.setHours(Math.floor(schedule.endMin / 60), schedule.endMin % 60, 0, 0);
+
+        const startMs = Math.max(current.getTime(), dayStart.getTime());
+        const endMs = Math.min(target, dayEnd.getTime());
+
+        if (startMs < endMs) {
+          totalMs += (endMs - startMs);
+        }
+      }
+
+      current.setDate(current.getDate() + 1);
+      current.setHours(0, 0, 0, 0);
+    }
+
+    return totalMs;
+  };
+
   const getColumnMaxUnansweredTime = (columnChats: ChatSession[]) => {
     let maxMs = 0;
     columnChats.forEach(chat => {
       if (chat.lastMessageIsIncoming === 1) {
-        const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+        const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
         if (ms > maxMs) {
           maxMs = ms;
         }
@@ -1121,7 +1164,7 @@ function AtendimentoContent() {
     let maxMs = 0;
     filteredChats.forEach(chat => {
       if (chat.lastMessageIsIncoming === 1) {
-        const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+        const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
         if (ms > maxMs) {
           maxMs = ms;
         }
@@ -1186,7 +1229,7 @@ function AtendimentoContent() {
       
     if (!lastTime) return null;
     
-    const diffMs = Date.now() - new Date(lastTime).getTime();
+    const diffMs = getBusinessTimeMs(new Date(lastTime), new Date());
     const diffMins = Math.floor(diffMs / 60000);
     
     if (diffMins < 1) return 'Menos de 1 minuto';
