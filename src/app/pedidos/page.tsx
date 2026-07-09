@@ -316,6 +316,11 @@ function PedidosContent() {
                       {getStatusBadge(pedido.status)}
                       <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1e293b' }}>
                         Ref: {pedido.pedidoReferencia || 'N/A'}
+                        {pedido.numeroLojaVirtual && (
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: '#64748b', marginLeft: '0.5rem' }}>
+                            (Loja: {pedido.numeroLojaVirtual})
+                          </span>
+                        )}
                       </span>
                       {!pedido.isRead && (
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', marginLeft: '0.5rem' }} />

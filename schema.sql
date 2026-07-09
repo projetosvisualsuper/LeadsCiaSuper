@@ -250,7 +250,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
   isRead INTEGER DEFAULT 0,
   dataCriacao TEXT NOT NULL,
   observacao TEXT,
-  origem TEXT DEFAULT 'site'
+  origem TEXT DEFAULT 'site',
+  numeroLojaVirtual TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pipeline_automations (

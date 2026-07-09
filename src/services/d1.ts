@@ -1768,18 +1768,28 @@ export const d1Api = {
     }
   },
 
-  savePedido: async (pedido: Omit<Pedido, 'id' | 'dataCriacao' | 'isRead' | 'status'> & { origem?: string }): Promise<void> => {
+  ensureNumeroLojaVirtualColumn: async (): Promise<void> => {
+    try {
+      await executeRun(`ALTER TABLE pedidos ADD COLUMN numeroLojaVirtual TEXT`);
+    } catch (e) {
+      // Ignora se a coluna já existir
+    }
+  },
+
+  savePedido: async (pedido: Omit<Pedido, 'id' | 'dataCriacao' | 'isRead' | 'status'> & { origem?: string; numeroLojaVirtual?: string }): Promise<void> => {
     await d1Api.ensureOrigemColumn();
+    await d1Api.ensureNumeroLojaVirtualColumn();
     const id = Math.random().toString(36).substr(2, 9);
     const dataCriacao = new Date().toISOString();
     await executeRun(
-      `INSERT INTO pedidos (id, leadId, pedidoReferencia, itens, valor, status, isRead, dataCriacao, origem) VALUES (?, ?, ?, ?, ?, 'pendente', 0, ?, ?)`,
-      [id, pedido.leadId, pedido.pedidoReferencia || null, pedido.itens || null, pedido.valor || null, dataCriacao, pedido.origem || 'site']
+      `INSERT INTO pedidos (id, leadId, pedidoReferencia, itens, valor, status, isRead, dataCriacao, origem, numeroLojaVirtual, observacao) VALUES (?, ?, ?, ?, ?, 'pendente', 0, ?, ?, ?, ?)`,
+      [id, pedido.leadId, pedido.pedidoReferencia || null, pedido.itens || null, pedido.valor || null, dataCriacao, pedido.origem || 'site', pedido.numeroLojaVirtual || null, pedido.observacao || null]
     );
   },
 
   getPedidos: async (): Promise<Pedido[]> => {
     await d1Api.ensureOrigemColumn();
+    await d1Api.ensureNumeroLojaVirtualColumn();
     // Fazer JOIN com a tabela de leads para pegar o nome e o celular do lead
     const query = `
       SELECT p.*, l.nome as leadNome, l.celular as leadCelular
@@ -1794,6 +1804,7 @@ export const d1Api = {
 
   getPedidosByLeadId: async (leadId: string): Promise<Pedido[]> => {
     await d1Api.ensureOrigemColumn();
+    await d1Api.ensureNumeroLojaVirtualColumn();
     const query = `
       SELECT p.*, l.nome as leadNome, l.celular as leadCelular
       FROM pedidos p

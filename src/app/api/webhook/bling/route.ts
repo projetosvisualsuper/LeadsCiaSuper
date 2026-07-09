@@ -82,12 +82,15 @@ async function processBlingOrder(orderId: string) {
 
   // Obter dados do pedido de venda
   let orderNumber = (data.numero || data.id || '').toString();
+  let numeroLojaVirtual = '';
   if (data.numeroPedidoLojaVirtual) {
     const virtualStoreOrder = data.numeroPedidoLojaVirtual.toString();
     if (virtualStoreOrder.includes('_')) {
-      orderNumber = virtualStoreOrder.split('_')[0];
+      numeroLojaVirtual = virtualStoreOrder.split('_')[0];
+      orderNumber = numeroLojaVirtual;
     } else if (virtualStoreOrder.trim()) {
-      orderNumber = virtualStoreOrder.trim();
+      numeroLojaVirtual = virtualStoreOrder.trim();
+      orderNumber = numeroLojaVirtual;
     }
   }
   // A situação pode vir como ID ou nome
@@ -171,6 +174,7 @@ async function processBlingOrder(orderId: string) {
         itens: itensBling,
         valor: valorBling,
         origem: 'mercos',
+        numeroLojaVirtual: numeroLojaVirtual,
         observacao: `[BLING CRIAÇÃO] Pedido criado com status "${prettyStatus}" no Bling em ${formattedDate}.`
       } as any);
 

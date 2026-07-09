@@ -458,6 +458,7 @@ export interface Pedido {
   leadCelular?: string;
   observacao?: string;
   origem?: 'site' | 'mercos';
+  numeroLojaVirtual?: string;
 }
 
 export interface Opportunity {
