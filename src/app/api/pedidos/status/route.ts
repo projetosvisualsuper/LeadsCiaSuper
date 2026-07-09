@@ -32,6 +32,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'Status atualizado localmente.' });
     }
 
+    if (pedido.origem === 'mercos') {
+      return NextResponse.json({ success: true, message: 'Status atualizado localmente (Pedido Mercos/Bling - ignorando sync WooCommerce).' });
+    }
+
     // 3. Buscar configurações para ver se o WooCommerce Sync está ativo
     const settings = await d1Api.getSettings();
 
