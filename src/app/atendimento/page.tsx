@@ -1543,13 +1543,13 @@ function AtendimentoContent() {
           top: 0,
           right: 0,
           bottom: 0,
-          width: selectedChatId ? '600px' : '0px',
+          width: selectedChatId ? (showLeadDetails ? '920px' : '600px') : '0px',
           maxWidth: '100%',
           background: 'white',
           boxShadow: selectedChatId ? '-10px 0 30px rgba(0,0,0,0.1)' : 'none',
           zIndex: 999,
           display: selectedChatId ? 'flex' : 'none',
-          flexDirection: 'column',
+          flexDirection: 'row',
           transition: 'width 0.2s ease-out, box-shadow 0.2s ease-out',
           borderLeft: '1px solid #e2e8f0'
         }}
@@ -1588,7 +1588,9 @@ function AtendimentoContent() {
         )}
         {selectedChatId ? (
           <>
-            {/* Header do Chat */}
+            {/* Wrapper da Conversa (Lado Esquerdo) */}
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', minWidth: 0, position: 'relative' }}>
+              {/* Header do Chat */}
             <header className="chat-header" style={{ padding: '0.75rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
               {/* Row 1: User Info & Control Buttons */}
               <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2386,198 +2388,202 @@ function AtendimentoContent() {
               </button>
             )}
             </footer>
-          </>
-        ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '1.5rem' }}>
-            <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-              <MessageSquare size={48} />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.5rem' }}>Central de Atendimento</h3>
-              <p>Selecione uma conversa para iniciar o atendimento omnichannel.</p>
-            </div>
-          </div>
-        )}
-      </div>
+          </div> {/* Fim do Wrapper da Conversa */}
 
-      {/* PAINEL DE DETALHES DO LEAD */}
-      {selectedChatId && showLeadDetails && (
-        <div style={{ 
-          width: isMobile ? '100%' : '320px', 
-          position: isMobile ? 'absolute' : 'relative',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 200,
-          background: 'white', 
-          borderLeft: '1px solid #e2e8f0', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          animation: 'slideInRight 0.3s ease-out' 
-        }}>
-          <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontWeight: 800, color: '#1e293b' }}>Sobre o Lead</h3>
-            <button onClick={() => setShowLeadDetails(false)} style={{ opacity: 0.4 }}><X size={20} /></button>
-          </header>
-          
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', overflow: 'hidden' }}>
-                {activeChat?.leadAvatar ? (
-                  <img src={activeChat.leadAvatar} alt={selectedLead?.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <User size={40} color="#94a3b8" />
+          {/* PAINEL DE DETALHES DO LEAD (Movido para dentro do chat-area) */}
+          {showLeadDetails && (
+            <div style={{ 
+              width: isMobile ? '100%' : '320px', 
+              position: isMobile ? 'absolute' : 'relative',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 200,
+              background: 'white', 
+              borderLeft: '1px solid #e2e8f0', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              flexShrink: 0,
+              animation: 'slideInRight 0.3s ease-out' 
+            }}>
+              <header style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontWeight: 800, color: '#1e293b' }}>Sobre o Lead</h3>
+                <button onClick={() => setShowLeadDetails(false)} style={{ opacity: 0.4 }}><X size={20} /></button>
+              </header>
+              
+              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', overflow: 'hidden' }}>
+                    {activeChat?.leadAvatar ? (
+                      <img src={activeChat.leadAvatar} alt={selectedLead?.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <User size={40} color="#94a3b8" />
+                    )}
+                  </div>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>{selectedLead?.nome}</h4>
+                  <p style={{ fontSize: '0.85rem', opacity: 0.6, color: '#64748b' }}>{selectedLead?.email || 'Sem e-mail cadastrado'}</p>
+                </div>
+
+                {unansweredTimeStr && (
+                  <div style={{ 
+                    padding: '1rem', 
+                    background: 'rgba(239, 68, 68, 0.05)', 
+                    borderRadius: '12px', 
+                    border: '1px solid rgba(239, 68, 68, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '1.5rem',
+                    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.05)'
+                  }}>
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      borderRadius: '50%', 
+                      background: '#fef2f2', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      color: '#ef4444',
+                      flexShrink: 0
+                    }}>
+                      <Clock size={16} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#ef4444', display: 'block', opacity: 0.8 }}>Sem Resposta</label>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#991b1b' }}>{unansweredTimeStr}</span>
+                    </div>
+                  </div>
                 )}
-              </div>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>{selectedLead?.nome}</h4>
-              <p style={{ fontSize: '0.85rem', opacity: 0.6, color: '#64748b' }}>{selectedLead?.email || 'Sem e-mail cadastrado'}</p>
-            </div>
 
-            {unansweredTimeStr && (
-              <div style={{ 
-                padding: '1rem', 
-                background: 'rgba(239, 68, 68, 0.05)', 
-                borderRadius: '12px', 
-                border: '1px solid rgba(239, 68, 68, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                marginBottom: '1.5rem',
-                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.05)'
-              }}>
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '50%', 
-                  background: '#fef2f2', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  color: '#ef4444',
-                  flexShrink: 0
-                }}>
-                  <Clock size={16} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: '#ef4444', display: 'block', opacity: 0.8 }}>Sem Resposta</label>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#991b1b' }}>{unansweredTimeStr}</span>
-                </div>
-              </div>
-            )}
+                <div style={{ display: 'grid', gap: '1.5rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Tags do Lead</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {selectedLead?.tags && selectedLead.tags.length > 0 ? (
+                        selectedLead.tags.map(tag => (
+                          <span key={tag} style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px' }}>#{tag}</span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>Sem tags</span>
+                      )}
+                    </div>
+                  </div>
 
-            <div style={{ display: 'grid', gap: '1.5rem' }}>
-              <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Tags do Lead</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {selectedLead?.tags && selectedLead.tags.length > 0 ? (
-                    selectedLead.tags.map(tag => (
-                      <span key={tag} style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px' }}>#{tag}</span>
-                    ))
-                  ) : (
-                    <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>Sem tags</span>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Informações</label>
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                        <MessageCircle size={16} opacity={0.5} />
+                        <span>{selectedLead?.celular || selectedLead?.telefone || 'Não informado'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                        <Clock size={16} opacity={0.5} />
+                        <span>Cadastrado em {selectedLead ? new Date(selectedLead.dataCriacao).toLocaleDateString() : '...'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {activeChat?.channel === 'whatsapp' && (
+                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Conexão de Resposta</label>
+                      <select 
+                        value={activeChat.connectionId || ''}
+                        onChange={(e) => handleChangeChatConnection(e.target.value)}
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                      >
+                        <option value="">Selecione uma conexão...</option>
+                        {connections.map(conn => (
+                          <option key={conn.id} value={conn.id}>
+                            {conn.name || conn.evolutionInstanceName} ({conn.type === 'evolution_api' ? 'Docker' : 'Meta'})
+                          </option>
+                        ))}
+                      </select>
+                      <p style={{ fontSize: '0.65rem', marginTop: '0.5rem', opacity: 0.6 }}>Altere aqui para forçar o uso do Docker neste lead.</p>
+                    </div>
                   )}
-                </div>
-              </div>
 
-              <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Informações</label>
-                <div style={{ display: 'grid', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                    <MessageCircle size={16} opacity={0.5} />
-                    <span>{selectedLead?.celular || selectedLead?.telefone || 'Não informado'}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                    <Clock size={16} opacity={0.5} />
-                    <span>Cadastrado em {selectedLead ? new Date(selectedLead.dataCriacao).toLocaleDateString() : '...'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {activeChat?.channel === 'whatsapp' && (
-                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Conexão de Resposta</label>
-                  <select 
-                    value={activeChat.connectionId || ''}
-                    onChange={(e) => handleChangeChatConnection(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-                  >
-                    <option value="">Selecione uma conexão...</option>
-                    {connections.map(conn => (
-                      <option key={conn.id} value={conn.id}>
-                        {conn.name || conn.evolutionInstanceName} ({conn.type === 'evolution_api' ? 'Docker' : 'Meta'})
-                      </option>
-                    ))}
-                  </select>
-                  <p style={{ fontSize: '0.65rem', marginTop: '0.5rem', opacity: 0.6 }}>Altere aqui para forçar o uso do Docker neste lead.</p>
-                </div>
-              )}
-
-              {/* Atribuição de Consultor */}
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Encaminhar para Consultor</label>
-                <select 
-                  value={activeChat?.assignedTo || ''}
-                  disabled={isAssigning}
-                  onChange={async (e) => {
-                    const userId = e.target.value;
-                    if (!userId || !selectedLead || !activeChat) return;
-                    setIsAssigning(true);
-                    try {
-                      const res = await fetch('/api/opportunities', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ leadId: selectedLead.id, assignedTo: userId })
-                      });
-                      if (res.ok) {
-                        showAlert('Lead encaminhado com sucesso!', 'success');
-                        // Atualizar o chat localmente
-                        setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, assignedTo: userId } : c));
-                        // Disparar evento para atualizar a sidebar
-                        window.dispatchEvent(new CustomEvent('oportunidades-read'));
-                      } else {
-                        const data = await res.json().catch(() => ({}));
-                        showAlert(`Erro: ${data.error || 'Erro desconhecido'}`, 'error');
+                  {/* Atribuição de Consultor */}
+                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.4, display: 'block', marginBottom: '0.5rem' }}>Encaminhar para Consultor</label>
+                    <select 
+                      value={activeChat?.assignedTo || ''}
+                      disabled={isAssigning}
+                      onChange={async (e) => {
+                        const userId = e.target.value;
+                        if (!userId || !selectedLead || !activeChat) return;
+                        setIsAssigning(true);
+                        try {
+                          const res = await fetch('/api/opportunities', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ leadId: selectedLead.id, assignedTo: userId })
+                          });
+                          if (res.ok) {
+                            showAlert('Lead encaminhado com sucesso!', 'success');
+                            // Atualizar o chat localmente
+                            setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, assignedTo: userId } : c));
+                            // Disparar evento para atualizar a sidebar
+                            window.dispatchEvent(new CustomEvent('oportunidades-read'));
+                          } else {
+                            const data = await res.json().catch(() => ({}));
+                            showAlert(`Erro: ${data.error || 'Erro desconhecido'}`, 'error');
+                          }
+                        } catch (err) {
+                          showAlert('Erro ao conectar com o servidor.', 'error');
+                        } finally {
+                          setIsAssigning(false);
+                        }
+                      }}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                    >
+                      <option value="">Selecione um consultor...</option>
+                      {systemUsers
+                        .filter(u => u.status === 'approved')
+                        .map(u => (
+                          <option key={u.uid} value={u.uid}>
+                            {u.name || u.email} ({u.role === 'admin' ? 'Master' : u.role === 'editor' ? 'Intermediário' : 'Básico'})
+                          </option>
+                        ))
                       }
-                    } catch (err) {
-                      showAlert('Erro ao conectar com o servidor.', 'error');
-                    } finally {
-                      setIsAssigning(false);
-                    }
-                  }}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
-                >
-                  <option value="">Selecione um consultor...</option>
-                  {systemUsers
-                    .filter(u => u.status === 'approved')
-                    .map(u => (
-                      <option key={u.uid} value={u.uid}>
-                        {u.name || u.email} ({u.role === 'admin' ? 'Master' : u.role === 'editor' ? 'Intermediário' : 'Básico'})
-                      </option>
-                    ))
-                  }
-                </select>
-                <p style={{ fontSize: '0.65rem', marginTop: '0.5rem', opacity: 0.6 }}>Encaminhe este lead para que ele surja no módulo de Oportunidades do consultor.</p>
-              </div>
+                    </select>
+                    <p style={{ fontSize: '0.65rem', marginTop: '0.5rem', opacity: 0.6 }}>Encaminhe este lead para que ele surja no módulo de Oportunidades do consultor.</p>
+                  </div>
 
-              {selectedLead && (
-                <div style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
-                  <p style={{ fontSize: '0.75rem', lineHeight: 1.5, color: '#4338ca' }}>
-                    <strong>Nota do CRM:</strong> Este lead veio através de <strong>{selectedLead.origem}</strong>.
-                  </p>
+                  {selectedLead && (
+                    <div style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
+                      <p style={{ fontSize: '0.75rem', lineHeight: 1.5, color: '#4338ca' }}>
+                        <strong>Nota do CRM:</strong> Este lead veio através de <strong>{selectedLead.origem}</strong>.
+                      </p>
+                    </div>
+                  )}
+
+                  <a 
+                    href={`/leads?search=${selectedLead?.email || selectedLead?.nome}`} 
+                    className="btn btn-outline" 
+                    style={{ width: '100%', justifyContent: 'center', fontSize: '0.85rem' }}
+                  >
+                    Ver no CRM <ExternalLink size={14} />
+                  </a>
                 </div>
-              )}
-
-              <a 
-                href={`/leads?search=${selectedLead?.email || selectedLead?.nome}`} 
-                className="btn btn-outline" 
-                style={{ width: '100%', justifyContent: 'center', fontSize: '0.85rem' }}
-              >
-                Ver no CRM <ExternalLink size={14} />
-              </a>
+              </div>
             </div>
+          )}
+        </>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '1.5rem' }}>
+          <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+            <MessageSquare size={48} />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.5rem' }}>Central de Atendimento</h3>
+            <p>Selecione uma conversa para iniciar o atendimento omnichannel.</p>
           </div>
         </div>
       )}
+    </div>
+
+      {/* PAINEL DE DETALHES DO LEAD REMOVIDO DAQUI */}
       
       {showForwardModal && (
         <div style={{
