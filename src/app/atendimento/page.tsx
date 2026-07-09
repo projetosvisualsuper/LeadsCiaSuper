@@ -1096,13 +1096,28 @@ function AtendimentoContent() {
   const getBusinessTimeMs = (startDate: Date, endDate: Date): number => {
     if (startDate >= endDate) return 0;
 
-    const businessHours: { [key: number]: { startMin: number; endMin: number } | null } = {
+    const businessHours: { [key: number]: { startMin: number; endMin: number }[] | null } = {
       0: null, // Domingo
-      1: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Segunda: 07:30 - 17:30
-      2: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Terça: 07:30 - 17:30
-      3: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Quarta: 07:30 - 17:30
-      4: { startMin: 7 * 60 + 30, endMin: 17 * 60 + 30 }, // Quinta: 07:30 - 17:30
-      5: { startMin: 7 * 60 + 30, endMin: 16 * 60 + 15 }, // Sexta: 07:30 - 16:15
+      1: [
+        { startMin: 7 * 60 + 30, endMin: 12 * 60 },
+        { startMin: 13 * 60, endMin: 17 * 60 + 30 }
+      ], // Segunda: 07:30 - 12:00 e 13:00 - 17:30
+      2: [
+        { startMin: 7 * 60 + 30, endMin: 12 * 60 },
+        { startMin: 13 * 60, endMin: 17 * 60 + 30 }
+      ], // Terça: 07:30 - 12:00 e 13:00 - 17:30
+      3: [
+        { startMin: 7 * 60 + 30, endMin: 12 * 60 },
+        { startMin: 13 * 60, endMin: 17 * 60 + 30 }
+      ], // Quarta: 07:30 - 12:00 e 13:00 - 17:30
+      4: [
+        { startMin: 7 * 60 + 30, endMin: 12 * 60 },
+        { startMin: 13 * 60, endMin: 17 * 60 + 30 }
+      ], // Quinta: 07:30 - 12:00 e 13:00 - 17:30
+      5: [
+        { startMin: 7 * 60 + 30, endMin: 12 * 60 },
+        { startMin: 13 * 60, endMin: 16 * 60 + 15 }
+      ], // Sexta: 07:30 - 12:00 e 13:00 - 16:15
       6: null // Sábado
     };
 
@@ -1112,21 +1127,23 @@ function AtendimentoContent() {
 
     while (current.getTime() < target) {
       const day = current.getDay();
-      const schedule = businessHours[day];
+      const schedules = businessHours[day];
 
-      if (schedule) {
-        const dayStart = new Date(current.getTime());
-        dayStart.setHours(Math.floor(schedule.startMin / 60), schedule.startMin % 60, 0, 0);
+      if (schedules) {
+        schedules.forEach(schedule => {
+          const dayStart = new Date(current.getTime());
+          dayStart.setHours(Math.floor(schedule.startMin / 60), schedule.startMin % 60, 0, 0);
 
-        const dayEnd = new Date(current.getTime());
-        dayEnd.setHours(Math.floor(schedule.endMin / 60), schedule.endMin % 60, 0, 0);
+          const dayEnd = new Date(current.getTime());
+          dayEnd.setHours(Math.floor(schedule.endMin / 60), schedule.endMin % 60, 0, 0);
 
-        const startMs = Math.max(current.getTime(), dayStart.getTime());
-        const endMs = Math.min(target, dayEnd.getTime());
+          const startMs = Math.max(current.getTime(), dayStart.getTime());
+          const endMs = Math.min(target, dayEnd.getTime());
 
-        if (startMs < endMs) {
-          totalMs += (endMs - startMs);
-        }
+          if (startMs < endMs) {
+            totalMs += (endMs - startMs);
+          }
+        });
       }
 
       current.setDate(current.getDate() + 1);
