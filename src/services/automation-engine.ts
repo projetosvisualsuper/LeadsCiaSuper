@@ -287,12 +287,27 @@ export const automationEngine = {
             });
           }
         } else if (currentNode.type === 'roundRobin') {
-          const options = currentNode.data?.options || [];
-          console.log(`[BOT] RoundRobin: ${options.length} opção(ões) encontrada(s):`, JSON.stringify(options));
+          let options = currentNode.data?.options || [];
+
+          // Compatibilidade retroativa: se o nó não tem options salvas,
+          // reconstruir a partir das arestas com sourceHandle 'opt-X'
+          if (options.length === 0) {
+            const optEdges = edges.filter((e: any) => 
+              e.source === currentNode.id && 
+              e.sourceHandle && 
+              e.sourceHandle.startsWith('opt-')
+            );
+            options = optEdges.map((e: any) => ({
+              id: e.sourceHandle.replace('opt-', ''),
+              label: 'Opção'
+            }));
+            console.log(`[BOT] RoundRobin: Reconstruindo ${options.length} opção(ões) a partir das arestas:`, JSON.stringify(options));
+          }
+
+          console.log(`[BOT] RoundRobin: ${options.length} opção(ões):`, JSON.stringify(options));
           
-          // Log all edges from this roundRobin node
           const rrEdges = edges.filter((e: any) => e.source === currentNode.id);
-          console.log(`[BOT] RoundRobin: ${rrEdges.length} aresta(s) saindo deste nó:`, JSON.stringify(rrEdges.map((e: any) => ({ target: e.target, sourceHandle: e.sourceHandle }))));
+          console.log(`[BOT] RoundRobin: ${rrEdges.length} aresta(s):`, JSON.stringify(rrEdges.map((e: any) => ({ target: e.target, sourceHandle: e.sourceHandle }))));
 
           if (options.length > 0) {
             const stateKey = `round_robin_last_index_${currentNode.id}`;
@@ -310,7 +325,7 @@ export const automationEngine = {
             const nextIndex = (lastIndex + 1) % options.length;
             const chosenOption = options[nextIndex];
             
-            console.log(`[BOT] RoundRobin: último índice=${lastIndex}, próximo índice=${nextIndex}, opção escolhida:`, JSON.stringify(chosenOption));
+            console.log(`[BOT] RoundRobin: último=${lastIndex}, próximo=${nextIndex}, opção:`, JSON.stringify(chosenOption));
 
             await d1Api.executeRun(
               `INSERT OR REPLACE INTO settings (key, valueJson) VALUES (?, ?)`,
@@ -322,11 +337,11 @@ export const automationEngine = {
             const branchEdge = edges.find((e: any) => e.source === currentNode.id && e.sourceHandle === targetHandleId);
             
             if (branchEdge) {
-              console.log(`[BOT] RoundRobin: aresta encontrada! Próximo nó: ${branchEdge.target}`);
+              console.log(`[BOT] RoundRobin: aresta encontrada → ${branchEdge.target}`);
               currentNode = nodes.find((n: any) => n.id === branchEdge.target);
               continue;
             } else {
-              console.warn(`[BOT] RoundRobin: NENHUMA aresta encontrada para sourceHandle="${targetHandleId}". O fluxo será interrompido!`);
+              console.warn(`[BOT] RoundRobin: NENHUMA aresta para "${targetHandleId}"`);
             }
           } else {
             console.warn('[BOT] RoundRobin: nenhuma opção configurada no nó!');
