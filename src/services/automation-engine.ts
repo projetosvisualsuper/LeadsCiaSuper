@@ -282,14 +282,60 @@ export const automationEngine = {
               connectionId: connectionId || null
             });
           }
+        } else if (currentNode.type === 'roundRobin') {
+          const userIds = currentNode.data?.userIds || [];
+          if (userIds.length > 0) {
+            let targetUserId = userIds[0];
+            
+            if (userIds.length > 1) {
+              // Descobrir qual foi o último vendedor atribuído dentre a lista
+              const placeholders = userIds.map(() => '?').join(',');
+              const lastAssignedQuery = await d1Api.runQuery(
+                `SELECT assignedTo FROM leads WHERE assignedTo IN (${placeholders}) ORDER BY dataUltimaAtividade DESC LIMIT 1`,
+                userIds
+              );
+              const lastAssignedId = lastAssignedQuery.results?.[0]?.assignedTo;
+              
+              if (lastAssignedId) {
+                const lastIdx = userIds.indexOf(lastAssignedId);
+                // Avança para o próximo da lista (se for o último, volta para o início)
+                const nextIdx = (lastIdx + 1) % userIds.length;
+                targetUserId = userIds[nextIdx];
+              }
+            }
+            
+            // Atribuir o lead ao vendedor escolhido
+            await d1Api.executeRun(`UPDATE leads SET assignedTo = ?, dataUltimaAtividade = ? WHERE id = ?`, [targetUserId, new Date().toISOString(), lead.id]);
+            // Atualizar também o chat correspondente
+            await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+          }
         } else if (currentNode.type === 'action') {
-          // Ação direta dentro do Salesbot (ex: Adicionar tag, Mudar status)
-          const label = currentNode.data?.label || '';
-          if (label.includes('Tag') || label.includes('tag')) {
-            // Simulação ou aplicação direta de tag
-            const currentTags = Array.isArray(lead.tags) ? lead.tags : [];
-            const newTags = Array.from(new Set([...currentTags, 'bot_tag']));
-            await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(newTags), lead.id]);
+          const actionType = currentNode.data?.actionType || '';
+          
+          if (actionType === 'Mudar usuário resp.') {
+            const targetUserId = currentNode.data?.targetUserId;
+            if (targetUserId) {
+              await d1Api.executeRun(`UPDATE leads SET assignedTo = ?, dataUltimaAtividade = ? WHERE id = ?`, [targetUserId, new Date().toISOString(), lead.id]);
+              await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+            }
+          } else if (actionType === 'Mudar o status do lead') {
+            const targetStatus = currentNode.data?.targetStatus;
+            if (targetStatus) {
+              await d1Api.executeRun(`UPDATE leads SET status = ?, dataUltimaAtividade = ? WHERE id = ?`, [targetStatus, new Date().toISOString(), lead.id]);
+            }
+          } else if (actionType === 'Gerenciar tags' && currentNode.data?.tagsValue) {
+            const currentTags = Array.isArray(lead.tags) ? lead.tags : (lead.tags ? JSON.parse(lead.tags) : []);
+            const newTagsToAdd = currentNode.data.tagsValue.split(',').map((t: string) => t.trim()).filter(Boolean);
+            const mergedTags = Array.from(new Set([...currentTags, ...newTagsToAdd]));
+            await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(mergedTags), lead.id]);
+          } else {
+            // Compatibilidade com lógica antiga baseada no label do nó
+            const label = currentNode.data?.label || '';
+            if (label.includes('Tag') || label.includes('tag')) {
+              const currentTags = Array.isArray(lead.tags) ? lead.tags : [];
+              const newTags = Array.from(new Set([...currentTags, 'bot_tag']));
+              await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(newTags), lead.id]);
+            }
           }
         }
 
