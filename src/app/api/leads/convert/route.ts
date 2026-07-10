@@ -164,14 +164,54 @@ export async function POST(request: Request) {
       actionMessage = `Lead existente atualizado (${isCotacao ? 'Cotação' : 'Venda'}).`;
     }
 
-    // --- CRIAR O REGISTRO DO PEDIDO NO MÓDULO DE PEDIDOS ---
+    // --- CRIAR OU ATUALIZAR O REGISTRO DO PEDIDO NO MÓDULO DE PEDIDOS ---
     if (pedidoId || isCotacao || itensFormatados) {
-      await d1Api.savePedido({
-        leadId: finalLeadId,
-        pedidoReferencia: pedidoId || `P-${Math.floor(Math.random() * 10000)}`,
-        itens: itensFormatados || 'Produtos não informados',
-        valor: valor ? parseFloat(valor) : undefined
-      } as any);
+      let mappedStatus = 'pendente';
+      if (rawStatus) {
+        if (['cancelled', 'canceled', 'failed', 'refunded'].includes(rawStatus)) {
+          mappedStatus = 'cancelado';
+        } else if (['completed'].includes(rawStatus)) {
+          mappedStatus = 'finalizado';
+        } else if (['processing'].includes(rawStatus)) {
+          mappedStatus = 'em_atendimento';
+        } else if (['pending', 'on-hold', 'pending-payment'].includes(rawStatus)) {
+          mappedStatus = 'pendente';
+        }
+      }
+
+      if (pedidoId) {
+        const { results: existingPedidos } = await d1Api.runQuery(
+          `SELECT * FROM pedidos WHERE pedidoReferencia = ? LIMIT 1`,
+          [pedidoId]
+        );
+
+        if (existingPedidos && existingPedidos.length > 0) {
+          const existingPedido = existingPedidos[0];
+          await d1Api.updatePedidoStatus(existingPedido.id, mappedStatus);
+          
+          // Atualiza itens e valor se fornecidos
+          await d1Api.executeRun(
+            `UPDATE pedidos SET itens = ?, valor = ? WHERE id = ?`,
+            [itensFormatados || existingPedido.itens, valor ? parseFloat(valor) : existingPedido.valor, existingPedido.id]
+          );
+        } else {
+          await d1Api.savePedido({
+            leadId: finalLeadId,
+            pedidoReferencia: pedidoId,
+            itens: itensFormatados || 'Produtos não informados',
+            valor: valor ? parseFloat(valor) : undefined,
+            status: mappedStatus
+          } as any);
+        }
+      } else {
+        await d1Api.savePedido({
+          leadId: finalLeadId,
+          pedidoReferencia: `P-${Math.floor(Math.random() * 10000)}`,
+          itens: itensFormatados || 'Produtos não informados',
+          valor: valor ? parseFloat(valor) : undefined,
+          status: mappedStatus
+        } as any);
+      }
     }
 
     return NextResponse.json({ success: true, message: actionMessage, leadId: finalLeadId });

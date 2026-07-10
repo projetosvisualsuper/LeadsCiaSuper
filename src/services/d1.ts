@@ -1780,14 +1780,14 @@ export const d1Api = {
     }
   },
 
-  savePedido: async (pedido: Omit<Pedido, 'id' | 'dataCriacao' | 'isRead' | 'status'> & { origem?: string; numeroLojaVirtual?: string }): Promise<void> => {
+  savePedido: async (pedido: Omit<Pedido, 'id' | 'dataCriacao' | 'isRead' | 'status'> & { status?: string; origem?: string; numeroLojaVirtual?: string }): Promise<void> => {
     await d1Api.ensureOrigemColumn();
     await d1Api.ensureNumeroLojaVirtualColumn();
     const id = Math.random().toString(36).substr(2, 9);
     const dataCriacao = new Date().toISOString();
     await executeRun(
-      `INSERT INTO pedidos (id, leadId, pedidoReferencia, itens, valor, status, isRead, dataCriacao, origem, numeroLojaVirtual, observacao) VALUES (?, ?, ?, ?, ?, 'pendente', 0, ?, ?, ?, ?)`,
-      [id, pedido.leadId, pedido.pedidoReferencia || null, pedido.itens || null, pedido.valor || null, dataCriacao, pedido.origem || 'site', pedido.numeroLojaVirtual || null, pedido.observacao || null]
+      `INSERT INTO pedidos (id, leadId, pedidoReferencia, itens, valor, status, isRead, dataCriacao, origem, numeroLojaVirtual, observacao) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+      [id, pedido.leadId, pedido.pedidoReferencia || null, pedido.itens || null, pedido.valor || null, pedido.status || 'pendente', dataCriacao, pedido.origem || 'site', pedido.numeroLojaVirtual || null, pedido.observacao || null]
     );
   },
 
@@ -1822,6 +1822,18 @@ export const d1Api = {
 
   markPedidoAsRead: async (pedidoId: string): Promise<void> => {
     await executeRun(`UPDATE pedidos SET isRead = 1 WHERE id = ?`, [pedidoId]);
+  },
+
+  markAllPedidosAsRead: async (origem?: string): Promise<void> => {
+    if (origem) {
+      if (origem === 'mercos') {
+        await executeRun(`UPDATE pedidos SET isRead = 1 WHERE origem = 'mercos' AND isRead = 0`);
+      } else {
+        await executeRun(`UPDATE pedidos SET isRead = 1 WHERE (origem IS NULL OR origem != 'mercos') AND isRead = 0`);
+      }
+    } else {
+      await executeRun(`UPDATE pedidos SET isRead = 1 WHERE isRead = 0`);
+    }
   },
 
   updatePedidoStatus: async (pedidoId: string, status: string): Promise<void> => {

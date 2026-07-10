@@ -16,6 +16,7 @@ function PedidosContent() {
   const [observacoesInput, setObservacoesInput] = useState<Record<string, string>>({});
   const [savingObs, setSavingObs] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'site' | 'mercos'>('site');
+  const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const searchParams = useSearchParams();
   const leadIdParam = searchParams.get('leadId') || '';
@@ -62,6 +63,26 @@ function PedidosContent() {
       alert('Erro ao salvar observação.');
     } finally {
       setSavingObs(null);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    setMarkingAllRead(true);
+    try {
+      await api.markAllPedidosAsRead(activeTab);
+      setPedidos(prev => prev.map(p => {
+        const matchesTab = activeTab === 'mercos' ? p.origem === 'mercos' : p.origem !== 'mercos';
+        if (matchesTab && !p.isRead) {
+          return { ...p, isRead: true };
+        }
+        return p;
+      }));
+      window.dispatchEvent(new Event('pedidos-read'));
+    } catch (err) {
+      console.error('Erro ao marcar todos como lidos:', err);
+      alert('Erro ao marcar os pedidos como lidos.');
+    } finally {
+      setMarkingAllRead(false);
     }
   };
 
@@ -180,6 +201,8 @@ function PedidosContent() {
     return p.origem !== 'mercos';
   });
 
+  const unreadCount = filteredPedidos.filter(p => !p.isRead).length;
+
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: 'inherit' }}>
       
@@ -196,15 +219,51 @@ function PedidosContent() {
               : 'Gerencie pedidos recebidos diretamente da integração com o Mercos/Bling.'}
           </p>
         </div>
-        <button 
-          onClick={fetchPedidos} 
-          disabled={loading}
-          className="btn"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
-        >
-          <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-          {loading ? 'Atualizando...' : 'Atualizar'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllAsRead}
+              disabled={markingAllRead || loading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                opacity: markingAllRead || loading ? 0.7 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!markingAllRead && !loading) {
+                  e.currentTarget.style.backgroundColor = '#e2e8f0';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!markingAllRead && !loading) {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                }
+              }}
+            >
+              <Check size={16} />
+              Marcar todos como lidos ({unreadCount})
+            </button>
+          )}
+          <button 
+            onClick={fetchPedidos} 
+            disabled={loading}
+            className="btn"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
+          >
+            <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            {loading ? 'Atualizando...' : 'Atualizar'}
+          </button>
+        </div>
       </div>
 
       {leadIdParam && (
