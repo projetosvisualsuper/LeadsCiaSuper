@@ -140,8 +140,8 @@ export async function GET(request: Request) {
         stepInfo.targetUserId = targetUserId;
         stepInfo.result = dryRun ? `DRY_RUN: would ${actionType} → ${targetUserId}` : 'EXECUTED';
         if (!dryRun && actionType === 'Mudar usuário resp.' && targetUserId) {
-          await d1Api.executeRun(`UPDATE leads SET assignedTo = ? WHERE id = ?`, [targetUserId, lead.id]);
           await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+          await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
         }
       } else if (currentNode.type === 'trigger') {
         stepInfo.result = 'TRIGGER: starting flow';

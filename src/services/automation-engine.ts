@@ -388,8 +388,9 @@ export const automationEngine = {
           if (actionType === 'Mudar usuário resp.') {
             const targetUserId = currentNode.data?.targetUserId;
             if (targetUserId) {
-              await d1Api.executeRun(`UPDATE leads SET assignedTo = ?, dataUltimaAtividade = ? WHERE id = ?`, [targetUserId, new Date().toISOString(), lead.id]);
+              await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`, [new Date().toISOString(), lead.id]);
               await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+              await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
             }
           } else if (actionType === 'Mudar o status do lead') {
             const targetStatus = currentNode.data?.targetStatus;
