@@ -106,6 +106,96 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
   const [showTestModal, setShowTestModal] = useState(false);
   const [rfInstance, setRfInstance] = useState<any>(null);
 
+  const [testMessages, setTestMessages] = useState<{ id: string; sender: 'user' | 'bot'; text: string }[]>([]);
+  const [testInput, setTestInput] = useState('');
+  const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
+
+  const handleSendTestMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testInput.trim()) return;
+
+    const userMsg = testInput;
+    const updatedMsgs = [...testMessages, { id: Math.random().toString(), sender: 'user' as const, text: userMsg }];
+    setTestMessages(updatedMsgs);
+    setTestInput('');
+
+    // Run simulation step
+    setTimeout(() => {
+      let nextNodeId = currentNodeId;
+      let newMessages = [...updatedMsgs];
+      
+      if (!nextNodeId) {
+        const triggerNode = nodes.find(n => n.type === 'trigger');
+        if (!triggerNode) {
+          newMessages.push({ id: Math.random().toString(), sender: 'bot', text: 'Erro: Nenhum nó de Gatilho (Trigger) configurado no fluxo.' });
+          setTestMessages(newMessages);
+          return;
+        }
+        
+        if (triggerNode.data) {
+          const triggerType = triggerNode.data.triggerType || 'Palavra-chave Exata';
+          const triggerValue = triggerNode.data.triggerValue || '';
+          
+          if (triggerType !== 'Qualquer Mensagem' && triggerValue.trim()) {
+            const extractKeywords = (str: string): string[] => {
+              const matches = [...str.matchAll(/"([^"]+)"/g)].map(m => m[1].trim());
+              if (matches.length > 0) return matches;
+              return str.split(/ou|,|;/i).map(s => s.replace(/"/g, '').trim()).filter(Boolean);
+            };
+
+            const keywords = extractKeywords(triggerValue);
+            const text = userMsg.toLowerCase().trim();
+            let matches = false;
+
+            if (triggerType === 'Contém a Palavra') {
+              matches = keywords.some(kw => text.includes(kw.toLowerCase()));
+            } else if (triggerType === 'Inicia com') {
+              matches = keywords.some(kw => text.startsWith(kw.toLowerCase()));
+            } else {
+              matches = keywords.some(kw => text === kw.toLowerCase());
+            }
+
+            if (!matches) {
+              newMessages.push({ id: Math.random().toString(), sender: 'bot', text: `[Simulador] Mensagem "${userMsg}" não corresponde ao gatilho do robô (Esperava: ${triggerType} "${triggerValue}").` });
+              setTestMessages(newMessages);
+              return;
+            }
+          }
+        }
+        nextNodeId = triggerNode.id;
+      }
+
+      let current = nodes.find(n => n.id === nextNodeId);
+      const visited = new Set<string>();
+
+      while (current && !visited.has(current.id)) {
+        visited.add(current.id);
+
+        if (current.type === 'sendMessage') {
+          const messageText = (current.data?.message || '')
+            .replace('[Contato: Primeiro nome]', 'João')
+            .replace('[Contato: Nome completo]', 'João Silva');
+          newMessages.push({ id: Math.random().toString(), sender: 'bot', text: messageText });
+        } else if (current.type === 'media') {
+          const fileUrl = current.data?.fileUrl;
+          newMessages.push({ id: Math.random().toString(), sender: 'bot', text: `[Mídia] Arquivo enviado: ${current.data?.fileName || 'mídia'} (${fileUrl || 'Sem URL'})` });
+        } else if (current.type === 'action') {
+          newMessages.push({ id: Math.random().toString(), sender: 'bot', text: `[Ação Executada] ${current.data?.label || 'Ação'}` });
+        }
+
+        const edge = edges.find(e => e.source === current.id);
+        if (edge) {
+          current = nodes.find(n => n.id === edge.target);
+        } else {
+          current = undefined;
+        }
+      }
+
+      setTestMessages(newMessages);
+      setCurrentNodeId(current ? current.id : null);
+    }, 500);
+  };
+
   useEffect(() => {
     if (id !== 'novo') {
       api.getBotById(id).then((dbBot) => {
@@ -317,26 +407,79 @@ export default function BotBuilder({ params }: { params: Promise<{ id: string }>
       {/* Modal de Teste Customizado */}
       {showTestModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>
-          <div style={{ background: 'var(--card)', color: 'var(--card-foreground)', padding: '24px', borderRadius: '12px', width: '400px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '12px', borderRadius: '50%' }}>
-                <Play size={24} />
+          <div style={{ background: 'var(--card)', color: 'var(--card-foreground)', padding: '24px', borderRadius: '12px', width: '500px', maxWidth: '90%', maxHeight: '85vh', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '12px', borderRadius: '50%' }}>
+                  <Play size={24} />
+                </div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Simulador de Bot</h2>
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Simulador de Bot</h2>
-            </div>
-            
-            <div style={{ color: 'var(--secondary)', lineHeight: 1.5 }}>
-              <p style={{ marginBottom: '12px' }}>O modo de teste interativo será disponibilizado em breve na sua tela de chat unificada.</p>
-              <p style={{ fontSize: '0.9rem', padding: '12px', background: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', borderRadius: '8px', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
-                <strong>Lembrete:</strong> Não esqueça de clicar em "Salvar Fluxo" para não perder as alterações que você acabou de fazer.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <button onClick={() => setShowTestModal(false)} style={{ padding: '8px 16px', background: 'var(--primary)', color: 'white', borderRadius: '8px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-                Entendi
+              <button 
+                onClick={() => { 
+                  setShowTestModal(false); 
+                  setTestMessages([]); 
+                  setCurrentNodeId(null); 
+                }} 
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--secondary)' }}
+              >
+                &times;
               </button>
             </div>
+            
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              background: '#f8fafc', 
+              borderRadius: '8px', 
+              padding: '16px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '12px', 
+              minHeight: '280px', 
+              maxHeight: '400px', 
+              border: '1px solid #e2e8f0' 
+            }}>
+              {testMessages.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', textAlign: 'center', padding: '24px' }}>
+                  <Play size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                  <p style={{ margin: 0, fontWeight: 'bold' }}>Simulador Interativo</p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem' }}>Envie a palavra-chave configurada no nó de Gatilho para iniciar o fluxo do bot.</p>
+                </div>
+              ) : (
+                testMessages.map(m => (
+                  <div key={m.id} style={{ display: 'flex', justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+                    <div style={{
+                      maxWidth: '80%',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
+                      fontSize: '0.9rem',
+                      lineHeight: 1.4,
+                      background: m.sender === 'user' ? '#3b82f6' : '#ffffff',
+                      color: m.sender === 'user' ? '#ffffff' : '#1e293b',
+                      border: m.sender === 'user' ? 'none' : '1px solid #e2e8f0',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {m.text}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form onSubmit={handleSendTestMessage} style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Digite uma mensagem para testar o bot..."
+                value={testInput}
+                onChange={(e) => setTestInput(e.target.value)}
+                style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+              />
+              <button type="submit" style={{ padding: '10px 18px', background: '#3b82f6', color: '#ffffff', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
+                Enviar
+              </button>
+            </form>
           </div>
         </div>
       )}

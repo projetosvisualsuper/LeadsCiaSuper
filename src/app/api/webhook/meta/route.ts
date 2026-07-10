@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
 import { ChatSession } from '@/types/crm';
 import { sendOmnichannelMessageAction } from '@/app/actions/chat';
+import { automationEngine } from '@/services/automation-engine';
 
 // O Meta envia um desafio GET para verificar o webhook na configuração inicial
 export async function GET(req: NextRequest) {
@@ -221,6 +222,14 @@ async function processMetaMessage(
         }
       } catch (err) {
         console.error('Falha ao verificar Autoresponder Meta:', err);
+      }
+    }
+
+    if (!isEcho) {
+      try {
+        await automationEngine.processLeadAutomation(leadId, channel, 'mensagem_entrada', messageText);
+      } catch (autErr) {
+        console.error('Erro ao processar automação Meta DM:', autErr);
       }
     }
   }
@@ -574,6 +583,12 @@ export async function POST(req: NextRequest) {
           } catch (err) {
             console.error('Falha ao verificar Autoresponder WhatsApp Cloud:', err);
           }
+        }
+
+        try {
+          await automationEngine.processLeadAutomation(leadId, connectionId || 'all_channels', 'mensagem_entrada', messageText);
+        } catch (autErr) {
+          console.error('Erro ao processar automação Meta WhatsApp:', autErr);
         }
       }
     }
