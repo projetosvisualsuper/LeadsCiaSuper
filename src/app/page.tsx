@@ -118,122 +118,123 @@ export default function Dashboard() {
     chatsWithResponse: 0,     // Nº de chats com pelo menos 1 resposta
     chatsWithoutResponse: 0,  // Nº de chats sem nenhuma resposta
     oldestWaitingMs: 0,       // Tempo do lead mais antigo sem resposta
-    oldestWaitingName: ''     // Nome do lead mais antigo sem resposta
+    oldestWaitingName: '',    // Nome do lead mais antigo sem resposta
+    oldestWaitingChatId: ''   // ID da conversa mais antiga sem resposta
   });
+
+  const fetchLPData = async () => {
+    try {
+      const latestChats = await api.getChats();
+      setChats(latestChats);
+
+      const lps = await api.getLandingPages();
+      setLandingPages(lps);
+
+      // Buscar conexões do WhatsApp
+      const conns = await api.getWhatsappConnections();
+      setWhatsappConnections(conns || []);
+
+      const lpSlugs = lps.map(lp => lp.slug).filter(Boolean);
+      
+      if (lpSlugs.length > 0) {
+        const placeholders = lpSlugs.map(() => '?').join(',');
+        const { results: filteredLps } = await api.runQuery(
+          `SELECT * FROM leads WHERE origem IN (${placeholders}) LIMIT 100`,
+          lpSlugs
+        );
+        setLpLeads(filteredLps || []);
+      }
+
+      const counts = await Promise.all([
+        api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'Facebook Messenger'`),
+        api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'Instagram Direct'`),
+        api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'YouTube Comments'`),
+        api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'TikTok Comments'`),
+        api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem LIKE 'WhatsApp%'`),
+        api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem LIKE 'Widget Externo%'`),
+        lpSlugs.length > 0 
+          ? api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem IN (${lpSlugs.map(() => '?').join(',')})`, lpSlugs)
+          : { results: [{ count: 0 }] }
+      ]);
+
+      setPanelCounts({
+        facebook: counts[0].results?.[0]?.count || 0,
+        instagram: counts[1].results?.[0]?.count || 0,
+        youtube: counts[2].results?.[0]?.count || 0,
+        tiktok: counts[3].results?.[0]?.count || 0,
+        whatsapp: counts[4].results?.[0]?.count || 0,
+        whatsapp_widget: counts[5].results?.[0]?.count || 0,
+        system: counts[6].results?.[0]?.count || 0
+      });
+
+      // --- Calcular Tempo de Resposta ---
+      let filterCond = '';
+      if (responseTimeFilter === 'external') {
+        filterCond = 'AND (c.isInternal IS NULL OR c.isInternal = 0)';
+      } else if (responseTimeFilter === 'internal') {
+        filterCond = 'AND c.isInternal = 1';
+      }
+
+      // Busca a primeira mensagem de saída (isIncoming=0) por chat com campos de canal/vendedor
+      const { results: responseData } = await api.runQuery(
+        `SELECT m.chatId, MIN(m.timestamp) as firstResponseAt, c.dataCriacao as chatCreatedAt, c.leadName,
+                c.channel, c.connectionId, c.assignedTo
+         FROM messages m
+         JOIN chats c ON c.id = m.chatId
+         WHERE m.isIncoming = 0 ${filterCond}
+         GROUP BY m.chatId`
+      );
+      setRawResponseData(responseData || []);
+
+      // Chats sem nenhuma mensagem de saída (aguardando atendimento) com campos de canal/vendedor
+      const { results: noResponseData } = await api.runQuery(
+        `SELECT c.id, c.leadName, c.dataCriacao, c.channel, c.connectionId, c.assignedTo
+         FROM chats c
+         WHERE c.status = 'active' ${filterCond}
+         AND c.id NOT IN (
+           SELECT DISTINCT chatId FROM messages WHERE isIncoming = 0
+         )
+         ORDER BY c.dataCriacao ASC`
+      );
+      setRawNoResponseData(noResponseData || []);
+
+      const now = Date.now();
+      let totalResponseMs = 0;
+      let validResponses = 0;
+
+      (responseData || []).forEach((row: any) => {
+        const createdAt = new Date(row.chatCreatedAt).getTime();
+        const respondedAt = new Date(row.firstResponseAt).getTime();
+        if (!isNaN(createdAt) && !isNaN(respondedAt) && respondedAt >= createdAt) {
+          totalResponseMs += respondedAt - createdAt;
+          validResponses++;
+        }
+      });
+
+      const avgMs = validResponses > 0 ? Math.round(totalResponseMs / validResponses) : 0;
+      
+      const oldestWaiting = noResponseData?.[0];
+      const oldestWaitingMs = oldestWaiting
+        ? now - new Date(oldestWaiting.dataCriacao).getTime()
+        : 0;
+
+      setResponseTimeStats({
+        avgResponseMs: avgMs,
+        chatsWithResponse: validResponses,
+        chatsWithoutResponse: noResponseData?.length || 0,
+        oldestWaitingMs: Math.max(0, oldestWaitingMs),
+        oldestWaitingName: oldestWaiting?.leadName || '',
+        oldestWaitingChatId: oldestWaiting?.id || ''
+      });
+    } catch (err: any) {
+      console.error("Erro ao buscar dados de landing pages:", err);
+      setErrorMessage("Erro de banco de dados D1: " + (err.message || String(err)));
+    }
+  };
 
   // Carregar e monitorar Chats, LPs e Leads de LPs quando o Painel estiver aberto
   useEffect(() => {
     if (!isChannelsModalOpen) return;
-
-    const fetchLPData = async () => {
-      try {
-        const latestChats = await api.getChats();
-        setChats(latestChats);
-
-        const lps = await api.getLandingPages();
-        setLandingPages(lps);
-
-        // Buscar conexões do WhatsApp
-        const conns = await api.getWhatsappConnections();
-        setWhatsappConnections(conns || []);
-
-        const lpSlugs = lps.map(lp => lp.slug).filter(Boolean);
-        
-        if (lpSlugs.length > 0) {
-          const placeholders = lpSlugs.map(() => '?').join(',');
-          const { results: filteredLps } = await api.runQuery(
-            `SELECT * FROM leads WHERE origem IN (${placeholders}) LIMIT 100`,
-            lpSlugs
-          );
-          setLpLeads(filteredLps || []);
-        }
-
-        const counts = await Promise.all([
-          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'Facebook Messenger'`),
-          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'Instagram Direct'`),
-          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'YouTube Comments'`),
-          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem = 'TikTok Comments'`),
-          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem LIKE 'WhatsApp%'`),
-          api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem LIKE 'Widget Externo%'`),
-          lpSlugs.length > 0 
-            ? api.runQuery(`SELECT COUNT(id) as count FROM leads WHERE origem IN (${lpSlugs.map(() => '?').join(',')})`, lpSlugs)
-            : { results: [{ count: 0 }] }
-        ]);
-
-        setPanelCounts({
-          facebook: counts[0].results?.[0]?.count || 0,
-          instagram: counts[1].results?.[0]?.count || 0,
-          youtube: counts[2].results?.[0]?.count || 0,
-          tiktok: counts[3].results?.[0]?.count || 0,
-          whatsapp: counts[4].results?.[0]?.count || 0,
-          whatsapp_widget: counts[5].results?.[0]?.count || 0,
-          system: counts[6].results?.[0]?.count || 0
-        });
-
-        // --- Calcular Tempo de Resposta ---
-        let filterCond = '';
-        if (responseTimeFilter === 'external') {
-          filterCond = 'AND (c.isInternal IS NULL OR c.isInternal = 0)';
-        } else if (responseTimeFilter === 'internal') {
-          filterCond = 'AND c.isInternal = 1';
-        }
-
-        // Busca a primeira mensagem de saída (isIncoming=0) por chat com campos de canal/vendedor
-        const { results: responseData } = await api.runQuery(
-          `SELECT m.chatId, MIN(m.timestamp) as firstResponseAt, c.dataCriacao as chatCreatedAt, c.leadName,
-                  c.channel, c.connectionId, c.assignedTo
-           FROM messages m
-           JOIN chats c ON c.id = m.chatId
-           WHERE m.isIncoming = 0 ${filterCond}
-           GROUP BY m.chatId`
-        );
-        setRawResponseData(responseData || []);
-
-        // Chats sem nenhuma mensagem de saída (aguardando atendimento) com campos de canal/vendedor
-        const { results: noResponseData } = await api.runQuery(
-          `SELECT c.id, c.leadName, c.dataCriacao, c.channel, c.connectionId, c.assignedTo
-           FROM chats c
-           WHERE c.status = 'active' ${filterCond}
-           AND c.id NOT IN (
-             SELECT DISTINCT chatId FROM messages WHERE isIncoming = 0
-           )
-           ORDER BY c.dataCriacao ASC`
-        );
-        setRawNoResponseData(noResponseData || []);
-
-        const now = Date.now();
-        let totalResponseMs = 0;
-        let validResponses = 0;
-
-        (responseData || []).forEach((row: any) => {
-          const createdAt = new Date(row.chatCreatedAt).getTime();
-          const respondedAt = new Date(row.firstResponseAt).getTime();
-          if (!isNaN(createdAt) && !isNaN(respondedAt) && respondedAt >= createdAt) {
-            totalResponseMs += respondedAt - createdAt;
-            validResponses++;
-          }
-        });
-
-        const avgMs = validResponses > 0 ? Math.round(totalResponseMs / validResponses) : 0;
-        
-        const oldestWaiting = noResponseData?.[0];
-        const oldestWaitingMs = oldestWaiting
-          ? now - new Date(oldestWaiting.dataCriacao).getTime()
-          : 0;
-
-        setResponseTimeStats({
-          avgResponseMs: avgMs,
-          chatsWithResponse: validResponses,
-          chatsWithoutResponse: noResponseData?.length || 0,
-          oldestWaitingMs: Math.max(0, oldestWaitingMs),
-          oldestWaitingName: oldestWaiting?.leadName || ''
-        });
-      } catch (err: any) {
-        console.error("Erro ao buscar dados de landing pages:", err);
-        setErrorMessage("Erro de banco de dados D1: " + (err.message || String(err)));
-      }
-    };
-
     fetchLPData();
   }, [isChannelsModalOpen, responseTimeFilter]);
 
@@ -1035,7 +1036,8 @@ export default function Dashboard() {
               chatsWithResponse: validResponses,
               chatsWithoutResponse: filteredNoResponseData.length,
               oldestWaitingMs: Math.max(0, oldestWaitingMs),
-              oldestWaitingName: oldestWaiting?.leadName || ''
+              oldestWaitingName: oldestWaiting?.leadName || '',
+              oldestWaitingChatId: oldestWaiting?.id || ''
             };
 
             const isAnyFilterActive = 
@@ -1214,7 +1216,12 @@ export default function Dashboard() {
                       justifyContent: 'space-between',
                       cursor: responseTimeStats.chatsWithoutResponse > 0 ? 'pointer' : 'default'
                     }}
-                    onClick={() => responseTimeStats.chatsWithoutResponse > 0 && router.push('/atendimento')}
+                    onClick={() => {
+                       if (responseTimeStats.chatsWithoutResponse > 0) {
+                         const cid = responseTimeStats.oldestWaitingChatId;
+                         router.push(cid ? `/atendimento?chatId=${encodeURIComponent(cid)}` : '/atendimento');
+                       }
+                     }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
                         <span style={{ fontSize: '0.9rem' }}>🕐</span>
@@ -1343,6 +1350,7 @@ export default function Dashboard() {
                             <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Status</th>
                             <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Data Cadastro</th>
                             <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Aguardando há</th>
+                            <th style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', textAlign: 'center' }}>Ações</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1382,6 +1390,40 @@ export default function Dashboard() {
                                   }}>
                                     ⏱ {waitLabel}
                                   </span>
+                                ) : (
+                                  <span style={{ color: '#4b5563', fontSize: '0.8rem' }}>–</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                {lead.status === 'novo' ? (
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (confirm(`Marcar o lead "${lead.nome}" como respondido?`)) {
+                                        try {
+                                          await api.executeRun(`UPDATE leads SET status = 'contatado' WHERE id = ?`, [lead.id]);
+                                          fetchLPData();
+                                        } catch (err: any) {
+                                          alert('Erro ao marcar como respondido: ' + err.message);
+                                        }
+                                      }
+                                    }}
+                                    style={{
+                                      background: '#10b981',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '0.25rem 0.6rem',
+                                      borderRadius: '6px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      transition: 'background 0.2s'
+                                    }}
+                                    onMouseOver={e => e.currentTarget.style.background = '#059669'}
+                                    onMouseOut={e => e.currentTarget.style.background = '#10b981'}
+                                  >
+                                    Marcar Respondido
+                                  </button>
                                 ) : (
                                   <span style={{ color: '#4b5563', fontSize: '0.8rem' }}>–</span>
                                 )}

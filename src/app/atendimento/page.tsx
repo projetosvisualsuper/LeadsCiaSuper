@@ -226,11 +226,15 @@ function AtendimentoContent() {
     }, 4000);
   };
 
-  // Efeito para capturar busca vinda de outras páginas (como Leads)
+  // Efeito para capturar busca ou chat selecionado vindo de outras páginas
   useEffect(() => {
     const search = searchParams.get('search');
     if (search) {
       setSearchQuery(search);
+    }
+    const cid = searchParams.get('chatId');
+    if (cid) {
+      setSelectedChatId(cid);
     }
   }, [searchParams]);
 
