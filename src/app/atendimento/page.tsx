@@ -1833,17 +1833,15 @@ function AtendimentoContent() {
                         marginTop: '0.5rem',
                         overflow: 'hidden'
                       }}>
-                        {activeChat?.lastMessageIsIncoming === 1 && (
-                          <button 
-                            onClick={() => {
-                              setShowChatMenu(false);
-                              handleMarkAsAnswered();
-                            }}
-                            style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
-                          >
-                            <CheckCheck size={14} color="#10b981" /> Marcar como Respondido
-                          </button>
-                        )}
+                         <button 
+                           onClick={() => {
+                             setShowChatMenu(false);
+                             handleMarkAsAnswered();
+                           }}
+                           style={{ width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #f1f5f9' }}
+                         >
+                           <CheckCheck size={14} color="#10b981" /> Marcar como Respondido
+                         </button>
                         <button 
                           onClick={() => {
                             setShowChatMenu(false);
