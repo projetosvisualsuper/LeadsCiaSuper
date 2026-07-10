@@ -283,31 +283,35 @@ export const automationEngine = {
             });
           }
         } else if (currentNode.type === 'roundRobin') {
-          const userIds = currentNode.data?.userIds || [];
-          if (userIds.length > 0) {
-            let targetUserId = userIds[0];
+          const options = currentNode.data?.options || [];
+          if (options.length > 0) {
+            const stateKey = `round_robin_last_index_${currentNode.id}`;
+            const stateQuery = await d1Api.runQuery(`SELECT valueJson FROM settings WHERE key = ? LIMIT 1`, [stateKey]);
             
-            if (userIds.length > 1) {
-              // Descobrir qual foi o último vendedor atribuído dentre a lista
-              const placeholders = userIds.map(() => '?').join(',');
-              const lastAssignedQuery = await d1Api.runQuery(
-                `SELECT assignedTo FROM leads WHERE assignedTo IN (${placeholders}) ORDER BY dataUltimaAtividade DESC LIMIT 1`,
-                userIds
-              );
-              const lastAssignedId = lastAssignedQuery.results?.[0]?.assignedTo;
-              
-              if (lastAssignedId) {
-                const lastIdx = userIds.indexOf(lastAssignedId);
-                // Avança para o próximo da lista (se for o último, volta para o início)
-                const nextIdx = (lastIdx + 1) % userIds.length;
-                targetUserId = userIds[nextIdx];
+            let lastIndex = -1;
+            if (stateQuery.results && stateQuery.results.length > 0) {
+              try {
+                lastIndex = parseInt(JSON.parse(stateQuery.results[0].valueJson), 10);
+              } catch (e) {
+                console.error(e);
               }
             }
             
-            // Atribuir o lead ao vendedor escolhido
-            await d1Api.executeRun(`UPDATE leads SET assignedTo = ?, dataUltimaAtividade = ? WHERE id = ?`, [targetUserId, new Date().toISOString(), lead.id]);
-            // Atualizar também o chat correspondente
-            await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+            const nextIndex = (lastIndex + 1) % options.length;
+            const chosenOption = options[nextIndex];
+            
+            await d1Api.executeRun(
+              `INSERT OR REPLACE INTO settings (key, valueJson) VALUES (?, ?)`,
+              [stateKey, JSON.stringify(nextIndex)]
+            );
+            
+            const targetHandleId = `opt-${chosenOption.id}`;
+            const branchEdge = edges.find((e: any) => e.source === currentNode.id && e.sourceHandle === targetHandleId);
+            
+            if (branchEdge) {
+              currentNode = nodes.find((n: any) => n.id === branchEdge.target);
+              continue;
+            }
           }
         } else if (currentNode.type === 'action') {
           const actionType = currentNode.data?.actionType || '';
