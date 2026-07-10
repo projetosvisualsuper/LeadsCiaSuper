@@ -101,7 +101,33 @@ async function processBlingOrder(orderId: string) {
 
   // Cliente
   const clientName = data.contato?.nome || 'Cliente';
-  let clientPhone = data.contato?.celular || data.contato?.telefone || '';
+  let clientPhone = '';
+  let clientEmail = '';
+
+  if (data.contato?.id) {
+    try {
+      console.error(`Buscando detalhes do contato ID ${data.contato.id} no Bling...`);
+      const contactRes = await fetch(`https://api.bling.com.br/Api/v3/contatos/${data.contato.id}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      if (contactRes.ok) {
+        const contactPayload = await contactRes.json();
+        const contactData = contactPayload.data;
+        if (contactData) {
+          clientPhone = contactData.celular || contactData.telefone || '';
+          clientEmail = contactData.email || '';
+        }
+      }
+    } catch (contactErr) {
+      console.error('Erro ao buscar detalhes do contato no Bling:', contactErr);
+    }
+  }
+
+  if (!clientPhone) {
+    clientPhone = data.contato?.celular || data.contato?.telefone || '';
+  }
 
   const isOpen = statusName.includes('aberto') || statusName.includes('andamento') || statusName === '6' || statusName === '18' || statusName === '1' || statusName === '15';
   const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '9' || statusName === '2';
@@ -158,11 +184,27 @@ async function processBlingOrder(orderId: string) {
       }
 
       if (!targetLeadId) {
+        const { results: nameResults } = await d1Api.runQuery(
+          `SELECT id, celular, email FROM leads WHERE nome = ? LIMIT 1`,
+          [clientName]
+        );
+        if (nameResults && nameResults.length > 0) {
+          targetLeadId = nameResults[0].id;
+          if (cleanPhone && !nameResults[0].celular) {
+            await d1Api.executeRun(`UPDATE leads SET celular = ? WHERE id = ?`, [cleanPhone, targetLeadId]);
+          }
+          if (clientEmail && !nameResults[0].email) {
+            await d1Api.executeRun(`UPDATE leads SET email = ? WHERE id = ?`, [clientEmail, targetLeadId]);
+          }
+        }
+      }
+
+      if (!targetLeadId) {
         targetLeadId = Math.random().toString(36).substr(2, 9);
         const agora = new Date().toISOString();
         await d1Api.runQuery(
-          `INSERT INTO leads (id, nome, celular, origem, dataCriacao, status) VALUES (?, ?, ?, 'Bling Mercos', ?, 'novo')`,
-          [targetLeadId, clientName, cleanPhone || null, agora]
+          `INSERT INTO leads (id, nome, celular, email, origem, dataCriacao, status) VALUES (?, ?, ?, ?, 'Bling Mercos', ?, 'novo')`,
+          [targetLeadId, clientName, cleanPhone || null, clientEmail || null, agora]
         );
       }
 
