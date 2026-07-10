@@ -112,7 +112,7 @@ export default memo(function ActionNode({ id, data, isConnectable }: any) {
           >
             <option value="">Selecione o usuário...</option>
             {users.map(u => (
-              <option key={u.id} value={u.id}>{u.nome || u.email}</option>
+              <option key={u.uid} value={u.uid}>{u.nome || u.name || u.email}</option>
             ))}
           </select>
         )}

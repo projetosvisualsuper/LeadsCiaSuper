@@ -53,16 +53,16 @@ export default memo(function RoundRobinNode({ id, data, isConnectable }: any) {
             <span style={{ fontSize: '10px', color: '#94a3b8' }}>Carregando vendedores...</span>
           ) : (
             users.map(user => {
-              const isChecked = selectedUserIds.includes(user.id);
+              const isChecked = selectedUserIds.includes(user.uid);
               return (
-                <label key={user.id} style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: '#334155' }}>
+                <label key={user.uid} style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: '#334155' }}>
                   <input 
                     type="checkbox" 
                     checked={isChecked} 
-                    onChange={(e) => onToggle(user.id, e.target.checked)} 
+                    onChange={(e) => onToggle(user.uid, e.target.checked)} 
                   />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {user.nome || user.email}
+                    {user.nome || user.name || user.email}
                   </span>
                 </label>
               );
