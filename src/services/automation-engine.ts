@@ -214,6 +214,29 @@ export const automationEngine = {
               connectionId
             );
 
+            // Gravar a mensagem no histórico do banco de dados (para aparecer no CRM)
+            let formattedPhone = cleanPhone;
+            if (!formattedPhone.startsWith('55') && (formattedPhone.length === 10 || formattedPhone.length === 11)) {
+              formattedPhone = '55' + formattedPhone;
+            }
+            const chatId = channel === 'whatsapp' ? `whatsapp_${formattedPhone}` : `${channel}_${lead.id}`;
+            
+            await d1Api.sendMessage({
+              id: Math.random().toString(36).substr(2, 9),
+              chatId: chatId,
+              senderId: 'system_bot',
+              senderName: 'Atendente Virtual',
+              content: messageText,
+              timestamp: new Date().toISOString(),
+              type: 'text',
+              status: 'sent',
+              isIncoming: false,
+              channel: channel,
+              leadId: lead.id,
+              leadName: lead.nome,
+              connectionId: connectionId || null
+            });
+
             // Se configurado para deixar sem resposta, marcamos o chat correspondente como não respondido
             if (deixarSemResposta) {
               await d1Api.executeRun(`UPDATE chats SET unreadCount = unreadCount + 1 WHERE leadId = ?`, [lead.id]);
@@ -234,6 +257,30 @@ export const automationEngine = {
               fileUrl,
               'application/pdf'
             );
+
+            // Gravar a mensagem de mídia no histórico do banco de dados
+            let formattedPhone = cleanPhone;
+            if (!formattedPhone.startsWith('55') && (formattedPhone.length === 10 || formattedPhone.length === 11)) {
+              formattedPhone = '55' + formattedPhone;
+            }
+            const chatId = `whatsapp_${formattedPhone}`;
+
+            await d1Api.sendMessage({
+              id: Math.random().toString(36).substr(2, 9),
+              chatId: chatId,
+              senderId: 'system_bot',
+              senderName: 'Atendente Virtual',
+              content: `Arquivo enviado: ${currentNode.data?.fileName || 'mídia'}`,
+              timestamp: new Date().toISOString(),
+              type: 'file',
+              status: 'sent',
+              isIncoming: false,
+              channel: 'whatsapp',
+              leadId: lead.id,
+              leadName: lead.nome,
+              mediaUrl: fileUrl,
+              connectionId: connectionId || null
+            });
           }
         } else if (currentNode.type === 'action') {
           // Ação direta dentro do Salesbot (ex: Adicionar tag, Mudar status)
