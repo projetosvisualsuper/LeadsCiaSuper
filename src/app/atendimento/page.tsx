@@ -1419,8 +1419,8 @@ function AtendimentoContent() {
           </div>
 
           {/* Header Row 2 (Search and Filters) */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1.1fr 1.1fr 0.9fr 0.9fr', gap: '0.75rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
+            <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : '1.5 1 200px', width: isMobile ? '100%' : 'auto' }}>
               <input 
                 type="text" 
                 placeholder="Buscar lead ou mensagem..." 
@@ -1434,7 +1434,7 @@ function AtendimentoContent() {
             <select 
               value={filterConnection}
               onChange={e => setFilterConnection(e.target.value)}
-              style={{ width: '100%', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+              style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 140px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
             >
               <option value="all">Todas as conexões</option>
               {connections.map(conn => (
@@ -1445,7 +1445,7 @@ function AtendimentoContent() {
             <select 
               value={filterChannel}
               onChange={e => setFilterChannel(e.target.value)}
-              style={{ width: '100%', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+              style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 130px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
             >
               <option value="all">Todos os Canais</option>
               <option value="whatsapp">WhatsApp</option>
@@ -1459,7 +1459,7 @@ function AtendimentoContent() {
             <select 
               value={filterContactType}
               onChange={e => setFilterContactType(e.target.value)}
-              style={{ width: '100%', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+              style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 140px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
             >
               <option value="all">Todos os Contatos</option>
               <option value="external">Clientes (Externos)</option>
@@ -1469,7 +1469,8 @@ function AtendimentoContent() {
             <button
               onClick={() => setFilterUnread(!filterUnread)}
               style={{
-                width: '100%',
+                width: isMobile ? '100%' : 'auto',
+                flex: isMobile ? '1 1 100%' : '0.8 1 120px',
                 padding: '0.45rem',
                 borderRadius: '8px',
                 border: '1px solid',
@@ -1497,7 +1498,8 @@ function AtendimentoContent() {
             <button
               onClick={() => setFilterUnreadOnly(!filterUnreadOnly)}
               style={{
-                width: '100%',
+                width: isMobile ? '100%' : 'auto',
+                flex: isMobile ? '1 1 100%' : '0.8 1 110px',
                 padding: '0.45rem',
                 borderRadius: '8px',
                 border: '1px solid',
