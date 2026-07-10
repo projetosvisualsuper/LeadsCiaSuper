@@ -1443,6 +1443,20 @@ function AtendimentoContent() {
             </select>
 
             <select 
+              value={filterChannel}
+              onChange={e => setFilterChannel(e.target.value)}
+              style={{ width: '100%', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+            >
+              <option value="all">Todos os Canais</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="facebook">Facebook Messenger</option>
+              <option value="instagram">Instagram</option>
+              <option value="youtube">YouTube</option>
+              <option value="tiktok">TikTok</option>
+              <option value="whatsapp_widget">Widget WhatsApp</option>
+            </select>
+
+            <select 
               value={filterContactType}
               onChange={e => setFilterContactType(e.target.value)}
               style={{ width: '100%', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
