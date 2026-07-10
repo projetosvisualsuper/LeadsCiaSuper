@@ -1178,7 +1178,7 @@ function AtendimentoContent() {
     let totalMs = 0;
     columnChats.forEach(chat => {
       if (chat.lastMessageIsIncoming === 1) {
-        const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+        const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
         if (ms > 0) {
           totalMs += ms;
         }
@@ -1647,7 +1647,7 @@ function AtendimentoContent() {
                                 {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
                               {chat.lastMessageIsIncoming === 1 && (() => {
-                                const ms = Date.now() - new Date(chat.lastTimestamp || chat.dataCriacao || 0).getTime();
+                                const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
                                 const diffMins = Math.floor(ms / 60000);
                                 let timeStr = 'Aguardando';
                                 if (diffMins >= 1) {
