@@ -344,7 +344,11 @@ export const automationEngine = {
         }
 
         // 2. Encontrar o próximo nó conectado
-        const edge = edges.find((e: any) => e.source === currentNode.id);
+        // Prioridade: handle 'success' > qualquer edge sem handle 'fail' > qualquer edge
+        const allEdgesFromNode = edges.filter((e: any) => e.source === currentNode.id);
+        const successEdge = allEdgesFromNode.find((e: any) => e.sourceHandle === 'success' || e.sourceHandle === null || e.sourceHandle === undefined);
+        const nonFailEdge = allEdgesFromNode.find((e: any) => e.sourceHandle !== 'fail');
+        const edge = successEdge || nonFailEdge || allEdgesFromNode[0];
         if (edge) {
           currentNode = nodes.find((n: any) => n.id === edge.target);
         } else {
