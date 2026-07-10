@@ -1,15 +1,23 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { MessageSquare, Trash2, X, Mic, Paperclip, Link as LinkIcon, MousePointer2, AlertCircle, StickyNote, MessageSquareText } from 'lucide-react';
+import { api } from '@/services/api';
 
 export default memo(function SendMessageNode({ id, data, isConnectable }: any) {
   const { setNodes, setEdges } = useReactFlow();
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState(data.note || '');
+  const [templates, setTemplates] = useState<any[]>([]);
 
   const buttons = data.buttons || [];
+
+  useEffect(() => {
+    api.getWhatsappTemplates()
+      .then(res => setTemplates(res || []))
+      .catch(err => console.error('Erro ao carregar templates no nó de mensagem:', err));
+  }, []);
 
   const setButtons = (newButtons: any) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, buttons: newButtons } } : n));
@@ -84,6 +92,45 @@ export default memo(function SendMessageNode({ id, data, isConnectable }: any) {
       
       {/* Corpo da Mensagem */}
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        
+        {/* Escolha do Modelo Pronto */}
+        <select
+          value={data.selectedTemplateId || ''}
+          onChange={(e) => {
+            const tplId = e.target.value;
+            const selectedTpl = templates.find(t => t.id === tplId);
+            setNodes((nds) => nds.map((n) => {
+              if (n.id === id) {
+                return { 
+                  ...n, 
+                  data: { 
+                    ...n.data, 
+                    selectedTemplateId: tplId,
+                    message: selectedTpl ? selectedTpl.content : n.data.message 
+                  } 
+                };
+              }
+              return n;
+            }));
+          }}
+          style={{
+            width: '100%',
+            padding: '6px',
+            fontSize: '11px',
+            borderRadius: '4px',
+            border: '1px solid var(--border)',
+            outline: 'none',
+            color: '#334155',
+            background: '#f8fafc',
+            fontWeight: 500
+          }}
+        >
+          <option value="">Selecione um modelo pronto...</option>
+          {templates.map(t => (
+            <option key={t.id} value={t.id}>{t.name} ({t.language})</option>
+          ))}
+        </select>
+
         <div style={{ border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
           <textarea 
             value={data.message || ''} 
