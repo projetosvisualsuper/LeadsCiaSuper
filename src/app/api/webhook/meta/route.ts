@@ -586,7 +586,8 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-          await automationEngine.processLeadAutomation(leadId, connectionId || 'all_channels', 'mensagem_entrada', messageText);
+          const channelId = connectionId ? `whatsapp_${connectionId}` : 'all_channels';
+          await automationEngine.processLeadAutomation(leadId, channelId, 'mensagem_entrada', messageText);
         } catch (autErr) {
           console.error('Erro ao processar automação Meta WhatsApp:', autErr);
         }
