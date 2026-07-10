@@ -231,17 +231,24 @@ export const automationEngine = {
             .replace('[Contato: Nome completo]', lead.nome);
 
           const phone = lead.celular || lead.telefone;
+          console.log(`[BOT] sendMessage: phone=${phone ? 'ok' : 'MISSING'} msgLen=${messageText.length} nodeId=${currentNode.id}`);
           if (phone) {
             const cleanPhone = phone.replace(/\D/g, '');
             // Determinar o canal de envio (whatsapp por padrão)
             const channel = lead.origem === 'instagram' ? 'instagram' : lead.origem === 'facebook' ? 'facebook' : 'whatsapp';
             
-            await sendOmnichannelMessageAction(
-              cleanPhone,
-              channel as any,
-              messageText,
-              connectionId
-            );
+            // Enviar mensagem via API (com proteção individual por nó)
+            try {
+              const sendResult = await sendOmnichannelMessageAction(
+                cleanPhone,
+                channel as any,
+                messageText,
+                connectionId
+              );
+              console.log(`[BOT] sendMessage resultado: ${JSON.stringify(sendResult)}`);
+            } catch (sendErr: any) {
+              console.error(`[BOT] sendMessage ERRO ao enviar (continuando fluxo): ${sendErr.message}`);
+            }
 
             // Gravar a mensagem no histórico do banco de dados (para aparecer no CRM)
             let formattedPhone = cleanPhone;
@@ -250,21 +257,25 @@ export const automationEngine = {
             }
             const chatId = channel === 'whatsapp' ? `whatsapp_${formattedPhone}` : `${channel}_${lead.id}`;
             
-            await d1Api.sendMessage({
-              id: Math.random().toString(36).substr(2, 9),
-              chatId: chatId,
-              senderId: 'system_bot',
-              senderName: 'Atendente Virtual',
-              content: messageText,
-              timestamp: new Date().toISOString(),
-              type: 'text',
-              status: 'sent',
-              isIncoming: false,
-              channel: channel,
-              leadId: lead.id,
-              leadName: lead.nome,
-              connectionId: connectionId || null
-            });
+            try {
+              await d1Api.sendMessage({
+                id: Math.random().toString(36).substr(2, 9),
+                chatId: chatId,
+                senderId: 'system_bot',
+                senderName: 'Atendente Virtual',
+                content: messageText,
+                timestamp: new Date().toISOString(),
+                type: 'text',
+                status: 'sent',
+                isIncoming: false,
+                channel: channel,
+                leadId: lead.id,
+                leadName: lead.nome,
+                connectionId: connectionId || null
+              });
+            } catch (dbErr: any) {
+              console.error(`[BOT] sendMessage ERRO ao gravar no CRM: ${dbErr.message}`);
+            }
 
             // Se configurado para deixar sem resposta, marcamos o chat correspondente como não respondido
             if (deixarSemResposta) {
