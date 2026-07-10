@@ -186,14 +186,12 @@ export default function Dashboard() {
       );
       setRawResponseData(responseData || []);
 
-      // Chats sem nenhuma mensagem de saída (aguardando atendimento) com campos de canal/vendedor
+      // Chats aguardando primeiro contato (onde lastMessageIsIncoming = 1) com campos de canal/vendedor
       const { results: noResponseData } = await api.runQuery(
         `SELECT c.id, c.leadName, c.dataCriacao, c.channel, c.connectionId, c.assignedTo
          FROM chats c
          WHERE c.status = 'active' ${filterCond}
-         AND c.id NOT IN (
-           SELECT DISTINCT chatId FROM messages WHERE isIncoming = 0
-         )
+         AND c.lastMessageIsIncoming = 1
          ORDER BY c.dataCriacao ASC`
       );
       setRawNoResponseData(noResponseData || []);
