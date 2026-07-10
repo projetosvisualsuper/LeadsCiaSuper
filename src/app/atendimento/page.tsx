@@ -1175,19 +1175,19 @@ function AtendimentoContent() {
   };
 
   const getColumnMaxUnansweredTime = (columnChats: ChatSession[]) => {
-    let totalMs = 0;
+    let maxMs = 0;
     columnChats.forEach(chat => {
       if (chat.lastMessageIsIncoming === 1) {
         const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
-        if (ms > 0) {
-          totalMs += ms;
+        if (ms > maxMs) {
+          maxMs = ms;
         }
       }
     });
 
-    if (totalMs === 0) return null;
+    if (maxMs === 0) return null;
     
-    const diffMins = Math.floor(totalMs / 60000);
+    const diffMins = Math.floor(maxMs / 60000);
     if (diffMins < 1) return 'Menos de 1 min';
     if (diffMins < 60) return `${diffMins} min`;
     
@@ -1583,7 +1583,7 @@ function AtendimentoContent() {
                         borderRadius: '6px',
                         whiteSpace: 'nowrap'
                       }}
-                      title="Tempo total de espera acumulado nesta coluna"
+                      title="Maior tempo de espera por resposta nesta coluna"
                     >
                       Espera: {maxTimeStr}
                     </span>
