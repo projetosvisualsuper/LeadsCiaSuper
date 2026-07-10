@@ -157,6 +157,31 @@ export const automationEngine = {
       const triggerNode = nodes.find((n: any) => n.type === 'trigger');
       if (!triggerNode) return;
 
+      // Throttle: evitar que o bot rode novamente para o mesmo lead dentro de 5 minutos
+      // Isso impede que respostas do lead re-disparem o bot antes de completar o fluxo
+      const throttleKey = `bot_last_run_${botId}_${lead.id}`;
+      const throttleQuery = await d1Api.runQuery(
+        `SELECT valueJson FROM settings WHERE key = ? LIMIT 1`, 
+        [throttleKey]
+      );
+      const now = Date.now();
+      const THROTTLE_MS = 5 * 60 * 1000; // 5 minutos
+      if (throttleQuery.results && throttleQuery.results.length > 0) {
+        try {
+          const lastRun = parseInt(JSON.parse(throttleQuery.results[0].valueJson), 10);
+          if (now - lastRun < THROTTLE_MS) {
+            console.log(`[BOT] Throttle: bot "${bot.name}" já rodou para lead "${lead.nome}" há menos de 5 minutos. Pulando.`);
+            return;
+          }
+        } catch (e) { /* ignora erro de parse */ }
+      }
+      // Registrar esta execução
+      await d1Api.executeRun(
+        `INSERT OR REPLACE INTO settings (key, valueJson) VALUES (?, ?)`,
+        [throttleKey, JSON.stringify(now)]
+      );
+
+
       // Se houver uma mensagem recebida de entrada, valida a palavra-chave configurada no nó trigger
       if (incomingMessage && triggerNode.data) {
         const triggerType = triggerNode.data.triggerType || 'Palavra-chave Exata';
