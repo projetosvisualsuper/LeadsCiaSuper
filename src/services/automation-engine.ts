@@ -192,8 +192,12 @@ export const automationEngine = {
       let currentNode = triggerNode;
       const visited = new Set<string>();
 
+      console.log(`[BOT] Iniciando execução do bot "${bot.name}" para lead "${lead.nome}" | Nós: ${nodes.length} | Arestas: ${edges.length}`);
+      console.log(`[BOT] Nó inicial: ${triggerNode.type} (${triggerNode.id})`);
+
       while (currentNode && !visited.has(currentNode.id)) {
         visited.add(currentNode.id);
+        console.log(`[BOT] ▶ Executando nó: type=${currentNode.type} id=${currentNode.id}`);
 
         // 1. Executar a ação do nó atual
         if (currentNode.type === 'sendMessage') {
@@ -284,6 +288,12 @@ export const automationEngine = {
           }
         } else if (currentNode.type === 'roundRobin') {
           const options = currentNode.data?.options || [];
+          console.log(`[BOT] RoundRobin: ${options.length} opção(ões) encontrada(s):`, JSON.stringify(options));
+          
+          // Log all edges from this roundRobin node
+          const rrEdges = edges.filter((e: any) => e.source === currentNode.id);
+          console.log(`[BOT] RoundRobin: ${rrEdges.length} aresta(s) saindo deste nó:`, JSON.stringify(rrEdges.map((e: any) => ({ target: e.target, sourceHandle: e.sourceHandle }))));
+
           if (options.length > 0) {
             const stateKey = `round_robin_last_index_${currentNode.id}`;
             const stateQuery = await d1Api.runQuery(`SELECT valueJson FROM settings WHERE key = ? LIMIT 1`, [stateKey]);
@@ -300,18 +310,26 @@ export const automationEngine = {
             const nextIndex = (lastIndex + 1) % options.length;
             const chosenOption = options[nextIndex];
             
+            console.log(`[BOT] RoundRobin: último índice=${lastIndex}, próximo índice=${nextIndex}, opção escolhida:`, JSON.stringify(chosenOption));
+
             await d1Api.executeRun(
               `INSERT OR REPLACE INTO settings (key, valueJson) VALUES (?, ?)`,
               [stateKey, JSON.stringify(nextIndex)]
             );
             
             const targetHandleId = `opt-${chosenOption.id}`;
+            console.log(`[BOT] RoundRobin: buscando aresta com sourceHandle="${targetHandleId}"`);
             const branchEdge = edges.find((e: any) => e.source === currentNode.id && e.sourceHandle === targetHandleId);
             
             if (branchEdge) {
+              console.log(`[BOT] RoundRobin: aresta encontrada! Próximo nó: ${branchEdge.target}`);
               currentNode = nodes.find((n: any) => n.id === branchEdge.target);
               continue;
+            } else {
+              console.warn(`[BOT] RoundRobin: NENHUMA aresta encontrada para sourceHandle="${targetHandleId}". O fluxo será interrompido!`);
             }
+          } else {
+            console.warn('[BOT] RoundRobin: nenhuma opção configurada no nó!');
           }
         } else if (currentNode.type === 'action') {
           const actionType = currentNode.data?.actionType || '';
@@ -349,9 +367,11 @@ export const automationEngine = {
         const successEdge = allEdgesFromNode.find((e: any) => e.sourceHandle === 'success' || e.sourceHandle === null || e.sourceHandle === undefined);
         const nonFailEdge = allEdgesFromNode.find((e: any) => e.sourceHandle !== 'fail');
         const edge = successEdge || nonFailEdge || allEdgesFromNode[0];
+        console.log(`[BOT] Transição: ${allEdgesFromNode.length} arestas do nó ${currentNode.id} | Usando aresta: ${edge ? `→ ${edge.target} (handle=${edge.sourceHandle})` : 'NENHUMA (fim do fluxo)'}`);
         if (edge) {
           currentNode = nodes.find((n: any) => n.id === edge.target);
         } else {
+          console.log(`[BOT] FIM do fluxo no nó tipo=${currentNode.type}`);
           break; // Sem mais conexões, para a execução do bot
         }
       }
