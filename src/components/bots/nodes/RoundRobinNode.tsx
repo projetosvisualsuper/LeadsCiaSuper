@@ -41,7 +41,7 @@ export default memo(function RoundRobinNode({ id, data, isConnectable }: any) {
   };
 
   return (
-    <div style={{ background: 'white', border: `1px solid ${color}`, borderRadius: '8px', minWidth: '240px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
+    <div style={{ background: 'white', border: `1px solid ${color}`, borderRadius: '8px', width: '210px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} style={{ background: color, width: '10px', height: '10px' }} />
       
       <div style={{ background: color, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'white' }}>
