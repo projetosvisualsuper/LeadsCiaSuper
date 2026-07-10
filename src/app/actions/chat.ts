@@ -91,6 +91,43 @@ export async function sendOmnichannelMessageAction(
             language: { code: templateData.language || 'pt_BR' },
             components: templateData.components || []
           };
+        } else if (mediaUrl) {
+          let mediaType: 'image' | 'video' | 'audio' | 'document' = 'document';
+          if (mediaMimeType?.startsWith('image/')) mediaType = 'image';
+          else if (mediaMimeType?.startsWith('video/')) mediaType = 'video';
+          else if (mediaMimeType?.startsWith('audio/')) mediaType = 'audio';
+
+          let finalMediaUrl = mediaUrl;
+          if (mediaUrl.startsWith('/api/')) {
+            finalMediaUrl = `https://leads.ciasuper.com.br${mediaUrl}`;
+          }
+
+          body.type = mediaType;
+          if (mediaType === 'document') {
+            let filename = 'documento.pdf';
+            try {
+              const urlParts = finalMediaUrl.split('/');
+              const lastPart = urlParts[urlParts.length - 1];
+              if (lastPart && lastPart.includes('.')) {
+                filename = decodeURIComponent(lastPart);
+              }
+            } catch (e) {}
+
+            body.document = {
+              link: finalMediaUrl,
+              filename: filename,
+              caption: text !== 'Arquivo enviado' && !text.startsWith('Arquivo enviado:') ? text : ''
+            };
+          } else if (mediaType === 'audio') {
+            body.audio = {
+              link: finalMediaUrl
+            };
+          } else {
+            body[mediaType] = {
+              link: finalMediaUrl,
+              caption: text !== 'Arquivo enviado' && !text.startsWith('Arquivo enviado:') ? text : ''
+            };
+          }
         } else {
           body.type = "text";
           body.text = { body: text };
