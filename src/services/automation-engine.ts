@@ -605,7 +605,14 @@ export const automationEngine = {
             if (targetUserId) {
               await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`, [new Date().toISOString(), lead.id]);
               await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
-              await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+              
+              // Verifica se a oportunidade existe para este lead, se não, cria uma nova
+              const { results: opps } = await d1Api.runQuery(`SELECT id FROM opportunities WHERE leadId = ? LIMIT 1`, [lead.id]);
+              if (opps && opps.length > 0) {
+                await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+              } else {
+                await d1Api.saveOpportunity({ leadId: lead.id, assignedTo: targetUserId });
+              }
             }
           } else if (actionType === 'Mudar o status do lead') {
             const targetStatus = currentNode.data?.targetStatus;
