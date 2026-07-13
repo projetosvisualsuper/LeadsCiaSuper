@@ -35,27 +35,33 @@ export default memo(function PauseNode({ id, data, isConnectable }: any) {
       <div style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <input 
           type="number"
-          defaultValue={1}
+          value={data.duration || 1}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, duration: parseInt(e.target.value, 10) || 1 } } : n))}
           style={{
-            width: '50px',
+            width: '60px',
             padding: '6px',
             fontSize: '12px',
             borderRadius: '4px',
             border: '1px solid var(--border)',
+            outline: 'none',
           }}
         />
         <select 
+          value={data.unit || 'Minutos'}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, unit: e.target.value } } : n))}
           style={{
             flex: 1,
             padding: '6px',
             fontSize: '12px',
             borderRadius: '4px',
             border: '1px solid var(--border)',
+            outline: 'none',
           }}
         >
-          <option>Minutos</option>
-          <option>Horas</option>
-          <option>Dias</option>
+          <option value="Segundos">Segundos</option>
+          <option value="Minutos">Minutos</option>
+          <option value="Horas">Horas</option>
+          <option value="Dias">Dias</option>
         </select>
       </div>
 

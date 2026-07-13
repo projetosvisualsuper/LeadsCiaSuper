@@ -21,7 +21,8 @@ export default memo(function CustomCodeNode({ id, data, isConnectable }: any) {
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ background: '#1e293b', borderRadius: '4px', padding: '8px', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '11px' }}>
           <textarea 
-            defaultValue="async function run(lead) {&#10;  // seu código aqui&#10;  return true;&#10;}"
+            value={data.code || 'async function run(lead) {\n  // seu código aqui\n  return true;\n}'}
+            onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, code: e.target.value } } : n))}
             style={{ width: '100%', minHeight: '80px', background: 'transparent', border: 'none', color: 'inherit', resize: 'vertical', outline: 'none' }} 
             spellCheck="false"
           />

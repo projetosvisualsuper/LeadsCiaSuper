@@ -285,43 +285,258 @@ export const automationEngine = {
         } else if (currentNode.type === 'media') {
           // Lógica de envio de arquivo (se houver mídia configurada no nó)
           const fileUrl = currentNode.data?.fileUrl;
+          const caption = currentNode.data?.caption || `Arquivo enviado: ${currentNode.data?.fileName || 'mídia'}`;
           const phone = lead.celular || lead.telefone;
           if (fileUrl && phone) {
             const cleanPhone = phone.replace(/\D/g, '');
-            await sendOmnichannelMessageAction(
-              cleanPhone,
-              'whatsapp',
-              `Arquivo enviado: ${currentNode.data?.fileName || 'mídia'}`,
-              connectionId,
-              undefined,
-              fileUrl,
-              'application/pdf'
-            );
+            const channel = lead.origem === 'instagram' ? 'instagram' : lead.origem === 'facebook' ? 'facebook' : 'whatsapp';
+            try {
+              await sendOmnichannelMessageAction(
+                cleanPhone,
+                channel as any,
+                caption,
+                connectionId,
+                undefined,
+                fileUrl,
+                'application/pdf'
+              );
+            } catch (sendErr: any) {
+              console.error(`[BOT] media ERRO ao enviar: ${sendErr.message}`);
+            }
 
             // Gravar a mensagem de mídia no histórico do banco de dados
             let formattedPhone = cleanPhone;
             if (!formattedPhone.startsWith('55') && (formattedPhone.length === 10 || formattedPhone.length === 11)) {
               formattedPhone = '55' + formattedPhone;
             }
-            const chatId = `whatsapp_${formattedPhone}`;
+            const chatId = channel === 'whatsapp' ? `whatsapp_${formattedPhone}` : `${channel}_${lead.id}`;
 
-            await d1Api.sendMessage({
-              id: Math.random().toString(36).substr(2, 9),
-              chatId: chatId,
-              senderId: 'system_bot',
-              senderName: 'Atendente Virtual',
-              content: `Arquivo enviado: ${currentNode.data?.fileName || 'mídia'}`,
-              timestamp: new Date().toISOString(),
-              type: 'file',
-              status: 'sent',
-              isIncoming: false,
-              channel: 'whatsapp',
-              leadId: lead.id,
-              leadName: lead.nome,
-              mediaUrl: fileUrl,
-              connectionId: connectionId || null
+            try {
+              await d1Api.sendMessage({
+                id: Math.random().toString(36).substr(2, 9),
+                chatId: chatId,
+                senderId: 'system_bot',
+                senderName: 'Atendente Virtual',
+                content: caption,
+                timestamp: new Date().toISOString(),
+                type: 'file',
+                status: 'sent',
+                isIncoming: false,
+                channel: channel,
+                leadId: lead.id,
+                leadName: lead.nome,
+                mediaUrl: fileUrl,
+                connectionId: connectionId || null
+              });
+            } catch (dbErr: any) {
+              console.error(`[BOT] media ERRO ao gravar no CRM: ${dbErr.message}`);
+            }
+          }
+        } else if (currentNode.type === 'condition') {
+          const conditionType = currentNode.data?.conditionType || 'Se a mensagem for igual a...';
+          const conditionValue = (currentNode.data?.conditionValue || '').trim().toLowerCase();
+          const incomingText = (incomingMessage || '').trim().toLowerCase();
+          
+          let isTrue = false;
+          if (conditionType === 'Se a mensagem for igual a...') {
+            isTrue = incomingText === conditionValue;
+          } else if (conditionType === 'Se contiver a palavra...') {
+            isTrue = incomingText.includes(conditionValue);
+          } else if (conditionType === 'Se for número...') {
+            isTrue = !isNaN(Number(incomingText)) && incomingText.length > 0;
+          }
+          
+          const targetHandleId = isTrue ? 'true' : 'false';
+          const branchEdge = edges.find((e: any) => e.source === currentNode.id && e.sourceHandle === targetHandleId);
+          if (branchEdge) {
+            console.log(`[BOT] Condition (${conditionType}) result: ${isTrue} -> Branching to node ${branchEdge.target}`);
+            currentNode = nodes.find((n: any) => n.id === branchEdge.target);
+            continue;
+          } else {
+            console.warn(`[BOT] Condition (${conditionType}) evaluated to ${isTrue} but no output edge for "${targetHandleId}" was found.`);
+          }
+        } else if (currentNode.type === 'pause') {
+          const duration = parseInt(currentNode.data?.duration || '1', 10);
+          const unit = currentNode.data?.unit || 'Minutos';
+          let ms = 1000;
+          if (unit === 'Segundos') ms = duration * 1000;
+          else if (unit === 'Minutos') ms = duration * 60 * 1000;
+          else if (unit === 'Horas') ms = duration * 60 * 60 * 1000;
+          else if (unit === 'Dias') ms = duration * 24 * 60 * 60 * 1000;
+          
+          // Limita espera real de processamento na Edge para não dar timeout de requisição HTTP (max 3s)
+          const executionDelay = Math.min(ms, 3000);
+          console.log(`[BOT] Bloco de pausa alcançado. Pausando por ${duration} ${unit} (Execução simulada por ${executionDelay}ms).`);
+          await new Promise(resolve => setTimeout(resolve, executionDelay));
+        } else if (currentNode.type === 'reaction') {
+          const emoji = currentNode.data?.emoji || '👍';
+          const phone = lead.celular || lead.telefone;
+          if (phone) {
+            const cleanPhone = phone.replace(/\D/g, '');
+            const channel = lead.origem === 'instagram' ? 'instagram' : lead.origem === 'facebook' ? 'facebook' : 'whatsapp';
+            try {
+              await sendOmnichannelMessageAction(cleanPhone, channel as any, emoji, connectionId);
+            } catch (err: any) {
+              console.error(`[BOT] Reaction ERRO ao enviar: ${err.message}`);
+            }
+          }
+        } else if (currentNode.type === 'comment') {
+          const commentText = currentNode.data?.comment || '';
+          if (commentText) {
+            const channel = lead.origem === 'instagram' ? 'instagram' : lead.origem === 'facebook' ? 'facebook' : 'whatsapp';
+            const phone = (lead.celular || lead.telefone || '').replace(/\D/g, '');
+            let formattedPhone = phone;
+            if (!formattedPhone.startsWith('55') && (formattedPhone.length === 10 || formattedPhone.length === 11)) {
+              formattedPhone = '55' + formattedPhone;
+            }
+            const chatId = channel === 'whatsapp' ? `whatsapp_${formattedPhone}` : `${channel}_${lead.id}`;
+            try {
+              await d1Api.sendMessage({
+                id: Math.random().toString(36).substr(2, 9),
+                chatId: chatId,
+                senderId: 'system_bot',
+                senderName: 'Nota do Bot',
+                content: commentText,
+                timestamp: new Date().toISOString(),
+                type: 'note',
+                status: 'sent',
+                isIncoming: false,
+                channel: channel,
+                leadId: lead.id,
+                leadName: lead.nome,
+                connectionId: connectionId || null
+              });
+            } catch (err: any) {
+              console.error(`[BOT] Comment ERRO ao registrar nota: ${err.message}`);
+            }
+          }
+        } else if (currentNode.type === 'internalMessage') {
+          const internalMsgText = currentNode.data?.message || '';
+          if (internalMsgText) {
+            const channel = lead.origem === 'instagram' ? 'instagram' : lead.origem === 'facebook' ? 'facebook' : 'whatsapp';
+            const phone = (lead.celular || lead.telefone || '').replace(/\D/g, '');
+            let formattedPhone = phone;
+            if (!formattedPhone.startsWith('55') && (formattedPhone.length === 10 || formattedPhone.length === 11)) {
+              formattedPhone = '55' + formattedPhone;
+            }
+            const chatId = channel === 'whatsapp' ? `whatsapp_${formattedPhone}` : `${channel}_${lead.id}`;
+            try {
+              await d1Api.sendMessage({
+                id: Math.random().toString(36).substr(2, 9),
+                chatId: chatId,
+                senderId: 'system_bot',
+                senderName: 'Mensagem Interna',
+                content: `[Mensagem Interna para ${currentNode.data?.target || 'Todos'}]: ${internalMsgText}`,
+                timestamp: new Date().toISOString(),
+                type: 'internal',
+                status: 'sent',
+                isIncoming: false,
+                channel: channel,
+                leadId: lead.id,
+                leadName: lead.nome,
+                connectionId: connectionId || null
+              });
+            } catch (err: any) {
+              console.error(`[BOT] InternalMessage ERRO: ${err.message}`);
+            }
+          }
+        } else if (currentNode.type === 'listMessage') {
+          const title = currentNode.data?.title || 'Selecione uma opção:';
+          const options = currentNode.data?.options || [];
+          let listText = `*${title}*\n\n`;
+          options.forEach((opt: string, idx: number) => {
+            listText += `${idx + 1}️⃣ ${opt}\n`;
+          });
+          const phone = lead.celular || lead.telefone;
+          if (phone) {
+            const cleanPhone = phone.replace(/\D/g, '');
+            const channel = lead.origem === 'instagram' ? 'instagram' : lead.origem === 'facebook' ? 'facebook' : 'whatsapp';
+            try {
+              await sendOmnichannelMessageAction(cleanPhone, channel as any, listText, connectionId);
+            } catch (err: any) {
+              console.error(`[BOT] ListMessage ERRO: ${err.message}`);
+            }
+          }
+        } else if (currentNode.type === 'subscribeMeta') {
+          const campaign = currentNode.data?.campaign || 'Meta Campaign';
+          console.log(`[BOT] Inscrevendo lead ${lead.nome} na campanha Meta: ${campaign}`);
+          const currentTags = Array.isArray(lead.tags) ? lead.tags : (lead.tags ? JSON.parse(lead.tags) : []);
+          const mergedTags = Array.from(new Set([...currentTags, `meta_${campaign.replace(/\s+/g, '_').toLowerCase()}`]));
+          await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(mergedTags), lead.id]);
+        } else if (currentNode.type === 'validation') {
+          const validationType = currentNode.data?.validationType || 'Validar Email';
+          const valText = incomingMessage || '';
+          let isValid = false;
+
+          if (validationType === 'Validar Email') {
+            isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valText.trim());
+          } else if (validationType === 'Validar Telefone (BR)') {
+            const digits = valText.replace(/\D/g, '');
+            isValid = digits.length >= 10 && digits.length <= 11;
+          } else if (validationType === 'Validar CPF/CNPJ') {
+            const digits = valText.replace(/\D/g, '');
+            isValid = digits.length === 11 || digits.length === 14;
+          } else if (validationType === 'Validar CEP') {
+            const digits = valText.replace(/\D/g, '');
+            isValid = digits.length === 8;
+          }
+
+          const targetHandleId = isValid ? 'true' : 'false';
+          const branchEdge = edges.find((e: any) => e.source === currentNode.id && e.sourceHandle === targetHandleId);
+          if (branchEdge) {
+            console.log(`[BOT] Validation (${validationType}) result: ${isValid} -> Branching to node ${branchEdge.target}`);
+            currentNode = nodes.find((n: any) => n.id === branchEdge.target);
+            continue;
+          } else {
+            console.warn(`[BOT] Validation (${validationType}) evaluated to ${isValid} but no output edge for "${targetHandleId}" was found.`);
+          }
+        } else if (currentNode.type === 'startSalesbot') {
+          const targetBotId = currentNode.data?.targetBotId;
+          if (targetBotId && targetBotId !== botId) {
+            console.log(`[BOT] Iniciando sub-bot ${targetBotId} a partir de ${botId}`);
+            // Executa o bot de destino assincronamente
+            automationEngine.runSalesbot(targetBotId, lead, destinatarioTipo, connectionId, deixarSemResposta, incomingMessage).catch(err => {
+              console.error(`[BOT] Erro ao executar sub-bot ${targetBotId}:`, err);
             });
           }
+        } else if (currentNode.type === 'customCode') {
+          const code = currentNode.data?.code || '';
+          if (code) {
+            try {
+              const userFunc = new Function('lead', `
+                return (async () => {
+                  ${code}
+                })();
+              `);
+              await userFunc(lead);
+              console.log(`[BOT] Código customizado executado com sucesso para o lead: ${lead.nome}`);
+            } catch (err: any) {
+              console.error('[BOT] Erro ao executar código customizado:', err.message);
+            }
+          }
+        } else if (currentNode.type === 'widget') {
+          const webhookUrl = currentNode.data?.webhookUrl;
+          if (webhookUrl) {
+            try {
+              await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  event: 'bot_trigger',
+                  botId,
+                  lead,
+                  widgetType: currentNode.data?.widgetType,
+                  timestamp: new Date().toISOString()
+                })
+              });
+              console.log(`[BOT] Widget webhook enviado com sucesso para ${webhookUrl}`);
+            } catch (err: any) {
+              console.error('[BOT] Erro ao disparar webhook do Widget:', err.message);
+            }
+          }
+        } else if (currentNode.type === 'stopBot') {
+          console.log('[BOT] Bloco de Parar Bot alcançado. Encerrando execução.');
+          break;
         } else if (currentNode.type === 'roundRobin') {
           let options = currentNode.data?.options || [];
 

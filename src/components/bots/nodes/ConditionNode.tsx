@@ -50,27 +50,33 @@ export default memo(function ConditionNode({ id, data, isConnectable }: any) {
 
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <select 
+          value={data.conditionType || 'Se a mensagem for igual a...'}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, conditionType: e.target.value } } : n))}
           style={{
             width: '100%',
             padding: '6px',
             fontSize: '12px',
             borderRadius: '4px',
             border: '1px solid var(--border)',
+            outline: 'none',
           }}
         >
-          <option>Se a mensagem for igual a...</option>
-          <option>Se contiver a palavra...</option>
-          <option>Se for número...</option>
+          <option value="Se a mensagem for igual a...">Se a mensagem for igual a...</option>
+          <option value="Se contiver a palavra...">Se contiver a palavra...</option>
+          <option value="Se for número...">Se for número...</option>
         </select>
         <input 
           type="text"
           placeholder="Valor..."
+          value={data.conditionValue || ''}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, conditionValue: e.target.value } } : n))}
           style={{
             width: '100%',
             padding: '6px',
             fontSize: '12px',
             borderRadius: '4px',
             border: '1px solid var(--border)',
+            outline: 'none',
           }}
         />
       </div>

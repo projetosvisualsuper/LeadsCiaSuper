@@ -19,13 +19,21 @@ export default memo(function SubscribeMetaNode({ id, data, isConnectable }: any)
         <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', padding: '4px' }}><Trash2 size={14} /></button>
       </div>
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <select style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-          <option>Selecionar Campanha Meta</option>
-          <option>Campanha Leads SP</option>
-          <option>Retargeting IG</option>
+        <select 
+          value={data.campaign || ''}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, campaign: e.target.value } } : n))}
+          style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none' }}
+        >
+          <option value="">Selecionar Campanha Meta</option>
+          <option value="Campanha Leads SP">Campanha Leads SP</option>
+          <option value="Retargeting IG">Retargeting IG</option>
         </select>
         <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--secondary)' }}>
-          <input type="checkbox" /> Re-inscrever se já existir
+          <input 
+            type="checkbox" 
+            checked={!!data.reSubscribe}
+            onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, reSubscribe: e.target.checked } } : n))}
+          /> Re-inscrever se já existir
         </label>
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} style={{ background: color }} />

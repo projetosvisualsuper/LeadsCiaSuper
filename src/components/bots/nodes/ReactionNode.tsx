@@ -19,7 +19,13 @@ export default memo(function ReactionNode({ id, data, isConnectable }: any) {
         <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', padding: '4px' }}><Trash2 size={14} /></button>
       </div>
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <input type="text" placeholder="Emoji (ex: 👍)" defaultValue="👍" style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', textAlign: 'center', fontSize: '1.25rem' }} />
+        <input 
+          type="text" 
+          placeholder="Emoji (ex: 👍)" 
+          value={data.emoji || '👍'} 
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, emoji: e.target.value } } : n))}
+          style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--border)', textAlign: 'center', fontSize: '1.25rem', outline: 'none' }} 
+        />
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} style={{ background: color }} />
     </div>

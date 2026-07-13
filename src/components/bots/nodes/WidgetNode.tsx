@@ -20,11 +20,15 @@ export default memo(function WidgetNode({ id, data, isConnectable }: any) {
         <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', padding: '4px' }}><Trash2 size={14} /></button>
       </div>
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <select style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-          <option>Selecionar Widget</option>
-          <option>RD Station CRM</option>
-          <option>Mercado Pago (Cobrança)</option>
-          <option>Google Sheets (Enviar)</option>
+        <select 
+          value={data.widgetType || 'Selecionar Widget'}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, widgetType: e.target.value } } : n))}
+          style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none' }}
+        >
+          <option value="Selecionar Widget">Selecionar Widget</option>
+          <option value="RD Station CRM">RD Station CRM</option>
+          <option value="Mercado Pago (Cobrança)">Mercado Pago (Cobrança)</option>
+          <option value="Google Sheets (Enviar)">Google Sheets (Enviar)</option>
         </select>
         <button 
           onClick={() => setIsOpen(!isOpen)}
@@ -38,11 +42,23 @@ export default memo(function WidgetNode({ id, data, isConnectable }: any) {
           <div style={{ marginTop: '4px', padding: '8px', background: 'rgba(0,0,0,0.02)', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div>
               <label style={{ fontSize: '10px', color: 'var(--secondary)', marginBottom: '2px', display: 'block' }}>Webhook URL</label>
-              <input type="text" placeholder="https://api.exemplo.com/hook" style={{ width: '100%', padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border)' }} />
+              <input 
+                type="text" 
+                placeholder="https://api.exemplo.com/hook" 
+                value={data.webhookUrl || ''}
+                onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, webhookUrl: e.target.value } } : n))}
+                style={{ width: '100%', padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none' }} 
+              />
             </div>
             <div>
               <label style={{ fontSize: '10px', color: 'var(--secondary)', marginBottom: '2px', display: 'block' }}>Token / API Key (Opcional)</label>
-              <input type="password" placeholder="••••••••••••" style={{ width: '100%', padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border)' }} />
+              <input 
+                type="password" 
+                placeholder="••••••••••••" 
+                value={data.apiKey || ''}
+                onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, apiKey: e.target.value } } : n))}
+                style={{ width: '100%', padding: '4px 6px', fontSize: '11px', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none' }} 
+              />
             </div>
           </div>
         )}

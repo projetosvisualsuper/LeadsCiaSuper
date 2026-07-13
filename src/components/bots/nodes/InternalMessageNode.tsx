@@ -19,12 +19,21 @@ export default memo(function InternalMessageNode({ id, data, isConnectable }: an
         <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', padding: '4px' }}><Trash2 size={14} /></button>
       </div>
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <select style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-          <option>Todos os atendentes</option>
-          <option>Usuário responsável</option>
-          <option>Administradores</option>
+        <select 
+          value={data.target || 'Todos os atendentes'}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, target: e.target.value } } : n))}
+          style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none' }}
+        >
+          <option value="Todos os atendentes">Todos os atendentes</option>
+          <option value="Usuário responsável">Usuário responsável</option>
+          <option value="Administradores">Administradores</option>
         </select>
-        <textarea placeholder="Mensagem interna..." style={{ width: '100%', minHeight: '50px', padding: '8px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', resize: 'none' }} />
+        <textarea 
+          placeholder="Mensagem interna..." 
+          value={data.message || ''}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, message: e.target.value } } : n))}
+          style={{ width: '100%', minHeight: '50px', padding: '8px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', resize: 'none', outline: 'none' }} 
+        />
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} style={{ background: color }} />
     </div>

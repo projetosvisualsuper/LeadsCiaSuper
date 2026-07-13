@@ -19,11 +19,15 @@ export default memo(function ValidationNode({ id, data, isConnectable }: any) {
         <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', padding: '4px' }}><Trash2 size={14} /></button>
       </div>
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <select style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-          <option>Validar Email</option>
-          <option>Validar Telefone (BR)</option>
-          <option>Validar CPF/CNPJ</option>
-          <option>Validar CEP</option>
+        <select 
+          value={data.validationType || 'Validar Email'}
+          onChange={(e) => setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, validationType: e.target.value } } : n))}
+          style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none' }}
+        >
+          <option value="Validar Email">Validar Email</option>
+          <option value="Validar Telefone (BR)">Validar Telefone (BR)</option>
+          <option value="Validar CPF/CNPJ">Validar CPF/CNPJ</option>
+          <option value="Validar CEP">Validar CEP</option>
         </select>
         <p style={{ fontSize: '10px', color: 'var(--secondary)' }}>A mensagem anterior do cliente será testada contra este formato.</p>
       </div>
