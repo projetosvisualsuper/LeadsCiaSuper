@@ -26,7 +26,8 @@ async function processBlingOrder(orderId: string) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${basicAuth}`
+          'Authorization': `Basic ${basicAuth}`,
+          'enable-jwt': '1'
         },
         body: JSON.stringify({
           grant_type: 'refresh_token',
@@ -53,10 +54,13 @@ async function processBlingOrder(orderId: string) {
         await d1Api.saveSettings(updatedSettings);
         console.error('Bling Access Token renovado com sucesso.');
       } else {
-        console.error('Falha ao atualizar token do Bling:', await refreshResponse.text());
+        const errText = await refreshResponse.text();
+        console.error('Falha ao atualizar token do Bling:', errText);
+        throw new Error(`Falha ao renovar token de acesso do Bling: ${errText}`);
       }
-    } catch (tokenErr) {
-      console.error('Erro de rede ao atualizar token do Bling:', tokenErr);
+    } catch (tokenErr: any) {
+      console.error('Erro ao atualizar token do Bling:', tokenErr);
+      throw tokenErr;
     }
   }
 
