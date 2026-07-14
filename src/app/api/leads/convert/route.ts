@@ -51,20 +51,20 @@ export async function POST(request: Request) {
       return '';
     };
 
-    const email = getValue(['email', 'email_address', 'user_email', 'billing_email', 'your-email', 'your_email', 'ywraq_customer_email', 'customer_email', 'ywraq_billing_email']);
-    const rawTelefone = getValue(['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number', 'your-phone', 'your_phone', 'telephone', 'ywraq_customer_phone', 'customer_phone', 'ywraq_billing_phone']);
+    const email = getValue(['email', 'email_address', 'user_email', 'billing_email', 'your-email', 'your_email', 'ywraq_customer_email', 'customer_email', 'ywraq_billing_email', '_ywraq_customer_email', '_ywraq_billing_email', '_billing_email']);
+    const rawTelefone = getValue(['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number', 'your-phone', 'your_phone', 'telephone', 'ywraq_customer_phone', 'customer_phone', 'ywraq_billing_phone', '_ywraq_customer_phone', '_ywraq_billing_phone', '_billing_phone', '_phone']);
     const telefone = rawTelefone.replace(/\D/g, '');
     
     // Tenta extrair nome completo ou primeiro/último nome
-    let nome = getValue(['nome', 'name', 'full_name', 'billing_first_name', 'first_name', 'your-name', 'your_name', 'ywraq_customer_name', 'customer_name', 'ywraq_billing_name']);
-    const sobrenome = getValue(['sobrenome', 'last_name', 'billing_last_name']);
+    let nome = getValue(['nome', 'name', 'full_name', 'billing_first_name', 'first_name', 'your-name', 'your_name', 'ywraq_customer_name', 'customer_name', 'ywraq_billing_name', '_ywraq_customer_name', '_ywraq_billing_name', '_billing_first_name']);
+    const sobrenome = getValue(['sobrenome', 'last_name', 'billing_last_name', '_billing_last_name']);
     if (nome && sobrenome && !nome.includes(sobrenome)) nome += ' ' + sobrenome;
 
     const valor = getValue(['valor', 'total', 'amount', 'order_total']);
     const pedidoId = getValue(['pedidoId', 'order_id', 'id', 'number', 'order_number']);
 
     // Identificar se é uma Cotação (Suporta YITH WooCommerce Request a Quote)
-    const isYithRaq = getMetaValue('ywraq_raq') === 'yes' || getMetaValue('ywraq_raq_status') !== '';
+    const isYithRaq = getMetaValue('ywraq_raq') === 'yes' || getMetaValue('ywraq_raq_status') !== '' || getMetaValue('_ywraq_raq') === 'yes';
     const rawStatus = getField(body, ['status']).toLowerCase();
     const paymentMethod = getField(body, ['payment_method', 'payment_method_title']).toLowerCase();
     
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
                       body.tipo === 'cotacao';
 
     // Extrair mensagem/observação do cliente
-    const mensagemCliente = getMetaValue('ywraq_customer_message') || getField(body, ['customer_note', 'note', 'message', 'mensagem']);
+    const mensagemCliente = getMetaValue('ywraq_customer_message') || getMetaValue('_ywraq_customer_message') || getField(body, ['customer_note', 'note', 'message', 'mensagem']);
 
     // Extrair produtos do WooCommerce (line_items) ou campo produtos genérico
     let itensFormatados = '';

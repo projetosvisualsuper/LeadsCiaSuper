@@ -1851,12 +1851,12 @@ export const d1Api = {
     return results && results.length > 0 ? results[0].count : 0;
   },
 
-  saveOpportunity: async (opportunity: Omit<Opportunity, 'id' | 'dataCriacao' | 'isRead' | 'status'>): Promise<void> => {
+  saveOpportunity: async (opportunity: Omit<Opportunity, 'id' | 'dataCriacao' | 'isRead' | 'status'> & { status?: string; observacao?: string }): Promise<void> => {
     const id = Math.random().toString(36).substr(2, 9);
     const dataCriacao = new Date().toISOString();
     await executeRun(
-      `INSERT INTO opportunities (id, leadId, assignedTo, status, isRead, dataCriacao) VALUES (?, ?, ?, 'pendente', 0, ?)`,
-      [id, opportunity.leadId, opportunity.assignedTo, dataCriacao]
+      `INSERT INTO opportunities (id, leadId, assignedTo, status, isRead, dataCriacao, observacao) VALUES (?, ?, ?, ?, 0, ?, ?)`,
+      [id, opportunity.leadId, opportunity.assignedTo, opportunity.status || 'pendente', dataCriacao, opportunity.observacao || null]
     );
     // Também atualiza a atribuição do chat
     await executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [opportunity.assignedTo, opportunity.leadId]);
