@@ -5,7 +5,7 @@ export const runtime = 'edge';
 import { useState, useEffect, Suspense } from 'react';
 import { api } from '@/services/api';
 import { Pedido } from '@/types/crm';
-import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle } from 'lucide-react';
+import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -64,6 +64,18 @@ function PedidosContent() {
       alert('Erro ao salvar observação.');
     } finally {
       setSavingObs(null);
+    }
+  };
+
+  const handleDeletePedido = async (pedidoId: string) => {
+    if (!confirm('Deseja realmente excluir este pedido? Esta ação não pode ser desfeita.')) return;
+    try {
+      await api.deletePedido(pedidoId);
+      setPedidos(prev => prev.filter(p => p.id !== pedidoId));
+      if (expandedPedidoId === pedidoId) setExpandedPedidoId(null);
+    } catch (err) {
+      console.error('Erro ao excluir pedido:', err);
+      alert('Erro ao excluir pedido.');
     }
   };
 
@@ -408,7 +420,35 @@ function PedidosContent() {
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
                       {new Date(pedido.dataCriacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     </span>
-                    <div style={{ color: '#94a3b8' }}>
+                    <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePedido(pedido.id);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#94a3b8',
+                          padding: '4px',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#ef4444';
+                          e.currentTarget.style.backgroundColor = '#fee2e2';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#94a3b8';
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                       {expandedPedidoId === pedido.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
                   </div>

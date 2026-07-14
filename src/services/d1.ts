@@ -1826,6 +1826,10 @@ export const d1Api = {
     await executeRun(`UPDATE pedidos SET isRead = 1 WHERE id = ?`, [pedidoId]);
   },
 
+  deletePedido: async (pedidoId: string): Promise<void> => {
+    await executeRun(`DELETE FROM pedidos WHERE id = ?`, [pedidoId]);
+  },
+
   markAllPedidosAsRead: async (origem?: string): Promise<void> => {
     if (origem) {
       if (origem === 'mercos') {
