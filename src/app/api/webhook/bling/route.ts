@@ -3,6 +3,54 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
 
+// Função auxiliar para disparar a notificação de WhatsApp se configurado
+async function sendBlingWhatsappNotification(leadId: string, orderNumber: string, settings: any) {
+  try {
+    const leadResult = await d1Api.runQuery(`SELECT nome, celular FROM leads WHERE id = ? LIMIT 1`, [leadId]);
+    const targetLead = leadResult.results?.[0];
+    
+    if (targetLead && targetLead.celular) {
+      const cleanPhone = targetLead.celular.replace(/\D/g, '');
+      if (cleanPhone) {
+        const msgText = `Olá, *${targetLead.nome}*! Seu pedido *#${orderNumber}* foi enviado com sucesso! 🚀\n\nVocê pode acompanhar a entrega e rastrear seu pedido através do nosso portal:\n🔗 https://portal.visualsuper.com.br\n\nObrigado pela confiança! 😊`;
+        
+        const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
+        
+        if (settings.bling?.templateName) {
+          await sendOmnichannelMessageAction(
+            cleanPhone,
+            'whatsapp',
+            msgText,
+            undefined,
+            {
+              name: settings.bling.templateName,
+              language: settings.bling.templateLanguage || 'pt_BR',
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: targetLead.nome },
+                    { type: "text", text: orderNumber }
+                  ]
+                }
+              ]
+            }
+          );
+        } else {
+          await sendOmnichannelMessageAction(
+            cleanPhone,
+            'whatsapp',
+            msgText
+          );
+        }
+        console.error(`Notificação automática enviada com sucesso para ${targetLead.nome}`);
+      }
+    }
+  } catch (msgErr) {
+    console.error('Erro ao disparar notificação automática do Bling:', msgErr);
+  }
+}
+
 // Função compartilhada para importar/atualizar o pedido a partir do ID do Bling
 async function processBlingOrder(orderId: string) {
   // 1. Carregar credenciais e tokens do Bling nas configurações do CRM
@@ -101,8 +149,6 @@ async function processBlingOrder(orderId: string) {
   // A situação pode vir como ID ou nome
   const statusName = (data.situacao?.nome || '').toString().toLowerCase() || (data.situacao?.id || '').toString();
   
-
-
   // Cliente
   const clientName = data.contato?.nome || 'Cliente';
   let clientPhone = '';
@@ -155,187 +201,104 @@ async function processBlingOrder(orderId: string) {
   const prettyStatus = data.situacao?.nome || statusNamesMap[statusName] || statusName;
   const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-  if (isOpen) {
-    if (pedidoLocal) {
-      const isAndamento = statusName.includes('andamento') || statusName === '18' || statusName === '15';
-      if (isAndamento) {
-        await d1Api.updatePedidoStatus(pedidoLocal.id, 'em_atendimento');
-      }
+  // Mapear status para o CRM
+  const isAndamento = statusName.includes('andamento') || statusName === '18' || statusName === '15';
+  const isAtendido = statusName.includes('atendido') || statusName.includes('finalizado') || statusName === '9' || statusName === '2';
 
-      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
-      const novaObs = (pedidoLocal.observacao || '') + updateText;
-      await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
-
-      return { 
-        success: true, 
-        message: isAndamento 
-          ? 'Pedido atualizado para Em Atendimento no CRM.' 
-          : 'Pedido já existia. Apenas observações atualizadas.',
-        pedido: isAndamento ? { ...pedidoLocal, status: 'em_atendimento' } : pedidoLocal
-      };
-    } else {
-      const cleanPhone = clientPhone.replace(/\D/g, '');
-      let targetLeadId = '';
-
-      if (cleanPhone) {
-        const { results } = await d1Api.runQuery(
-          `SELECT id FROM leads WHERE celular = ? OR telefone = ? LIMIT 1`,
-          [cleanPhone, cleanPhone]
-        );
-        if (results && results.length > 0) {
-          targetLeadId = results[0].id;
-        }
-      }
-
-      if (!targetLeadId) {
-        const { results: nameResults } = await d1Api.runQuery(
-          `SELECT id, celular, email FROM leads WHERE nome = ? LIMIT 1`,
-          [clientName]
-        );
-        if (nameResults && nameResults.length > 0) {
-          targetLeadId = nameResults[0].id;
-          if (cleanPhone && !nameResults[0].celular) {
-            await d1Api.executeRun(`UPDATE leads SET celular = ? WHERE id = ?`, [cleanPhone, targetLeadId]);
-          }
-          if (clientEmail && !nameResults[0].email) {
-            await d1Api.executeRun(`UPDATE leads SET email = ? WHERE id = ?`, [clientEmail, targetLeadId]);
-          }
-        }
-      }
-
-      if (!targetLeadId) {
-        targetLeadId = Math.random().toString(36).substr(2, 9);
-        const agora = new Date().toISOString();
-        await d1Api.runQuery(
-          `INSERT INTO leads (id, nome, celular, email, origem, dataCriacao, status) VALUES (?, ?, ?, ?, 'Bling Mercos', ?, 'novo')`,
-          [targetLeadId, clientName, cleanPhone || null, clientEmail || null, agora]
-        );
-      }
-
-      const itensBling = data.itens ? (Array.isArray(data.itens) ? data.itens.map((i: any) => i.descricao || i.codigo).join(', ') : data.itens.toString()) : 'Produtos Mercos';
-      const valorBling = parseFloat(data.total || '0');
-
-      await d1Api.savePedido({
-        leadId: targetLeadId,
-        pedidoReferencia: orderNumber,
-        itens: itensBling,
-        valor: valorBling,
-        origem: 'mercos',
-        numeroLojaVirtual: numeroLojaVirtual,
-        observacao: `[BLING CRIAÇÃO] Pedido criado com status "${prettyStatus}" no Bling em ${formattedDate}.`
-      } as any);
-
-      const todosPedidos = await d1Api.getPedidos();
-      const recemCriado = todosPedidos.find(p => p.pedidoReferencia === orderNumber && p.origem === 'mercos');
-      if (recemCriado) {
-        await d1Api.updatePedidoStatus(recemCriado.id, 'em_atendimento');
-      }
-
-      return { 
-        success: true, 
-        message: 'Pedido criado com sucesso na aba Mercos com status Em Atendimento.',
-        pedido: recemCriado
-      };
-    }
-  }
-
-  if (isFinalized) {
-    if (pedidoLocal) {
-      const isAtendido = statusName.includes('atendido') || statusName.includes('finalizado') || statusName === '9' || statusName === '2';
-      const crmStatus = isAtendido ? 'finalizado' : 'enviado';
-      
-      await d1Api.updatePedidoStatus(pedidoLocal.id, crmStatus);
-
-      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
-      const novaObs = (pedidoLocal.observacao || '') + updateText;
-      await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
-
-      // Disparar mensagem de WhatsApp automática se ativado nas configurações
-      if (settings.bling?.enabled) {
-        try {
-          const leadResult = await d1Api.runQuery(`SELECT nome, celular FROM leads WHERE id = ? LIMIT 1`, [pedidoLocal.leadId]);
-          const targetLead = leadResult.results?.[0];
-          
-          if (targetLead && targetLead.celular) {
-            const cleanPhone = targetLead.celular.replace(/\D/g, '');
-            if (cleanPhone) {
-              const msgText = `Olá, *${targetLead.nome}*! Seu pedido *#${orderNumber}* foi enviado com sucesso! 🚀\n\nVocê pode acompanhar a entrega e rastrear seu pedido através do nosso portal:\n🔗 https://portal.visualsuper.com.br\n\nObrigado pela confiança! 😊`;
-              
-              const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
-              
-              if (settings.bling.templateName) {
-                await sendOmnichannelMessageAction(
-                  cleanPhone,
-                  'whatsapp',
-                  msgText,
-                  undefined,
-                  {
-                    name: settings.bling.templateName,
-                    language: settings.bling.templateLanguage || 'pt_BR',
-                    components: [
-                      {
-                        type: "body",
-                        parameters: [
-                          { type: "text", text: targetLead.nome },
-                          { type: "text", text: orderNumber }
-                        ]
-                      }
-                    ]
-                  }
-                );
-              } else {
-                await sendOmnichannelMessageAction(
-                  cleanPhone,
-                  'whatsapp',
-                  msgText
-                );
-              }
-              console.error(`Notificação automática enviada com sucesso para ${targetLead.nome}`);
-            }
-          }
-        } catch (msgErr) {
-          console.error('Erro ao disparar notificação automática do Bling:', msgErr);
-        }
-      }
-
-      return { 
-        success: true, 
-        message: `Status do pedido atualizado para ${crmStatus === 'finalizado' ? 'Finalizado' : 'Enviado'}.`,
-        pedido: pedidoLocal
-      };
-    } else {
-      return { 
-        success: true, 
-        message: 'Pedido não localizado no CRM.' 
-      };
-    }
-  }
-
+  let crmStatus = 'pendente';
   if (isCanceled) {
-    if (pedidoLocal) {
-      await d1Api.updatePedidoStatus(pedidoLocal.id, 'cancelado');
-      
-      const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
-      const novaObs = (pedidoLocal.observacao || '') + updateText;
-      await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
-
-      return { 
-        success: true, 
-        message: 'Status do pedido atualizado para Cancelado no CRM.',
-        pedido: pedidoLocal
-      };
-    } else {
-      return { 
-        success: true, 
-        message: 'Pedido cancelado no Bling, mas não localizado no CRM.' 
-      };
-    }
+    crmStatus = 'cancelado';
+  } else if (isFinalized) {
+    crmStatus = isAtendido ? 'finalizado' : 'enviado';
+  } else if (isOpen) {
+    crmStatus = isAndamento ? 'em_atendimento' : 'pendente';
   }
 
-  return { 
-    success: true, 
-    message: `Pedido recebido. Evento com status '${statusName}' ignorado (apenas status em aberto ou faturados são processados).` 
-  };
+  if (pedidoLocal) {
+    await d1Api.updatePedidoStatus(pedidoLocal.id, crmStatus);
+
+    const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
+    const novaObs = (pedidoLocal.observacao || '') + updateText;
+    await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
+
+    if (isFinalized && settings.bling?.enabled) {
+      await sendBlingWhatsappNotification(pedidoLocal.leadId, orderNumber, settings);
+    }
+
+    return { 
+      success: true, 
+      message: `Pedido atualizado com status ${crmStatus} no CRM.`,
+      pedido: { ...pedidoLocal, status: crmStatus, observacao: novaObs }
+    };
+  } else {
+    // Pedido não existe, vamos criar o lead se necessário, e salvar o pedido
+    const cleanPhone = clientPhone.replace(/\D/g, '');
+    let targetLeadId = '';
+
+    if (cleanPhone) {
+      const { results } = await d1Api.runQuery(
+        `SELECT id FROM leads WHERE celular = ? OR telefone = ? LIMIT 1`,
+        [cleanPhone, cleanPhone]
+      );
+      if (results && results.length > 0) {
+        targetLeadId = results[0].id;
+      }
+    }
+
+    if (!targetLeadId) {
+      const { results: nameResults } = await d1Api.runQuery(
+        `SELECT id, celular, email FROM leads WHERE nome = ? LIMIT 1`,
+        [clientName]
+      );
+      if (nameResults && nameResults.length > 0) {
+        targetLeadId = nameResults[0].id;
+        if (cleanPhone && !nameResults[0].celular) {
+          await d1Api.executeRun(`UPDATE leads SET celular = ? WHERE id = ?`, [cleanPhone, targetLeadId]);
+        }
+        if (clientEmail && !nameResults[0].email) {
+          await d1Api.executeRun(`UPDATE leads SET email = ? WHERE id = ?`, [clientEmail, targetLeadId]);
+        }
+      }
+    }
+
+    if (!targetLeadId) {
+      targetLeadId = Math.random().toString(36).substr(2, 9);
+      const agora = new Date().toISOString();
+      await d1Api.runQuery(
+        `INSERT INTO leads (id, nome, celular, email, origem, dataCriacao, status) VALUES (?, ?, ?, ?, 'Bling Mercos', ?, 'novo')`,
+        [targetLeadId, clientName, cleanPhone || null, clientEmail || null, agora]
+      );
+    }
+
+    const itensBling = data.itens ? (Array.isArray(data.itens) ? data.itens.map((i: any) => i.descricao || i.codigo).join(', ') : data.itens.toString()) : 'Produtos Mercos';
+    const valorBling = parseFloat(data.total || '0');
+
+    await d1Api.savePedido({
+      leadId: targetLeadId,
+      pedidoReferencia: orderNumber,
+      itens: itensBling,
+      valor: valorBling,
+      origem: 'mercos',
+      numeroLojaVirtual: numeroLojaVirtual,
+      observacao: `[BLING CRIAÇÃO] Pedido criado com status "${prettyStatus}" no Bling em ${formattedDate}.`
+    } as any);
+
+    const todosPedidos = await d1Api.getPedidos();
+    const recemCriado = todosPedidos.find(p => p.pedidoReferencia === orderNumber && p.origem === 'mercos');
+    if (recemCriado) {
+      await d1Api.updatePedidoStatus(recemCriado.id, crmStatus);
+    }
+
+    if (isFinalized && settings.bling?.enabled) {
+      await sendBlingWhatsappNotification(targetLeadId, orderNumber, settings);
+    }
+
+    return { 
+      success: true, 
+      message: `Pedido importado e criado com status ${crmStatus} na aba Mercos.`,
+      pedido: recemCriado ? { ...recemCriado, status: crmStatus } : undefined
+    };
+  }
 }
 
 // Rota POST (Webhook padrão do Bling)

@@ -1049,7 +1049,7 @@ function LeadsContent() {
                   </div>
                   <div>
                     <p style={{ fontSize: '0.75rem', opacity: 0.5 }}>Data de Cadastro</p>
-                    <p style={{ fontWeight: 500 }}>{new Date(viewingLead.dataCriacao).toLocaleString('pt-BR')}</p>
+                    <p style={{ fontWeight: 500 }}>{new Date(viewingLead.dataCriacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                   </div>
                   <div>
                     <p style={{ fontSize: '0.75rem', opacity: 0.5 }}>Total de Conversões</p>
@@ -1057,7 +1057,7 @@ function LeadsContent() {
                   </div>
                   <div>
                     <p style={{ fontSize: '0.75rem', opacity: 0.5 }}>Última Conversão</p>
-                    <p style={{ fontWeight: 500 }}>{viewingLead.dataUltimaConversao ? new Date(viewingLead.dataUltimaConversao).toLocaleString('pt-BR') : new Date(viewingLead.dataCriacao).toLocaleString('pt-BR')}</p>
+                    <p style={{ fontWeight: 500 }}>{viewingLead.dataUltimaConversao ? new Date(viewingLead.dataUltimaConversao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : new Date(viewingLead.dataCriacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                   </div>
                 </div>
               </section>
@@ -1098,7 +1098,7 @@ function LeadsContent() {
                     <Loader2 className="animate-spin" size={16} />
                     Carregando pedidos...
                   </div>
-                ) : leadPedidos.length === 0 ? (
+                ) : viewingLead && leadPedidos.length === 0 ? (
                   <p style={{ fontStyle: 'italic', color: '#94a3b8', fontSize: '0.9rem', margin: '0.5rem 0' }}>
                     Nenhum pedido encontrado para este lead.
                   </p>
@@ -1147,7 +1147,7 @@ function LeadsContent() {
                               Ref: {pedido.pedidoReferencia || pedido.id}
                             </span>
                             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              {new Date(pedido.dataCriacao).toLocaleString('pt-BR')}
+                              {new Date(pedido.dataCriacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                             </span>
                           </div>
                           

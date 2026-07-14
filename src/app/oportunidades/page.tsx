@@ -581,7 +581,7 @@ export default function OportunidadesPage() {
                   
                   <div style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                      {new Date(opp.dataCriacao).toLocaleString('pt-BR')}
+                      {new Date(opp.dataCriacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       {(currentUser?.role === 'admin' || currentUser?.role === 'master') && (
