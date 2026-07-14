@@ -26,6 +26,7 @@ import {
   Trash2
 } from 'lucide-react';
 import Link from 'next/link';
+import PipelineAutomationModal from '@/components/bots/PipelineAutomationModal';
 
 const renderMessageContent = (msg: ChatMessage, leadNome: string) => {
   const isImage = msg.type === 'image';
@@ -81,9 +82,10 @@ export default function OportunidadesPage() {
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [connections, setConnections] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas'>('novas');
+  const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas' | 'cotacoes'>('novas');
   const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
 
   // Filtros de busca e atribuição
   const [filterUser, setFilterUser] = useState<string>('todos');
@@ -257,6 +259,9 @@ export default function OportunidadesPage() {
       label = 'Finalizado';
     } else if (safeStatus === 'cancelado') {
       bg = '#f1f5f9'; color = '#475569'; icon = <XCircle size={12}/>;
+    } else if (safeStatus === 'cotacao') {
+      bg = '#fef3c7'; color = '#d97706'; icon = <Clock size={12}/>;
+      label = 'Cotação';
     }
 
     return (
@@ -303,8 +308,8 @@ export default function OportunidadesPage() {
       tabMatch = status === 'ganha' || status === 'finalizado';
     } else if (activeTab === 'perdidas') {
       tabMatch = status === 'perdida' || status === 'cancelado';
-    } else {
-      tabMatch = true;
+    } else if (activeTab === 'cotacoes') {
+      tabMatch = status === 'cotacao';
     }
 
     if (!tabMatch) return false;
@@ -341,15 +346,25 @@ export default function OportunidadesPage() {
             Gerencie os leads qualificados encaminhados para atendimento humano comercial.
           </p>
         </div>
-        <button 
-          onClick={fetchOpportunities} 
-          disabled={loading}
-          className="btn"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
-        >
-          <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-          {loading ? 'Atualizando...' : 'Atualizar'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button 
+            type="button"
+            onClick={() => setIsAutomationModalOpen(true)}
+            title="Configurar Automações"
+            style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', cursor: 'pointer', padding: '0.5rem 1rem', color: '#1e40af', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <Zap size={16} /> Automações
+          </button>
+          <button 
+            onClick={fetchOpportunities} 
+            disabled={loading}
+            className="btn"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
+          >
+            <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            {loading ? 'Atualizando...' : 'Atualizar'}
+          </button>
+        </div>
       </div>
 
       {/* BARRA DE FILTROS */}
@@ -467,6 +482,20 @@ export default function OportunidadesPage() {
           }}
         >
           Novas ({opportunities.filter(o => !o.status || o.status === 'pendente').length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('cotacoes')}
+          style={{
+            padding: '0.5rem 1rem',
+            border: 'none',
+            background: 'none',
+            borderBottom: activeTab === 'cotacoes' ? '3px solid #eab308' : '3px solid transparent',
+            color: activeTab === 'cotacoes' ? '#eab308' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          Cotações do Site ({opportunities.filter(o => o.status === 'cotacao').length})
         </button>
         <button 
           onClick={() => setActiveTab('atendidas')}
@@ -779,6 +808,13 @@ export default function OportunidadesPage() {
                           </button>
                           <button 
                             className="btn-outline"
+                            onClick={() => handleStatusChange(opp.id, 'cotacao')} 
+                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', backgroundColor: opp.status === 'cotacao' ? '#fef3c7' : '#ffffff', borderColor: opp.status === 'cotacao' ? '#eab308' : '#cbd5e1' }}
+                          >
+                            Cotação
+                          </button>
+                          <button 
+                            className="btn-outline"
                             onClick={() => handleStatusChange(opp.id, 'cancelado')} 
                             style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', backgroundColor: opp.status === 'cancelado' ? '#f1f5f9' : '#ffffff', borderColor: opp.status === 'cancelado' ? '#94a3b8' : '#cbd5e1' }}
                           >
@@ -916,8 +952,10 @@ export default function OportunidadesPage() {
           </div>
         </div>
       )}
-
-
+      <PipelineAutomationModal 
+        isOpen={isAutomationModalOpen}
+        onClose={() => setIsAutomationModalOpen(false)}
+      />
 
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin {

@@ -51,12 +51,12 @@ export async function POST(request: Request) {
       return '';
     };
 
-    const email = getValue(['email', 'email_address', 'user_email', 'billing_email', 'your-email', 'your_email']);
-    const rawTelefone = getValue(['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number', 'your-phone', 'your_phone', 'telephone']);
+    const email = getValue(['email', 'email_address', 'user_email', 'billing_email', 'your-email', 'your_email', 'ywraq_customer_email', 'customer_email', 'ywraq_billing_email']);
+    const rawTelefone = getValue(['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number', 'your-phone', 'your_phone', 'telephone', 'ywraq_customer_phone', 'customer_phone', 'ywraq_billing_phone']);
     const telefone = rawTelefone.replace(/\D/g, '');
     
     // Tenta extrair nome completo ou primeiro/último nome
-    let nome = getValue(['nome', 'name', 'full_name', 'billing_first_name', 'first_name', 'your-name', 'your_name']);
+    let nome = getValue(['nome', 'name', 'full_name', 'billing_first_name', 'first_name', 'your-name', 'your_name', 'ywraq_customer_name', 'customer_name', 'ywraq_billing_name']);
     const sobrenome = getValue(['sobrenome', 'last_name', 'billing_last_name']);
     if (nome && sobrenome && !nome.includes(sobrenome)) nome += ' ' + sobrenome;
 
@@ -164,53 +164,79 @@ export async function POST(request: Request) {
       actionMessage = `Lead existente atualizado (${isCotacao ? 'Cotação' : 'Venda'}).`;
     }
 
-    // --- CRIAR OU ATUALIZAR O REGISTRO DO PEDIDO NO MÓDULO DE PEDIDOS ---
+    // --- CRIAR OU ATUALIZAR O REGISTRO DO PEDIDO OU OPORTUNIDADE ---
     if (pedidoId || isCotacao || itensFormatados) {
-      let mappedStatus = 'pendente';
-      if (rawStatus) {
-        if (['cancelled', 'canceled', 'failed', 'refunded'].includes(rawStatus)) {
-          mappedStatus = 'cancelado';
-        } else if (['completed'].includes(rawStatus)) {
-          mappedStatus = 'finalizado';
-        } else if (['processing'].includes(rawStatus)) {
-          mappedStatus = 'em_atendimento';
-        } else if (['pending', 'on-hold', 'pending-payment'].includes(rawStatus)) {
-          mappedStatus = 'pendente';
-        }
-      }
-
-      if (pedidoId) {
-        const { results: existingPedidos } = await d1Api.runQuery(
-          `SELECT * FROM pedidos WHERE pedidoReferencia = ? LIMIT 1`,
-          [pedidoId]
+      if (isCotacao) {
+        // Se for cotação, cria/atualiza na tabela de oportunidades com status 'cotacao'
+        const { results: existingOpps } = await d1Api.runQuery(
+          `SELECT * FROM opportunities WHERE leadId = ? AND status = 'cotacao' LIMIT 1`,
+          [finalLeadId]
         );
 
-        if (existingPedidos && existingPedidos.length > 0) {
-          const existingPedido = existingPedidos[0];
-          await d1Api.updatePedidoStatus(existingPedido.id, mappedStatus);
-          
-          // Atualiza itens e valor se fornecidos
-          await d1Api.executeRun(
-            `UPDATE pedidos SET itens = ?, valor = ? WHERE id = ?`,
-            [itensFormatados || existingPedido.itens, valor ? parseFloat(valor) : existingPedido.valor, existingPedido.id]
+        const oppObs = `[COTAÇÃO DO SITE] Pedido/Cotação: ${pedidoId || 'N/A'}\nProdutos: ${itensFormatados || 'Não informados'}\nValor: R$ ${valor || '0.00'}\nObs do Cliente: ${mensagemCliente || 'Nenhuma'}`;
+
+        if (existingOpps && existingOpps.length > 0) {
+          const existingOpp = existingOpps[0];
+          await d1Api.updateOpportunityObservacao(existingOpp.id, oppObs);
+        } else {
+          // Buscar primeiro usuário administrador ou master para ser o atendente padrão
+          const { results: adminUsers } = await d1Api.runQuery(`SELECT uid FROM users WHERE role = 'admin' OR role = 'master' LIMIT 1`);
+          const defaultAssignedTo = adminUsers && adminUsers.length > 0 ? adminUsers[0].uid : 'sistema';
+
+          await d1Api.saveOpportunity({
+            leadId: finalLeadId,
+            assignedTo: defaultAssignedTo,
+            status: 'cotacao',
+            observacao: oppObs
+          } as any);
+        }
+      } else {
+        let mappedStatus = 'pendente';
+        if (rawStatus) {
+          if (['cancelled', 'canceled', 'failed', 'refunded'].includes(rawStatus)) {
+            mappedStatus = 'cancelado';
+          } else if (['completed'].includes(rawStatus)) {
+            mappedStatus = 'finalizado';
+          } else if (['processing'].includes(rawStatus)) {
+            mappedStatus = 'em_atendimento';
+          } else if (['pending', 'on-hold', 'pending-payment'].includes(rawStatus)) {
+            mappedStatus = 'pendente';
+          }
+        }
+
+        if (pedidoId) {
+          const { results: existingPedidos } = await d1Api.runQuery(
+            `SELECT * FROM pedidos WHERE pedidoReferencia = ? LIMIT 1`,
+            [pedidoId]
           );
+
+          if (existingPedidos && existingPedidos.length > 0) {
+            const existingPedido = existingPedidos[0];
+            await d1Api.updatePedidoStatus(existingPedido.id, mappedStatus);
+            
+            // Atualiza itens e valor se fornecidos
+            await d1Api.executeRun(
+              `UPDATE pedidos SET itens = ?, valor = ? WHERE id = ?`,
+              [itensFormatados || existingPedido.itens, valor ? parseFloat(valor) : existingPedido.valor, existingPedido.id]
+            );
+          } else {
+            await d1Api.savePedido({
+              leadId: finalLeadId,
+              pedidoReferencia: pedidoId,
+              itens: itensFormatados || 'Produtos não informados',
+              valor: valor ? parseFloat(valor) : undefined,
+              status: mappedStatus
+            } as any);
+          }
         } else {
           await d1Api.savePedido({
             leadId: finalLeadId,
-            pedidoReferencia: pedidoId,
+            pedidoReferencia: `P-${Math.floor(Math.random() * 10000)}`,
             itens: itensFormatados || 'Produtos não informados',
             valor: valor ? parseFloat(valor) : undefined,
             status: mappedStatus
           } as any);
         }
-      } else {
-        await d1Api.savePedido({
-          leadId: finalLeadId,
-          pedidoReferencia: `P-${Math.floor(Math.random() * 10000)}`,
-          itens: itensFormatados || 'Produtos não informados',
-          valor: valor ? parseFloat(valor) : undefined,
-          status: mappedStatus
-        } as any);
       }
     }
 
