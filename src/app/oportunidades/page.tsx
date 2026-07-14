@@ -808,13 +808,6 @@ export default function OportunidadesPage() {
                           </button>
                           <button 
                             className="btn-outline"
-                            onClick={() => handleStatusChange(opp.id, 'cotacao')} 
-                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', backgroundColor: opp.status === 'cotacao' ? '#fef3c7' : '#ffffff', borderColor: opp.status === 'cotacao' ? '#eab308' : '#cbd5e1' }}
-                          >
-                            Cotação
-                          </button>
-                          <button 
-                            className="btn-outline"
                             onClick={() => handleStatusChange(opp.id, 'cancelado')} 
                             style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', backgroundColor: opp.status === 'cancelado' ? '#f1f5f9' : '#ffffff', borderColor: opp.status === 'cancelado' ? '#94a3b8' : '#cbd5e1' }}
                           >
