@@ -460,6 +460,7 @@ export interface Pedido {
   observacao?: string;
   origem?: 'site' | 'mercos';
   numeroLojaVirtual?: string;
+  assignedTo?: string;
 }
 
 export interface Opportunity {

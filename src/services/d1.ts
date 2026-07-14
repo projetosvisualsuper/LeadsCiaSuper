@@ -1796,9 +1796,10 @@ export const d1Api = {
     await d1Api.ensureNumeroLojaVirtualColumn();
     // Fazer JOIN com a tabela de leads para pegar o nome e o celular do lead
     const query = `
-      SELECT p.*, l.nome as leadNome, l.celular as leadCelular
+      SELECT p.*, l.nome as leadNome, l.celular as leadCelular, c.assignedTo as assignedTo
       FROM pedidos p
       LEFT JOIN leads l ON p.leadId = l.id
+      LEFT JOIN chats c ON p.leadId = c.leadId
       ORDER BY p.dataCriacao DESC
       LIMIT 100
     `;
@@ -1810,9 +1811,10 @@ export const d1Api = {
     await d1Api.ensureOrigemColumn();
     await d1Api.ensureNumeroLojaVirtualColumn();
     const query = `
-      SELECT p.*, l.nome as leadNome, l.celular as leadCelular
+      SELECT p.*, l.nome as leadNome, l.celular as leadCelular, c.assignedTo as assignedTo
       FROM pedidos p
       LEFT JOIN leads l ON p.leadId = l.id
+      LEFT JOIN chats c ON p.leadId = c.leadId
       WHERE p.leadId = ?
       ORDER BY p.dataCriacao DESC
     `;
