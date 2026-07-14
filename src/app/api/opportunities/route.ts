@@ -108,64 +108,64 @@ export async function PUT(request: Request) {
         const opp = opps.find(o => o.id === id);
         if (opp && opp.leadId) {
           const { automationEngine } = await import('@/services/automation-engine');
-          (async () => {
+          try {
             await automationEngine.processLeadAutomation(opp.leadId, status, 'quando_criado');
-          })();
+          } catch (autoErr) {
+            console.error('Erro ao processar automação do lead:', autoErr);
+          }
 
           // Sincronizar status da cotação com WooCommerce
-          (async () => {
-            try {
-              const { results: leadRes } = await d1Api.runQuery(`SELECT origem FROM leads WHERE id = ? LIMIT 1`, [opp.leadId]);
-              const leadOrigem = leadRes?.[0]?.origem;
+          try {
+            const { results: leadRes } = await d1Api.runQuery(`SELECT origem FROM leads WHERE id = ? LIMIT 1`, [opp.leadId]);
+            const leadOrigem = leadRes?.[0]?.origem;
+            
+            if (leadOrigem === 'Cotação (WooCommerce)' && opp.observacao) {
+              const match = opp.observacao.match(/Pedido\/Cotação:\s*(\d+)/i);
+              const quoteId = match ? match[1] : null;
               
-              if (leadOrigem === 'Cotação (WooCommerce)' && opp.observacao) {
-                const match = opp.observacao.match(/Pedido\/Cotação:\s*(\d+)/i);
-                const quoteId = match ? match[1] : null;
+              if (quoteId) {
+                const settings = await d1Api.getSettings();
+                const wcConfig = settings?.woocommerce;
                 
-                if (quoteId) {
-                  const settings = await d1Api.getSettings();
-                  const wcConfig = settings?.woocommerce;
+                if (wcConfig && wcConfig.syncEnabled && wcConfig.url && wcConfig.consumerKey && wcConfig.consumerSecret) {
+                  let wcStatus = '';
+                  if (status === 'em_atendimento') {
+                    wcStatus = 'ywraq-accepted';
+                  } else if (status === 'cancelado' || status === 'perdida') {
+                    wcStatus = 'ywraq-rejected';
+                  }
                   
-                  if (wcConfig && wcConfig.syncEnabled && wcConfig.url && wcConfig.consumerKey && wcConfig.consumerSecret) {
-                    let wcStatus = '';
-                    if (status === 'em_atendimento') {
-                      wcStatus = 'ywraq-accepted';
-                    } else if (status === 'cancelado' || status === 'perdida') {
-                      wcStatus = 'ywraq-rejected';
-                    }
+                  if (wcStatus) {
+                    const cleanUrl = wcConfig.url.endsWith('/') ? wcConfig.url.slice(0, -1) : wcConfig.url;
+                    const apiUrl = `${cleanUrl}/wp-json/wc/v3/orders/${quoteId}`;
+                    const authHeader = 'Basic ' + btoa(`${wcConfig.consumerKey}:${wcConfig.consumerSecret}`);
                     
-                    if (wcStatus) {
-                      const cleanUrl = wcConfig.url.endsWith('/') ? wcConfig.url.slice(0, -1) : wcConfig.url;
-                      const apiUrl = `${cleanUrl}/wp-json/wc/v3/orders/${quoteId}`;
-                      const authHeader = 'Basic ' + btoa(`${wcConfig.consumerKey}:${wcConfig.consumerSecret}`);
-                      
-                      const wooResponse = await fetch(apiUrl, {
-                        method: 'PUT',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': authHeader
-                        },
-                        body: JSON.stringify({ status: wcStatus })
+                    const wooResponse = await fetch(apiUrl, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authHeader
+                      },
+                      body: JSON.stringify({ status: wcStatus })
+                    });
+                    
+                    if (!wooResponse.ok) {
+                      const errorData = await wooResponse.text();
+                      console.error('Erro ao sincronizar cotação com WooCommerce:', errorData);
+                      await d1Api.saveSystemLog({
+                        level: 'error',
+                        source: 'WooCommerce Sync (Cotação)',
+                        message: `Falha ao atualizar cotação ${quoteId} para ${wcStatus}: ${errorData}`,
+                        details: null
                       });
-                      
-                      if (!wooResponse.ok) {
-                        const errorData = await wooResponse.text();
-                        console.error('Erro ao sincronizar cotação com WooCommerce:', errorData);
-                        await d1Api.saveSystemLog({
-                          level: 'error',
-                          source: 'WooCommerce Sync (Cotação)',
-                          message: `Falha ao atualizar cotação ${quoteId} para ${wcStatus}: ${errorData}`,
-                          details: null
-                        });
-                      }
                     }
                   }
                 }
               }
-            } catch (wcErr) {
-              console.error('Erro no sync de status da cotação com WooCommerce:', wcErr);
             }
-          })();
+          } catch (wcErr) {
+            console.error('Erro no sync de status da cotação com WooCommerce:', wcErr);
+          }
         }
       } catch (err) {
         console.error('Erro ao disparar automação na mudança de status da oportunidade:', err);
