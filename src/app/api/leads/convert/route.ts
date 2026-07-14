@@ -53,7 +53,18 @@ export async function POST(request: Request) {
 
     const email = getValue(['email', 'email_address', 'user_email', 'billing_email', 'your-email', 'your_email', 'ywraq_customer_email', 'customer_email', 'ywraq_billing_email', '_ywraq_customer_email', '_ywraq_billing_email', '_billing_email']);
     const rawTelefone = getValue(['telefone', 'phone', 'celular', 'mobile', 'billing_phone', 'phone_number', 'your-phone', 'your_phone', 'telephone', 'ywraq_customer_phone', 'customer_phone', 'ywraq_billing_phone', '_ywraq_customer_phone', '_ywraq_billing_phone', '_billing_phone', '_phone']);
-    const telefone = rawTelefone.replace(/\D/g, '');
+    let telefone = rawTelefone.replace(/\D/g, '');
+
+    if (!telefone) {
+      const otherEmailContent = getMetaValue('ywraq_other_email_content') || getMetaValue('_ywraq_other_email_content');
+      if (otherEmailContent) {
+        const phoneRegex = /(?:your-phone|phone|telefone|celular|contato|telephone)[^\d]*(\d{8,15})/i;
+        const match = otherEmailContent.match(phoneRegex);
+        if (match && match[1]) {
+          telefone = match[1];
+        }
+      }
+    }
     
     // Tenta extrair nome completo ou primeiro/último nome
     let nome = getValue(['nome', 'name', 'full_name', 'billing_first_name', 'first_name', 'your-name', 'your_name', 'ywraq_customer_name', 'customer_name', 'ywraq_billing_name', '_ywraq_customer_name', '_ywraq_billing_name', '_billing_first_name']);
