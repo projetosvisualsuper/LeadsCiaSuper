@@ -175,6 +175,7 @@ function AtendimentoContent() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatMenuRef = useRef<HTMLDivElement>(null);
+  const hasAutoStarted = useRef<string | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -237,6 +238,33 @@ function AtendimentoContent() {
       setSelectedChatId(cid);
     }
   }, [searchParams]);
+
+  // Efeito para auto-iniciar ou abrir a conversa ao carregar busca de telefone/lead
+  useEffect(() => {
+    if (chats.length > 0 && searchQuery && !selectedChatId && hasAutoStarted.current !== searchQuery) {
+      let cleanNumber = searchQuery.replace(/\D/g, '');
+      if (cleanNumber.length === 10 || cleanNumber.length === 11) {
+        cleanNumber = '55' + cleanNumber;
+      }
+      
+      const existing = chats.find(c => 
+        c.id === `whatsapp_${cleanNumber}` || 
+        c.id === `${cleanNumber}@s.whatsapp.net` || 
+        (c.leadId && c.leadId.includes(cleanNumber)) ||
+        (c.leadName && c.leadName.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+
+      if (existing) {
+        setSelectedChatId(existing.id);
+        hasAutoStarted.current = searchQuery;
+      } else {
+        if (cleanNumber && cleanNumber.length >= 8 && connections.length > 0) {
+          hasAutoStarted.current = searchQuery;
+          handleStartNewChat();
+        }
+      }
+    }
+  }, [chats, searchQuery, selectedChatId, connections]);
 
   const EMOJIS = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😻', '😼', '😽', '🙀', '😿', '😾'];
 
