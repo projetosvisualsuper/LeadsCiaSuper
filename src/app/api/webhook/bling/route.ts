@@ -51,6 +51,27 @@ async function sendBlingWhatsappNotification(leadId: string, orderNumber: string
   }
 }
 
+async function getBlingSituationName(situationId: string, accessToken: string): Promise<string> {
+  try {
+    const res = await fetch('https://api.bling.com.br/Api/v3/situacoes/modulos/30', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    if (res.ok) {
+      const payload = await res.json();
+      const situations = payload.data || [];
+      const found = situations.find((s: any) => (s.id || '').toString() === situationId.toString());
+      if (found && found.nome) {
+        return found.nome;
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao buscar nome da situacao no Bling:', err);
+  }
+  return '';
+}
+
 // Função compartilhada para importar/atualizar o pedido a partir do ID do Bling
 async function processBlingOrder(orderId: string) {
   // 1. Carregar credenciais e tokens do Bling nas configurações do CRM
@@ -146,8 +167,15 @@ async function processBlingOrder(orderId: string) {
       numeroLojaVirtual = virtualStoreOrder.trim();
     }
   }
-  // A situação pode vir como ID ou nome
-  const statusName = (data.situacao?.nome || '').toString().toLowerCase() || (data.situacao?.id || '').toString();
+  // A situação pode vir como ID ou nome. Se vier apenas como ID, tentamos buscar o nome associado via API.
+  let situationNome = data.situacao?.nome || '';
+  if (!situationNome && data.situacao?.id) {
+    const fetchedNome = await getBlingSituationName(data.situacao.id.toString(), accessToken);
+    if (fetchedNome) {
+      situationNome = fetchedNome;
+    }
+  }
+  const statusName = situationNome ? situationNome.toString().toLowerCase() : (data.situacao?.id || '').toString();
   
   // Cliente
   const clientName = data.contato?.nome || 'Cliente';
@@ -197,8 +225,7 @@ async function processBlingOrder(orderId: string) {
     '2': 'Atendido',
     '3': 'Cancelado'
   };
-
-  const prettyStatus = data.situacao?.nome || statusNamesMap[statusName] || statusName;
+  const prettyStatus = situationNome || statusNamesMap[statusName] || statusName;
   const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
   // Mapear status para o CRM
