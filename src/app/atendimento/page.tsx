@@ -232,6 +232,13 @@ function AtendimentoContent() {
     const search = searchParams.get('search');
     if (search) {
       setSearchQuery(search);
+      // Remove os parâmetros da URL para evitar que fiquem presos na barra de endereço ou histórico
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('search');
+        url.searchParams.delete('name');
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
     } else {
       setSearchQuery('');
       hasAutoStarted.current = null;
