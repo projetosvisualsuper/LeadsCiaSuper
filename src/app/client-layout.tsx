@@ -917,6 +917,8 @@ export default function ClientLayout({
   const isNoScrollPage = ['/atendimento', '/chat-interno'].includes(pathname) && !showMobileMenu;
 
   const gridMenuItems = [
+    { href: '/oportunidades', label: 'Oportunidades', icon: <Briefcase size={24} />, count: unreadOportunidadesCount > 0 ? unreadOportunidadesCount : undefined },
+    { href: '/pedidos', label: 'Pedidos', icon: <ShoppingBag size={24} />, count: unreadPedidosCount > 0 ? unreadPedidosCount : undefined },
     { href: '/chat-interno', label: 'Chat Interno', icon: <MessageSquare size={24} />, count: unreadChatCount },
     { href: '/campanhas', label: 'Campanhas', icon: <Mail size={24} /> },
     { href: '/segmentacoes', label: 'Segmentações', icon: <Filter size={24} /> },
@@ -928,6 +930,7 @@ export default function ClientLayout({
     { href: '/popups', label: 'Pop-ups', icon: <SquareStack size={24} /> },
     { href: '/bots', label: 'Bots e Automações', icon: <Bot size={24} /> },
     { href: '/conexoes', label: 'Conexões WhatsApp', icon: <MessageSquare size={24} /> },
+    { href: '/logs', label: 'Logs do Sistema', icon: <AlertTriangle size={24} />, count: unreadLogsCount > 0 ? unreadLogsCount : undefined },
     { href: '/configuracoes', label: 'Configurações', icon: <SettingsIcon size={24} /> },
     { href: '/usuarios', label: 'Usuários', icon: <ShieldCheck size={24} />, count: pendingUsersCount },
   ];
