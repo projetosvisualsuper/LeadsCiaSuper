@@ -111,7 +111,7 @@ function PedidosContent() {
       setLoading(false);
     }
   };
-
+  useEffect(() => {
     fetchPedidos();
     api.getAllUserProfiles()
       .then(setSystemUsers)
