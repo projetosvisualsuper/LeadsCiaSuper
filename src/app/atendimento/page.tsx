@@ -2,7 +2,7 @@
 // Updated: 2026-05-07 10:40
 
 import { useState, useEffect, useRef, Suspense, Fragment } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import { api } from '@/services/api';
 import { 
   Search, 
@@ -99,6 +99,7 @@ const AudioPlayer = ({ src, isIncoming }: { src: string; isIncoming: boolean }) 
 
 function AtendimentoContent() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [isMobile, setIsMobile] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [showLeadDetails, setShowLeadDetails] = useState(true);
@@ -255,6 +256,24 @@ function AtendimentoContent() {
       setSelectedChatId(cid);
     }
   }, [searchParams]);
+
+  // Limpa o termo de busca quando sai da página (ou muda de pathname no layout persistente)
+  useEffect(() => {
+    if (pathname !== '/atendimento') {
+      setSearchQuery('');
+      hasAutoStarted.current = null;
+      isUrlInitiated.current = false;
+    }
+  }, [pathname]);
+
+  // Garante a limpeza completa também no desmonte do componente
+  useEffect(() => {
+    return () => {
+      setSearchQuery('');
+      hasAutoStarted.current = null;
+      isUrlInitiated.current = false;
+    };
+  }, []);
 
   // Efeito para auto-iniciar ou abrir a conversa ao carregar busca de telefone/lead
   useEffect(() => {
