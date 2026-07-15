@@ -35,7 +35,8 @@ import {
   Mic,
   AlertTriangle,
   ShoppingBag,
-  Briefcase
+  Briefcase,
+  RefreshCw
 } from 'lucide-react';
 import { UserProfile, Lead } from '@/types/crm';
 
@@ -1121,6 +1122,32 @@ export default function ClientLayout({
                       title="Voltar"
                     >
                       <ChevronLeft size={20} />
+                    </button>
+                  )}
+                  {pathname !== '/' && (
+                    <button 
+                      onClick={() => window.dispatchEvent(new Event('refresh-data'))}
+                      className="mobile-refresh-button"
+                      style={{
+                        background: 'white',
+                        border: '1px solid var(--border)',
+                        cursor: 'pointer',
+                        padding: '0.6rem 1rem',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#64748b',
+                        flexShrink: 0,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        gap: '0.5rem'
+                      }}
+                      title="Atualizar"
+                    >
+                      <RefreshCw size={16} />
+                      <span>Atualizar</span>
                     </button>
                   )}
                   {disconnectedConnections.length > 0 ? (

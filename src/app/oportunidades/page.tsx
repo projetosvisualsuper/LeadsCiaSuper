@@ -147,6 +147,14 @@ export default function OportunidadesPage() {
       })
       .then(setConnections)
       .catch(err => console.error('Erro ao carregar conexões:', err));
+
+    const handleRefresh = () => {
+      fetchOpportunities();
+    };
+    window.addEventListener('refresh-data', handleRefresh);
+    return () => {
+      window.removeEventListener('refresh-data', handleRefresh);
+    };
   }, []);
 
   const handleToggleOpportunity = async (opp: Opportunity) => {
@@ -358,7 +366,7 @@ export default function OportunidadesPage() {
           <button 
             onClick={fetchOpportunities} 
             disabled={loading}
-            className="btn"
+            className="btn desktop-only-btn"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
           >
             <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />

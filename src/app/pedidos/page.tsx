@@ -112,11 +112,18 @@ function PedidosContent() {
     }
   };
 
-  useEffect(() => {
     fetchPedidos();
     api.getAllUserProfiles()
       .then(setSystemUsers)
       .catch(err => console.error('Erro ao carregar usuários:', err));
+
+    const handleRefresh = () => {
+      fetchPedidos();
+    };
+    window.addEventListener('refresh-data', handleRefresh);
+    return () => {
+      window.removeEventListener('refresh-data', handleRefresh);
+    };
   }, []);
 
   const handleTogglePedido = async (pedido: Pedido) => {
@@ -288,7 +295,7 @@ function PedidosContent() {
           <button 
             onClick={fetchPedidos} 
             disabled={loading}
-            className="btn"
+            className="btn desktop-only-btn"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loading ? 0.7 : 1 }}
           >
             <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />

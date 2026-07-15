@@ -593,7 +593,18 @@ tbody tr:hover {
 }
 
 @media (min-width: 769px) {
-  .mobile-back-button {
+  .mobile-back-button, .mobile-refresh-button {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-refresh-button {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+  .desktop-only-btn {
     display: none !important;
   }
 }
