@@ -463,7 +463,7 @@ function PedidosContent() {
                       {pedido.valor ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: '600', color: '#059669' }}>
                           <DollarSign size={14} />
-                          R$ {Number(pedido.valor).toFixed(2)}
+                          {Number(pedido.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                       ) : null}
                     </div>
