@@ -232,6 +232,9 @@ function AtendimentoContent() {
     const search = searchParams.get('search');
     if (search) {
       setSearchQuery(search);
+    } else {
+      setSearchQuery('');
+      hasAutoStarted.current = null;
     }
     const cid = searchParams.get('chatId');
     if (cid) {
