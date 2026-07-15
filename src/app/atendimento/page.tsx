@@ -176,6 +176,7 @@ function AtendimentoContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatMenuRef = useRef<HTMLDivElement>(null);
   const hasAutoStarted = useRef<string | null>(null);
+  const isUrlInitiated = useRef(false);
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -232,6 +233,7 @@ function AtendimentoContent() {
     const search = searchParams.get('search');
     if (search) {
       setSearchQuery(search);
+      isUrlInitiated.current = true;
       // Remove os parâmetros da URL para evitar que fiquem presos na barra de endereço ou histórico
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
@@ -240,8 +242,13 @@ function AtendimentoContent() {
         window.history.replaceState(null, '', url.pathname + url.search);
       }
     } else {
-      setSearchQuery('');
-      hasAutoStarted.current = null;
+      // Se a URL não tem o parâmetro 'search', só limpamos se NÃO foi limpo programaticamente por nós mesmos
+      if (isUrlInitiated.current) {
+        isUrlInitiated.current = false;
+      } else {
+        setSearchQuery('');
+        hasAutoStarted.current = null;
+      }
     }
     const cid = searchParams.get('chatId');
     if (cid) {
