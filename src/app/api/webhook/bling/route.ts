@@ -385,6 +385,27 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    
+    if (searchParams.get('test_situations') === 'true') {
+      const settings = await d1Api.getSettings();
+      const accessToken = settings?.bling?.accessToken;
+      if (!accessToken) {
+        return NextResponse.json({ error: 'Access token missing' });
+      }
+      
+      const res = await fetch('https://api.bling.com.br/Api/v3/situacoes/modulos/30', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = await res.json();
+      return NextResponse.json({
+        status: res.status,
+        ok: res.ok,
+        data: data
+      });
+    }
+
     const orderId = searchParams.get('id') || searchParams.get('orderId');
 
     if (!orderId) {
