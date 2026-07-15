@@ -5,7 +5,7 @@ export const runtime = 'edge';
 import { useState, useEffect, Suspense } from 'react';
 import { api } from '@/services/api';
 import { Pedido } from '@/types/crm';
-import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle, Trash2 } from 'lucide-react';
+import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle, Trash2, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -18,6 +18,7 @@ function PedidosContent() {
   const [activeTab, setActiveTab] = useState<'site' | 'mercos'>('site');
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const searchParams = useSearchParams();
   const leadIdParam = searchParams.get('leadId') || '';
@@ -212,9 +213,23 @@ function PedidosContent() {
       return false;
     }
     if (activeTab === 'mercos') {
-      return p.origem === 'mercos';
+      if (p.origem !== 'mercos') return false;
+    } else {
+      if (p.origem === 'mercos') return false;
     }
-    return p.origem !== 'mercos';
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const refMatch = p.pedidoReferencia?.toLowerCase().includes(term);
+      const nameMatch = p.leadNome?.toLowerCase().includes(term);
+      const phoneMatch = p.leadCelular?.toLowerCase().includes(term);
+      const storeNumMatch = p.numeroLojaVirtual?.toLowerCase().includes(term);
+      const itemsMatch = p.itens?.toLowerCase().includes(term);
+      
+      return refMatch || nameMatch || phoneMatch || storeNumMatch || itemsMatch;
+    }
+
+    return true;
   });
 
   const unreadCount = filteredPedidos.filter(p => !p.isRead).length;
@@ -340,6 +355,36 @@ function PedidosContent() {
         >
           Pedidos Mercos
         </button>
+      </div>
+
+      {/* Barra de Pesquisa */}
+      <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+        <input
+          type="text"
+          placeholder="Buscar por referência, nome do lead, celular, item ou loja..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '0.6rem 1rem 0.6rem 2.5rem',
+            borderRadius: '10px',
+            border: '1px solid var(--border)',
+            fontSize: '0.9rem',
+            background: 'white',
+            outline: 'none',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          }}
+        />
+        <Search 
+          size={18} 
+          style={{ 
+            position: 'absolute', 
+            left: '0.75rem', 
+            top: '50%', 
+            transform: 'translateY(-50%)', 
+            color: '#94a3b8' 
+          }} 
+        />
       </div>
 
       {/* LISTAGEM */}
