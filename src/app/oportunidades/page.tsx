@@ -91,6 +91,8 @@ export default function OportunidadesPage() {
   const [filterUser, setFilterUser] = useState<string>('todos');
   const [filterConnection, setFilterConnection] = useState<string>('todos');
   const [filterDate, setFilterDate] = useState<string>('');
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
 
   const fetchOpportunities = async () => {
     setLoading(true);
@@ -304,7 +306,31 @@ export default function OportunidadesPage() {
       .filter(Boolean)
   )) as string[];
 
-  const filteredOpportunities = opportunities.filter(opp => {
+  const baseFilteredOpps = opportunities.filter(opp => {
+    // Filtro por Vendedor
+    if (filterUser !== 'todos' && opp.assignedTo !== filterUser) {
+      return false;
+    }
+
+    // Filtro por Conexão
+    if (filterConnection !== 'todos' && opp.leadOrigem !== filterConnection) {
+      return false;
+    }
+
+    // Filtro por Data
+    if (filterStartDate && filterEndDate) {
+      const oppDate = opp.dataCriacao.substring(0, 10);
+      if (oppDate < filterStartDate || oppDate > filterEndDate) {
+        return false;
+      }
+    } else if (filterDate && !opp.dataCriacao.startsWith(filterDate)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const filteredOpportunities = baseFilteredOpps.filter(opp => {
     const status = opp.status || 'pendente';
     
     let tabMatch = false;
@@ -320,22 +346,15 @@ export default function OportunidadesPage() {
       tabMatch = status === 'cotacao';
     }
 
-    if (!tabMatch) return false;
+    return tabMatch;
+  });
 
-    // Filtro por Vendedor
-    if (filterUser !== 'todos' && opp.assignedTo !== filterUser) {
-      return false;
-    }
+  // Calcular taxa de conversão das oportunidades (Ganhas / Total)
+  const totalOppsCount = baseFilteredOpps.length;
+  const ganhasOppsCount = baseFilteredOpps.filter(o => o.status === 'ganha' || o.status === 'finalizado').length;
+  const conversionRate = totalOppsCount > 0 ? ((ganhasOppsCount / totalOppsCount) * 100).toFixed(1) : '0.0';
 
-    // Filtro por Conexão
-    if (filterConnection !== 'todos' && opp.leadOrigem !== filterConnection) {
-      return false;
-    }
 
-    // Filtro por Data
-    if (filterDate && !opp.dataCriacao.startsWith(filterDate)) {
-      return false;
-    }
 
     return true;
   });
@@ -432,30 +451,59 @@ export default function OportunidadesPage() {
           </select>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '150px' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Data da Oportunidade</label>
-          <input 
-            type="date" 
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            style={{ 
-              padding: '0.45rem 0.75rem', 
-              borderRadius: '8px', 
-              border: '1px solid #cbd5e1', 
-              fontSize: '0.8rem', 
-              background: 'white',
-              outline: 'none',
-              height: '36px'
-            }}
-          />
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flex: 1, minWidth: '250px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '120px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>De (Data Início)</label>
+            <input 
+              type="date" 
+              value={filterStartDate}
+              onChange={(e) => {
+                setFilterStartDate(e.target.value);
+                setFilterDate('');
+              }}
+              style={{ 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #cbd5e1', 
+                fontSize: '0.8rem', 
+                background: 'white',
+                outline: 'none',
+                height: '36px',
+                width: '100%'
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '120px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Até (Data Fim)</label>
+            <input 
+              type="date" 
+              value={filterEndDate}
+              onChange={(e) => {
+                setFilterEndDate(e.target.value);
+                setFilterDate('');
+              }}
+              style={{ 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #cbd5e1', 
+                fontSize: '0.8rem', 
+                background: 'white',
+                outline: 'none',
+                height: '36px',
+                width: '100%'
+              }}
+            />
+          </div>
         </div>
 
-        {(filterUser !== 'todos' || filterConnection !== 'todos' || filterDate) && (
+        {(filterUser !== 'todos' || filterConnection !== 'todos' || filterDate || filterStartDate || filterEndDate) && (
           <button 
             onClick={() => {
               setFilterUser('todos');
               setFilterConnection('todos');
               setFilterDate('');
+              setFilterStartDate('');
+              setFilterEndDate('');
             }}
             style={{
               padding: '0.45rem 1rem',
@@ -476,77 +524,95 @@ export default function OportunidadesPage() {
       </div>
 
       {/* TABS */}
-      <div className="tabs-responsive" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
-        <button 
-          onClick={() => setActiveTab('novas')}
-          style={{
-            padding: '0.5rem 1rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'novas' ? '3px solid var(--primary)' : '3px solid transparent',
-            color: activeTab === 'novas' ? 'var(--primary)' : '#64748b',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Novas ({opportunities.filter(o => !o.status || o.status === 'pendente').length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('cotacoes')}
-          style={{
-            padding: '0.5rem 1rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'cotacoes' ? '3px solid #eab308' : '3px solid transparent',
-            color: activeTab === 'cotacoes' ? '#eab308' : '#64748b',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Cotações do Site ({opportunities.filter(o => o.status === 'cotacao').length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('atendidas')}
-          style={{
-            padding: '0.5rem 1rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'atendidas' ? '3px solid #3b82f6' : '3px solid transparent',
-            color: activeTab === 'atendidas' ? '#3b82f6' : '#64748b',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Atendidas ({opportunities.filter(o => o.status === 'em_atendimento').length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('ganhas')}
-          style={{
-            padding: '0.5rem 1rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'ganhas' ? '3px solid #10b981' : '3px solid transparent',
-            color: activeTab === 'ganhas' ? '#10b981' : '#64748b',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Ganhas ({opportunities.filter(o => o.status === 'ganha' || o.status === 'finalizado').length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('perdidas')}
-          style={{
-            padding: '0.5rem 1rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'perdidas' ? '3px solid #ef4444' : '3px solid transparent',
-            color: activeTab === 'perdidas' ? '#ef4444' : '#64748b',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Perdidas ({opportunities.filter(o => o.status === 'perdida' || o.status === 'cancelado').length})
-        </button>
+      <div className="tabs-responsive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setActiveTab('novas')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'novas' ? '3px solid var(--primary)' : '3px solid transparent',
+              color: activeTab === 'novas' ? 'var(--primary)' : '#64748b',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Novas ({baseFilteredOpps.filter(o => !o.status || o.status === 'pendente').length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('cotacoes')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'cotacoes' ? '3px solid #eab308' : '3px solid transparent',
+              color: activeTab === 'cotacoes' ? '#eab308' : '#64748b',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Cotações do Site ({baseFilteredOpps.filter(o => o.status === 'cotacao').length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('atendidas')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'atendidas' ? '3px solid #3b82f6' : '3px solid transparent',
+              color: activeTab === 'atendidas' ? '#3b82f6' : '#64748b',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Atendidas ({baseFilteredOpps.filter(o => o.status === 'em_atendimento').length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('ganhas')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'ganhas' ? '3px solid #10b981' : '3px solid transparent',
+              color: activeTab === 'ganhas' ? '#10b981' : '#64748b',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Ganhas ({baseFilteredOpps.filter(o => o.status === 'ganha' || o.status === 'finalizado').length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('perdidas')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'perdidas' ? '3px solid #ef4444' : '3px solid transparent',
+              color: activeTab === 'perdidas' ? '#ef4444' : '#64748b',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Perdidas ({baseFilteredOpps.filter(o => o.status === 'perdida' || o.status === 'cancelado').length})
+          </button>
+        </div>
+
+        {/* Taxa de Conversão */}
+        <div style={{ 
+          background: 'rgba(16, 185, 129, 0.1)', 
+          color: '#047857', 
+          padding: '0.5rem 1rem', 
+          borderRadius: '10px', 
+          fontSize: '0.85rem', 
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          border: '1px solid rgba(16, 185, 129, 0.2)'
+        }}>
+          Taxa de Conversão: {conversionRate}%
+        </div>
       </div>
 
       {/* LISTAGEM */}
