@@ -354,11 +354,6 @@ export default function OportunidadesPage() {
   const ganhasOppsCount = baseFilteredOpps.filter(o => o.status === 'ganha' || o.status === 'finalizado').length;
   const conversionRate = totalOppsCount > 0 ? ((ganhasOppsCount / totalOppsCount) * 100).toFixed(1) : '0.0';
 
-
-
-    return true;
-  });
-
   return (
     <div className="page-container-responsive" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'inherit' }}>
       
