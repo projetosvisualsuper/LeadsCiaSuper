@@ -220,10 +220,10 @@ function PedidosContent() {
   const unreadCount = filteredPedidos.filter(p => !p.isRead).length;
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: 'inherit' }}>
+    <div className="page-container-responsive" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: 'inherit' }}>
       
       {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header-responsive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b', margin: 0 }}>
             <ShoppingBag size={28} color="#059669" />
@@ -305,7 +305,7 @@ function PedidosContent() {
       )}
 
       {/* Navigation Tabs */}
-      <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '1.5rem', width: 'fit-content' }}>
+      <div className="nav-tabs-responsive" style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '1.5rem', width: 'fit-content' }}>
         <button 
           onClick={() => setActiveTab('site')}
           style={{
@@ -363,6 +363,7 @@ function PedidosContent() {
               >
                 {/* HEADER DO CARD */}
                 <div 
+                  className="card-header-responsive"
                   style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
                   onClick={() => handleTogglePedido(pedido)}
                   onMouseEnter={(e) => {
@@ -456,7 +457,9 @@ function PedidosContent() {
 
                 {/* DETALHES DO CARD (EXPANDIDO) */}
                 {expandedPedidoId === pedido.id && (
-                  <div style={{ 
+                  <div 
+                    className="card-details-responsive"
+                    style={{ 
                     padding: '1.5rem', 
                     borderTop: '1px solid #f1f5f9',
                     backgroundColor: '#f8fafc',
@@ -647,6 +650,74 @@ function PedidosContent() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+          .page-container-responsive {
+            padding: 1rem !important;
+          }
+          .page-header-responsive {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1rem !important;
+          }
+          .page-header-responsive > div {
+            width: 100% !important;
+          }
+          .page-header-responsive > div:last-child {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+            width: 100% !important;
+          }
+          .page-header-responsive button {
+            flex: 1 !important;
+            justify-content: center !important;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.8rem !important;
+          }
+          .nav-tabs-responsive {
+            width: 100% !important;
+            display: flex !important;
+          }
+          .nav-tabs-responsive button {
+            flex: 1 !important;
+            padding: 0.5rem !important;
+            font-size: 0.8rem !important;
+            text-align: center !important;
+          }
+          .card-header-responsive {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 0.75rem !important;
+            padding: 1rem !important;
+          }
+          .card-header-responsive > div {
+            width: 100% !important;
+          }
+          .card-header-responsive > div:nth-child(2) {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.5rem !important;
+          }
+          .card-header-responsive > div:nth-child(2) > div {
+            flex-wrap: wrap !important;
+            gap: 0.5rem 1rem !important;
+          }
+          .card-header-responsive > div:last-child {
+            display: flex !important;
+            flex-direction: row-reverse !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            text-align: left !important;
+            border-top: 1px solid #f1f5f9 !important;
+            padding-top: 0.5rem !important;
+            margin-top: 0.25rem !important;
+          }
+          .card-details-responsive {
+            grid-template-columns: 1fr !important;
+            gap: 1.5rem !important;
+            padding: 1rem !important;
+          }
         }
       `}} />
     </div>

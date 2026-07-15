@@ -333,10 +333,10 @@ export default function OportunidadesPage() {
   });
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'inherit' }}>
+    <div className="page-container-responsive" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'inherit' }}>
       
       {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header-responsive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b', margin: 0 }}>
             <Briefcase size={28} color="var(--primary)" />
@@ -468,7 +468,7 @@ export default function OportunidadesPage() {
       </div>
 
       {/* TABS */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+      <div className="tabs-responsive" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
         <button 
           onClick={() => setActiveTab('novas')}
           style={{
@@ -562,6 +562,7 @@ export default function OportunidadesPage() {
               >
                 {/* HEADER DO CARD */}
                 <div 
+                  className="card-header-responsive"
                   style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
                   onClick={() => handleToggleOpportunity(opp)}
                   onMouseEnter={(e) => {
@@ -646,7 +647,9 @@ export default function OportunidadesPage() {
 
                 {/* DETALHES DO CARD (EXPANDIDO) */}
                 {expandedOppId === opp.id && (
-                  <div style={{ 
+                  <div 
+                    className="card-details-responsive"
+                    style={{ 
                     padding: '1.5rem', 
                     borderTop: '1px solid #f1f5f9',
                     backgroundColor: '#f8fafc',
@@ -954,6 +957,71 @@ export default function OportunidadesPage() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+          .page-container-responsive {
+            padding: 1rem !important;
+          }
+          .page-header-responsive {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1rem !important;
+          }
+          .page-header-responsive > div {
+            width: 100% !important;
+          }
+          .page-header-responsive > div:last-child {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+          }
+          .page-header-responsive button {
+            flex: 1 !important;
+            justify-content: center !important;
+          }
+          .tabs-responsive {
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+          }
+          .tabs-responsive button {
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.8rem !important;
+            flex: 1 1 auto !important;
+            text-align: center !important;
+          }
+          .card-header-responsive {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 0.75rem !important;
+            padding: 1rem !important;
+          }
+          .card-header-responsive > div {
+            width: 100% !important;
+          }
+          .card-header-responsive > div:nth-child(2) {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.5rem !important;
+          }
+          .card-header-responsive > div:nth-child(2) > div {
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+          }
+          .card-header-responsive > div:last-child {
+            display: flex !important;
+            flex-direction: row-reverse !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            text-align: left !important;
+            border-top: 1px solid #f1f5f9 !important;
+            padding-top: 0.5rem !important;
+            margin-top: 0.25rem !important;
+          }
+          .card-details-responsive {
+            grid-template-columns: 1fr !important;
+            gap: 1.5rem !important;
+            padding: 1rem !important;
+          }
         }
       `}} />
     </div>
