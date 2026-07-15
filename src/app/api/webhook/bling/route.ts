@@ -167,12 +167,33 @@ async function processBlingOrder(orderId: string) {
       numeroLojaVirtual = virtualStoreOrder.trim();
     }
   }
+  const statusNamesMap: Record<string, string> = {
+    '6': 'Em aberto',
+    '9': 'Atendido',
+    '12': 'Cancelado',
+    '15': 'Em andamento',
+    '18': 'Em andamento',
+    '1': 'Em aberto',
+    '2': 'Atendido',
+    '3': 'Cancelado',
+    '739691': 'Despachado',
+    '710514': 'Em andamento'
+  };
+
   // A situação pode vir como ID ou nome. Se vier apenas como ID, tentamos buscar o nome associado via API.
   let situationNome = data.situacao?.nome || '';
   if (!situationNome && data.situacao?.id) {
     const fetchedNome = await getBlingSituationName(data.situacao.id.toString(), accessToken);
     if (fetchedNome) {
       situationNome = fetchedNome;
+    }
+  }
+
+  // Fallback para mapeamento estático se a API retornar erro de escopo/privilégio
+  if (!situationNome && data.situacao?.id) {
+    const staticMapped = statusNamesMap[data.situacao.id.toString()];
+    if (staticMapped) {
+      situationNome = staticMapped;
     }
   }
   const statusName = situationNome ? situationNome.toString().toLowerCase() : (data.situacao?.id || '').toString();
@@ -215,16 +236,6 @@ async function processBlingOrder(orderId: string) {
   const pedidos = await d1Api.getPedidos();
   const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
 
-  const statusNamesMap: Record<string, string> = {
-    '6': 'Em aberto',
-    '9': 'Atendido',
-    '12': 'Cancelado',
-    '15': 'Em andamento',
-    '18': 'Em andamento',
-    '1': 'Em aberto',
-    '2': 'Atendido',
-    '3': 'Cancelado'
-  };
   const prettyStatus = situationNome || statusNamesMap[statusName] || statusName;
   const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
