@@ -16,6 +16,8 @@ function PedidosContent() {
   const [observacoesInput, setObservacoesInput] = useState<Record<string, string>>({});
   const [savingObs, setSavingObs] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'site' | 'mercos'>('site');
+  const [celularInput, setCelularInput] = useState<Record<string, string>>({});
+  const [sendingNotification, setSendingNotification] = useState<string | null>(null);
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,6 +34,7 @@ function PedidosContent() {
           setActiveTab(found.origem === 'mercos' ? 'mercos' : 'site');
           setExpandedPedidoId(found.id);
           setObservacoesInput(prev => ({ ...prev, [found.id]: found.observacao || '' }));
+          setCelularInput(prev => ({ ...prev, [found.id]: found.leadCelular || '' }));
           
           if (!found.isRead) {
             api.markPedidoAsRead(found.id).then(() => {
@@ -134,6 +137,7 @@ function PedidosContent() {
     
     setExpandedPedidoId(pedido.id);
     setObservacoesInput(prev => ({ ...prev, [pedido.id]: pedido.observacao || '' }));
+    setCelularInput(prev => ({ ...prev, [pedido.id]: pedido.leadCelular || '' }));
 
     if (!pedido.isRead) {
       try {
@@ -145,6 +149,33 @@ function PedidosContent() {
       } catch (e) {
         console.error('Erro ao marcar pedido como lido:', e);
       }
+    }
+  };
+
+  const handleSendNotification = async (pedidoId: string) => {
+    const cel = celularInput[pedidoId] || '';
+    if (!cel.trim()) {
+      alert('Digite um número de telefone válido.');
+      return;
+    }
+    setSendingNotification(pedidoId);
+    try {
+      const res = await fetch('/api/pedidos/resend-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pedidoId, celular: cel })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao enviar notificação');
+      }
+      alert('Notificação enviada com sucesso!');
+      fetchPedidos();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao enviar notificação.');
+    } finally {
+      setSendingNotification(null);
     }
   };
 
@@ -550,6 +581,79 @@ function PedidosContent() {
                           <Link href={`/leads?search=${pedido.leadCelular || pedido.leadNome}`} style={{ fontSize: '0.8rem', color: '#0ea5e9', fontWeight: 'bold', textDecoration: 'none' }}>
                             Abrir Lead &rarr;
                           </Link>
+                        </div>
+                      </div>
+
+                      {/* Notificação de Envio (WhatsApp) */}
+                      <div>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          <Phone size={16} /> Notificação de Envio (WhatsApp)
+                        </h4>
+                        <div className="card" style={{ padding: '1rem', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <input
+                              type="text"
+                              placeholder="WhatsApp (DDD + Número)"
+                              value={celularInput[pedido.id] || ''}
+                              onChange={(e) => setCelularInput(prev => ({ ...prev, [pedido.id]: e.target.value }))}
+                              style={{
+                                flex: 1,
+                                padding: '0.4rem 0.75rem',
+                                fontSize: '0.85rem',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                outline: 'none'
+                              }}
+                            />
+                            <button
+                              onClick={() => handleSendNotification(pedido.id)}
+                              disabled={sendingNotification === pedido.id}
+                              style={{
+                                padding: '0.4rem 1rem',
+                                fontSize: '0.8rem',
+                                backgroundColor: '#059669',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                opacity: sendingNotification === pedido.id ? 0.7 : 1
+                              }}
+                            >
+                              {sendingNotification === pedido.id ? 'Enviando...' : 'Reenviar Notificação'}
+                            </button>
+                          </div>
+                          
+                          {/* Histórico Simplificado de Notificações */}
+                          {(() => {
+                            const obsLines = (pedido.observacao || '').split('\n');
+                            const notifLogs = obsLines.filter(line => line.includes('[WHATSAPP NOTIFICAÇÃO'));
+                            if (notifLogs.length > 0) {
+                              return (
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem', maxHeight: '100px', overflowY: 'auto' }}>
+                                  <strong style={{ display: 'block', marginBottom: '0.25rem', color: '#475569' }}>Últimos Disparos:</strong>
+                                  {notifLogs.map((log, idx) => {
+                                    const isSuccess = log.includes('[WHATSAPP NOTIFICAÇÃO]') && !log.includes('FALHA') && !log.includes('IGNORADA');
+                                    const isFail = log.includes('FALHA');
+                                    let logColor = '#475569';
+                                    if (isSuccess) logColor = '#047857';
+                                    else if (isFail) logColor = '#b91c1c';
+                                    
+                                    return (
+                                      <div key={idx} style={{ color: logColor, marginBottom: '2px' }}>
+                                        • {log.replace(/\[WHATSAPP NOTIFICAÇÃO.*?\]\s*/, '')}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                                Nenhum disparo de notificação registrado para este pedido.
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
 

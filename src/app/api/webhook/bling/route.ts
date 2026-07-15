@@ -3,51 +3,83 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
 
+async function appendPedidoObservacao(pedidoId: string, text: string) {
+  try {
+    const { results } = await d1Api.runQuery(`SELECT observacao FROM pedidos WHERE id = ? LIMIT 1`, [pedidoId]);
+    const currentObs = results?.[0]?.observacao || '';
+    await d1Api.updatePedidoObservacao(pedidoId, currentObs + text);
+  } catch (e) {
+    console.error('Erro ao anexar observacao ao pedido:', e);
+  }
+}
+
 // Função auxiliar para disparar a notificação de WhatsApp se configurado
-async function sendBlingWhatsappNotification(leadId: string, orderNumber: string, settings: any) {
+async function sendBlingWhatsappNotification(pedidoId: string, leadId: string, orderNumber: string, settings: any) {
+  const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
   try {
     const leadResult = await d1Api.runQuery(`SELECT nome, celular FROM leads WHERE id = ? LIMIT 1`, [leadId]);
     const targetLead = leadResult.results?.[0];
     
-    if (targetLead && targetLead.celular) {
-      const cleanPhone = targetLead.celular.replace(/\D/g, '');
-      if (cleanPhone) {
-        const msgText = `Olá, *${targetLead.nome}*! Seu pedido *#${orderNumber}* foi enviado com sucesso! 🚀\n\nVocê pode acompanhar a entrega e rastrear seu pedido através do nosso portal:\n🔗 https://portal.visualsuper.com.br\n\nObrigado pela confiança! 😊`;
-        
-        const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
-        
-        if (settings.bling?.templateName) {
-          await sendOmnichannelMessageAction(
-            cleanPhone,
-            'whatsapp',
-            msgText,
-            undefined,
+    if (!targetLead || !targetLead.celular) {
+      const logText = `\n[WHATSAPP NOTIFICAÇÃO IGNORADA] Cliente sem número de celular cadastrado em ${formattedDate}.`;
+      await appendPedidoObservacao(pedidoId, logText);
+      return;
+    }
+
+    const cleanPhone = targetLead.celular.replace(/\D/g, '');
+    if (!cleanPhone) {
+      const logText = `\n[WHATSAPP NOTIFICAÇÃO IGNORADA] Número de celular inválido em ${formattedDate}.`;
+      await appendPedidoObservacao(pedidoId, logText);
+      return;
+    }
+
+    const msgText = `Olá, *${targetLead.nome}*! Seu pedido *#${orderNumber}* foi enviado com sucesso! 🚀\n\nVocê pode acompanhar a entrega e rastrear seu pedido através do nosso portal:\n🔗 https://portal.visualsuper.com.br\n\nObrigado pela confiança! 😊`;
+    
+    const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
+    
+    let result: any;
+    if (settings.bling?.templateName) {
+      result = await sendOmnichannelMessageAction(
+        cleanPhone,
+        'whatsapp',
+        msgText,
+        undefined,
+        {
+          name: settings.bling.templateName,
+          language: settings.bling.templateLanguage || 'pt_BR',
+          components: [
             {
-              name: settings.bling.templateName,
-              language: settings.bling.templateLanguage || 'pt_BR',
-              components: [
-                {
-                  type: "body",
-                  parameters: [
-                    { type: "text", text: targetLead.nome },
-                    { type: "text", text: orderNumber }
-                  ]
-                }
+              type: "body",
+              parameters: [
+                { type: "text", text: targetLead.nome },
+                { type: "text", text: orderNumber }
               ]
             }
-          );
-        } else {
-          await sendOmnichannelMessageAction(
-            cleanPhone,
-            'whatsapp',
-            msgText
-          );
+          ]
         }
-        console.error(`Notificação automática enviada com sucesso para ${targetLead.nome}`);
-      }
+      );
+    } else {
+      result = await sendOmnichannelMessageAction(
+        cleanPhone,
+        'whatsapp',
+        msgText
+      );
     }
-  } catch (msgErr) {
+
+    if (result && result.success) {
+      const logText = `\n[WHATSAPP NOTIFICAÇÃO] Mensagem de envio automática enviada com sucesso para +${cleanPhone} em ${formattedDate}.`;
+      await appendPedidoObservacao(pedidoId, logText);
+      console.error(`Notificação automática enviada com sucesso para ${targetLead.nome}`);
+    } else {
+      const errorMsg = result?.error || 'Erro desconhecido';
+      const logText = `\n[WHATSAPP NOTIFICAÇÃO FALHA] Falha no disparo automático para +${cleanPhone}: ${errorMsg} em ${formattedDate}.`;
+      await appendPedidoObservacao(pedidoId, logText);
+      console.error(`Falha ao disparar notificação automática do Bling para ${targetLead.nome}:`, errorMsg);
+    }
+  } catch (msgErr: any) {
     console.error('Erro ao disparar notificação automática do Bling:', msgErr);
+    const logText = `\n[WHATSAPP NOTIFICAÇÃO FALHA] Erro interno: ${msgErr.message || msgErr} em ${formattedDate}.`;
+    await appendPedidoObservacao(pedidoId, logText);
   }
 }
 
@@ -260,7 +292,7 @@ async function processBlingOrder(orderId: string) {
     await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
     if (isFinalized && settings.bling?.enabled) {
-      await sendBlingWhatsappNotification(pedidoLocal.leadId, orderNumber, settings);
+      await sendBlingWhatsappNotification(pedidoLocal.id, pedidoLocal.leadId, orderNumber, settings);
     }
 
     return { 
@@ -327,8 +359,8 @@ async function processBlingOrder(orderId: string) {
       await d1Api.updatePedidoStatus(recemCriado.id, crmStatus);
     }
 
-    if (isFinalized && settings.bling?.enabled) {
-      await sendBlingWhatsappNotification(targetLeadId, orderNumber, settings);
+    if (isFinalized && settings.bling?.enabled && recemCriado) {
+      await sendBlingWhatsappNotification(recemCriado.id, targetLeadId, orderNumber, settings);
     }
 
     return { 

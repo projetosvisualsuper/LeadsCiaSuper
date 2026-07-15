@@ -11,29 +11,29 @@ services:
       - LOG_LEVEL=ERROR,WARN,DEBUG,INFO
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=42247732-1594-42cc-9430-194165683244
-      
+
       # Configurações de Banco de Dados (v2)
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://evolution:evolution@db:5432/evolution?sslmode=disable
       - DATABASE_CONNECTION_CLIENT_NAME=evolution_crm
-      
+
       # Configurações de Cache (Redis)
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379
       - CACHE_REDIS_PREFIX_KEY=evolution
-      
+
       # Configurações de Tradução de LID e Contatos
       - DATABASE_SAVE_DATA_CONTACTS=true
       - DATABASE_SAVE_DATA_CHATS=true
       - DATABASE_SAVE_DATA_LABELS=true
       - DATABASE_SAVE_DATA_MESSAGES=true
       - DATABASE_SAVE_MESSAGE_STATUS=true
-      
+
       # Otimização QR Code
       - QRCODE_LIMIT=30
       - QRCODE_BASE64=true
-      
+
     ports:
       - "8080:8080"
     volumes:
