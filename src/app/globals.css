@@ -591,3 +591,9 @@ tbody tr:hover {
     grid-template-columns: 1fr !important;
   }
 }
+
+@media (min-width: 769px) {
+  .mobile-back-button {
+    display: none !important;
+  }
+}

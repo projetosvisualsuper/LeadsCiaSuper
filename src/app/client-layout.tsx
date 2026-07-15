@@ -1101,6 +1101,28 @@ export default function ClientLayout({
                   margin: '0.5rem 1rem 0 1rem',
                   gap: '1rem'
                 }}>
+                  {pathname !== '/' && (
+                    <button 
+                      onClick={() => router.back()}
+                      className="mobile-back-button"
+                      style={{
+                        background: 'white',
+                        border: '1px solid var(--border)',
+                        cursor: 'pointer',
+                        padding: '0.6rem',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#64748b',
+                        flexShrink: 0,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}
+                      title="Voltar"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                  )}
                   {disconnectedConnections.length > 0 ? (
                     <div style={{
                       background: '#fffbeb',
