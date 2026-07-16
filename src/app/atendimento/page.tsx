@@ -245,7 +245,7 @@ function AtendimentoContent() {
     } else {
       // Se a URL não tem o parâmetro 'search', só limpamos se NÃO foi limpo programaticamente por nós mesmos
       if (isUrlInitiated.current) {
-        isUrlInitiated.current = false;
+        // Permite manter true para dar tempo do chats carregar assincronamente e disparar o auto-open
       } else {
         setSearchQuery('');
         hasAutoStarted.current = null;
@@ -1047,6 +1047,35 @@ function AtendimentoContent() {
     }
   };
 
+  const handleOpenOrStartChat = async () => {
+    if (!searchQuery) return;
+    
+    let cleanNumber = searchQuery.replace(/\D/g, '');
+    if (cleanNumber.length === 10 || cleanNumber.length === 11) {
+      cleanNumber = '55' + cleanNumber;
+    }
+    
+    // Tentar encontrar chat existente por ID, número ou nome
+    const existing = chats.find(c => 
+      c.id === `whatsapp_${cleanNumber}` || 
+      c.id === `${cleanNumber}@s.whatsapp.net` || 
+      (c.leadId && c.leadId.includes(cleanNumber)) ||
+      (c.leadName && c.leadName.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+    
+    if (existing) {
+      setSelectedChatId(existing.id);
+      setSearchQuery('');
+    } else {
+      if (cleanNumber && cleanNumber.length >= 8) {
+        await handleStartNewChat();
+        setSearchQuery('');
+      } else {
+        alert('Por favor, digite um número de WhatsApp válido para iniciar uma nova conversa.');
+      }
+    }
+  };
+
   const handleAddStage = async () => {
     const name = prompt('Nome da nova etapa de atendimento:');
     if (!name) return;
@@ -1393,6 +1422,30 @@ function AtendimentoContent() {
             </div>
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleOpenOrStartChat}
+                  style={{ 
+                    background: '#25d366', 
+                    color: 'white', 
+                    border: 'none', 
+                    padding: '0.45rem 1.25rem', 
+                    borderRadius: '8px', 
+                    fontWeight: 700, 
+                    fontSize: '0.8rem', 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                  title="Iniciar ou abrir conversa com o número/nome buscado"
+                >
+                  <MessageCircle size={14} /> Iniciar/Abrir Conversa
+                </button>
+              )}
+
               <button 
                 type="button"
                 onClick={handleAddStage}
@@ -1491,7 +1544,10 @@ function AtendimentoContent() {
                 type="text" 
                 placeholder="Buscar lead ou mensagem..." 
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => {
+                  isUrlInitiated.current = false;
+                  setSearchQuery(e.target.value);
+                }}
                 style={{ width: '100%', padding: '0.45rem 2rem 0.45rem 2rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
               />
               <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '8px', top: '10px' }} />
@@ -1499,6 +1555,7 @@ function AtendimentoContent() {
                 <button
                   type="button"
                   onClick={() => {
+                    isUrlInitiated.current = false;
                     setSearchQuery('');
                     hasAutoStarted.current = null;
                   }}
