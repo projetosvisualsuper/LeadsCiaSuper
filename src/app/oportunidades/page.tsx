@@ -362,7 +362,7 @@ export default function OportunidadesPage() {
   const conversionRate = totalOppsCount > 0 ? ((ganhasOppsCount / totalOppsCount) * 100).toFixed(1) : '0.0';
 
   return (
-    <div className="page-container-responsive" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'inherit' }}>
+    <div className="page-container-responsive" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: 'inherit' }}>
       
       {/* HEADER */}
       <div className="page-header-responsive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
