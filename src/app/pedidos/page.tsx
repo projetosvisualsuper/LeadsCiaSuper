@@ -657,48 +657,7 @@ function PedidosContent() {
                         </div>
                       </div>
 
-                      <div>
-                        <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          <User size={16} /> Repassar Oportunidade
-                        </h4>
-                        <select
-                          value={pedido.assignedTo || ''}
-                          onChange={async (e) => {
-                            const newSellerId = e.target.value;
-                            if (!newSellerId) return;
-                            if (confirm('Deseja realmente encaminhar esta oportunidade para outro consultor?')) {
-                              try {
-                                const res = await fetch('/api/opportunities', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ leadId: pedido.leadId, assignedTo: newSellerId })
-                                });
-                                if (res.ok) {
-                                  alert('Oportunidade repassada com sucesso!');
-                                  fetchPedidos();
-                                  window.dispatchEvent(new CustomEvent('oportunidades-read'));
-                                } else {
-                                  const data = await res.json().catch(() => ({}));
-                                  alert(`Erro: ${data.error || 'Erro desconhecido'}`);
-                                }
-                              } catch (err) {
-                                alert('Erro de conexão ao repassar oportunidade.');
-                              }
-                            }
-                          }}
-                          style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none', backgroundColor: '#ffffff' }}
-                        >
-                          <option value="">Selecione um consultor...</option>
-                          {systemUsers
-                            .filter(u => u.status === 'approved')
-                            .map(u => (
-                              <option key={u.uid} value={u.uid}>
-                                {u.name || u.email} ({u.role === 'admin' ? 'Master' : u.role === 'editor' ? 'Intermediário' : 'Básico'})
-                              </option>
-                            ))
-                          }
-                        </select>
-                      </div>
+
 
                       <div>
                         <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>

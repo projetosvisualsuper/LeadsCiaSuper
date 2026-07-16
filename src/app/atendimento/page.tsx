@@ -277,7 +277,7 @@ function AtendimentoContent() {
 
   // Efeito para auto-iniciar ou abrir a conversa ao carregar busca de telefone/lead
   useEffect(() => {
-    if (chats.length > 0 && searchQuery && !selectedChatId && hasAutoStarted.current !== searchQuery) {
+    if (isUrlInitiated.current && chats.length > 0 && searchQuery && !selectedChatId && hasAutoStarted.current !== searchQuery) {
       let cleanNumber = searchQuery.replace(/\D/g, '');
       if (cleanNumber.length === 10 || cleanNumber.length === 11) {
         cleanNumber = '55' + cleanNumber;
@@ -293,10 +293,12 @@ function AtendimentoContent() {
       if (existing) {
         setSelectedChatId(existing.id);
         hasAutoStarted.current = searchQuery;
+        isUrlInitiated.current = false;
       } else {
         if (cleanNumber && cleanNumber.length >= 8 && connections.length > 0) {
           hasAutoStarted.current = searchQuery;
           handleStartNewChat();
+          isUrlInitiated.current = false;
         }
       }
     }
