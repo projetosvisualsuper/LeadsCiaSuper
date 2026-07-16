@@ -3,6 +3,54 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
 
+function parseBlingPhones(rawPhone: string, rawTelefone?: string): { celular: string; telefone: string } {
+  const united = `${rawPhone || ''} / ${rawTelefone || ''}`;
+  const normalized = united
+    .replace(/\s+e\s+/gi, ' / ')
+    .replace(/\s+ou\s+/gi, ' / ')
+    .replace(/[,;|]/g, ' / ');
+
+  const parts = normalized.split('/');
+  const validNumbers: string[] = [];
+
+  for (const part of parts) {
+    const clean = part.replace(/\D/g, '');
+    if (clean && clean.length >= 8) {
+      validNumbers.push(clean);
+    }
+  }
+
+  if (validNumbers.length === 0) {
+    const fallback = united.replace(/\D/g, '');
+    if (fallback.length >= 21) {
+      return {
+        celular: fallback.substring(0, 11),
+        telefone: fallback.substring(11, 22)
+      };
+    }
+    return { celular: fallback, telefone: '' };
+  }
+
+  const uniqueNumbers = Array.from(new Set(validNumbers));
+
+  let celular = '';
+  let telefone = '';
+
+  if (uniqueNumbers.length > 0) {
+    const cellIndex = uniqueNumbers.findIndex(num => num.length === 11 || (num.length === 10 && num[2] === '9'));
+    if (cellIndex !== -1) {
+      celular = uniqueNumbers[cellIndex];
+      const otherNumbers = uniqueNumbers.filter((_, idx) => idx !== cellIndex);
+      telefone = otherNumbers[0] || '';
+    } else {
+      celular = uniqueNumbers[0];
+      telefone = uniqueNumbers[1] || '';
+    }
+  }
+
+  return { celular, telefone };
+}
+
 async function appendPedidoObservacao(pedidoId: string, text: string) {
   try {
     const { results } = await d1Api.runQuery(`SELECT observacao FROM pedidos WHERE id = ? LIMIT 1`, [pedidoId]);
@@ -234,6 +282,7 @@ async function processBlingOrder(orderId: string) {
   const clientName = data.contato?.nome || 'Cliente';
   let clientPhone = '';
   let clientEmail = '';
+  let rawBlingTelefone = '';
 
   if (data.contato?.id) {
     try {
@@ -247,7 +296,8 @@ async function processBlingOrder(orderId: string) {
         const contactPayload = await contactRes.json();
         const contactData = contactPayload.data;
         if (contactData) {
-          clientPhone = contactData.celular || contactData.telefone || '';
+          clientPhone = contactData.celular || '';
+          rawBlingTelefone = contactData.telefone || '';
           clientEmail = contactData.email || '';
         }
       }
@@ -257,8 +307,15 @@ async function processBlingOrder(orderId: string) {
   }
 
   if (!clientPhone) {
-    clientPhone = data.contato?.celular || data.contato?.telefone || '';
+    clientPhone = data.contato?.celular || '';
+    if (!rawBlingTelefone) {
+      rawBlingTelefone = data.contato?.telefone || '';
+    }
   }
+
+  const parsedPhones = parseBlingPhones(clientPhone, rawBlingTelefone);
+  const cleanPhone = parsedPhones.celular;
+  const cleanTelefone = parsedPhones.telefone;
 
   const isOpen = statusName.includes('aberto') || statusName.includes('andamento') || statusName === '6' || statusName === '18' || statusName === '1' || statusName === '15';
   const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '9' || statusName === '2';
@@ -302,13 +359,12 @@ async function processBlingOrder(orderId: string) {
     };
   } else {
     // Pedido não existe, vamos criar o lead se necessário, e salvar o pedido
-    const cleanPhone = clientPhone.replace(/\D/g, '');
     let targetLeadId = '';
 
     if (cleanPhone) {
       const { results } = await d1Api.runQuery(
-        `SELECT id FROM leads WHERE celular = ? OR telefone = ? LIMIT 1`,
-        [cleanPhone, cleanPhone]
+        `SELECT id FROM leads WHERE celular = ? OR telefone = ? OR celular = ? OR telefone = ? LIMIT 1`,
+        [cleanPhone, cleanPhone, cleanTelefone, cleanTelefone]
       );
       if (results && results.length > 0) {
         targetLeadId = results[0].id;
@@ -317,13 +373,16 @@ async function processBlingOrder(orderId: string) {
 
     if (!targetLeadId) {
       const { results: nameResults } = await d1Api.runQuery(
-        `SELECT id, celular, email FROM leads WHERE nome = ? LIMIT 1`,
+        `SELECT id, celular, telefone, email FROM leads WHERE nome = ? LIMIT 1`,
         [clientName]
       );
       if (nameResults && nameResults.length > 0) {
         targetLeadId = nameResults[0].id;
         if (cleanPhone && !nameResults[0].celular) {
           await d1Api.executeRun(`UPDATE leads SET celular = ? WHERE id = ?`, [cleanPhone, targetLeadId]);
+        }
+        if (cleanTelefone && !nameResults[0].telefone) {
+          await d1Api.executeRun(`UPDATE leads SET telefone = ? WHERE id = ?`, [cleanTelefone, targetLeadId]);
         }
         if (clientEmail && !nameResults[0].email) {
           await d1Api.executeRun(`UPDATE leads SET email = ? WHERE id = ?`, [clientEmail, targetLeadId]);
@@ -335,8 +394,8 @@ async function processBlingOrder(orderId: string) {
       targetLeadId = Math.random().toString(36).substr(2, 9);
       const agora = new Date().toISOString();
       await d1Api.runQuery(
-        `INSERT INTO leads (id, nome, celular, email, origem, dataCriacao, status) VALUES (?, ?, ?, ?, 'Bling Mercos', ?, 'novo')`,
-        [targetLeadId, clientName, cleanPhone || null, clientEmail || null, agora]
+        `INSERT INTO leads (id, nome, celular, telefone, email, origem, dataCriacao, status) VALUES (?, ?, ?, ?, ?, 'Bling Mercos', ?, 'novo')`,
+        [targetLeadId, clientName, cleanPhone || null, cleanTelefone || null, clientEmail || null, agora]
       );
     }
 
