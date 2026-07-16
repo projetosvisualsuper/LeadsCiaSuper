@@ -291,7 +291,7 @@ async function processBlingOrder(orderId: string) {
     const novaObs = (pedidoLocal.observacao || '') + updateText;
     await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
-    if (isFinalized && settings.bling?.enabled) {
+    if (crmStatus === 'enviado' && settings.bling?.enabled) {
       await sendBlingWhatsappNotification(pedidoLocal.id, pedidoLocal.leadId, orderNumber, settings);
     }
 
@@ -359,7 +359,7 @@ async function processBlingOrder(orderId: string) {
       await d1Api.updatePedidoStatus(recemCriado.id, crmStatus);
     }
 
-    if (isFinalized && settings.bling?.enabled && recemCriado) {
+    if (crmStatus === 'enviado' && settings.bling?.enabled && recemCriado) {
       await sendBlingWhatsappNotification(recemCriado.id, targetLeadId, orderNumber, settings);
     }
 
