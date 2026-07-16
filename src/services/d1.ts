@@ -1801,7 +1801,7 @@ export const d1Api = {
       LEFT JOIN leads l ON p.leadId = l.id
       LEFT JOIN chats c ON p.leadId = c.leadId
       ORDER BY p.dataCriacao DESC
-      LIMIT 100
+      LIMIT 5000
     `;
     const { results } = await runQuery(query);
     return (results || []) as Pedido[];
@@ -1877,7 +1877,7 @@ export const d1Api = {
       query += ` WHERE o.assignedTo = ? `;
       params.push(assignedTo);
     }
-    query += ` ORDER BY o.dataCriacao DESC LIMIT 100 `;
+    query += ` ORDER BY o.dataCriacao DESC LIMIT 5000 `;
     
     const { results } = await runQuery(query, params);
     return (results || []) as Opportunity[];
