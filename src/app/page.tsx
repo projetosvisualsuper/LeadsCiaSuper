@@ -191,7 +191,7 @@ export default function Dashboard() {
         `SELECT c.id, c.leadName, c.dataCriacao, c.channel, c.connectionId, c.assignedTo
          FROM chats c
          WHERE c.status = 'active' ${filterCond}
-         AND c.lastMessageIsIncoming = 1
+         AND (SELECT m.isIncoming FROM messages m WHERE m.chatId = c.id ORDER BY m.timestamp DESC LIMIT 1) = 1
          ORDER BY c.dataCriacao ASC`
       );
       setRawNoResponseData(noResponseData || []);
