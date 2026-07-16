@@ -355,9 +355,10 @@ export default function OportunidadesPage() {
     return tabMatch;
   });
 
-  // Calcular taxa de conversão das oportunidades (Ganhas / Total)
-  const totalOppsCount = baseFilteredOpps.length;
-  const ganhasOppsCount = baseFilteredOpps.filter(o => o.status === 'ganha' || o.status === 'finalizado').length;
+  // Calcular taxa de conversão das oportunidades (Ganhas / (Total - Arquivadas))
+  const conversionEligibleOpps = baseFilteredOpps.filter(o => o.status !== 'arquivada');
+  const totalOppsCount = conversionEligibleOpps.length;
+  const ganhasOppsCount = conversionEligibleOpps.filter(o => o.status === 'ganha' || o.status === 'finalizado').length;
   const conversionRate = totalOppsCount > 0 ? ((ganhasOppsCount / totalOppsCount) * 100).toFixed(1) : '0.0';
 
   return (
