@@ -23,7 +23,8 @@ import {
   Info,
   Paperclip,
   Zap,
-  Trash2
+  Trash2,
+  Archive
 } from 'lucide-react';
 import Link from 'next/link';
 import PipelineAutomationModal from '@/components/bots/PipelineAutomationModal';
@@ -82,7 +83,7 @@ export default function OportunidadesPage() {
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [connections, setConnections] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas' | 'cotacoes'>('novas');
+  const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas' | 'cotacoes' | 'arquivadas'>('novas');
   const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
@@ -264,6 +265,9 @@ export default function OportunidadesPage() {
     } else if (safeStatus === 'perdida') {
       bg = '#fee2e2'; color = '#b91c1c'; icon = <XCircle size={12}/>;
       label = 'Perdida';
+    } else if (safeStatus === 'arquivada') {
+      bg = '#f1f5f9'; color = '#475569'; icon = <Archive size={12}/>;
+      label = 'Arquivada';
     } else if (safeStatus === 'finalizado') {
       bg = '#d1fae5'; color = '#047857'; icon = <Check size={12}/>;
       label = 'Finalizado';
@@ -342,6 +346,8 @@ export default function OportunidadesPage() {
       tabMatch = status === 'ganha' || status === 'finalizado';
     } else if (activeTab === 'perdidas') {
       tabMatch = status === 'perdida' || status === 'cancelado';
+    } else if (activeTab === 'arquivadas') {
+      tabMatch = status === 'arquivada';
     } else if (activeTab === 'cotacoes') {
       tabMatch = status === 'cotacao';
     }
@@ -590,6 +596,20 @@ export default function OportunidadesPage() {
             }}
           >
             Perdidas ({baseFilteredOpps.filter(o => o.status === 'perdida' || o.status === 'cancelado').length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('arquivadas')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'arquivadas' ? '3px solid #64748b' : '3px solid transparent',
+              color: activeTab === 'arquivadas' ? '#475569' : '#64748b',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Arquivadas ({baseFilteredOpps.filter(o => o.status === 'arquivada').length})
           </button>
         </div>
 
@@ -985,10 +1005,10 @@ export default function OportunidadesPage() {
             <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>
               Como foi a conclusão do atendimento para esta oportunidade? Escolha uma opção para direcioná-la para a aba correspondente.
             </p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
               <button 
                 className="btn" 
-                style={{ flex: 1, backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{ flex: '1 1 100px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
                 onClick={async () => {
                   await handleStatusChange(showFinalizeModal, 'ganha');
                   setShowFinalizeModal(null);
@@ -998,13 +1018,23 @@ export default function OportunidadesPage() {
               </button>
               <button 
                 className="btn" 
-                style={{ flex: 1, backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{ flex: '1 1 100px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
                 onClick={async () => {
                   await handleStatusChange(showFinalizeModal, 'perdida');
                   setShowFinalizeModal(null);
                 }}
               >
                 ❌ Perdida
+              </button>
+              <button 
+                className="btn" 
+                style={{ flex: '1 1 100px', backgroundColor: '#64748b', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                onClick={async () => {
+                  await handleStatusChange(showFinalizeModal, 'arquivada');
+                  setShowFinalizeModal(null);
+                }}
+              >
+                📦 Arquivada
               </button>
             </div>
             <button 
