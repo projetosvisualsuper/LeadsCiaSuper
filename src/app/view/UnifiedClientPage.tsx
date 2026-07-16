@@ -520,7 +520,7 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
   const handleFormSubmit = async (formData: any) => {
     const tags: string[] = [page.slug];
     if (page.templateId === 'lead-magnet' && formData.catalogType) {
-      tags.push(formData.catalogType === 'compacto' ? 'PDF' : 'online');
+      tags.push(formData.catalogType === 'compacto' ? 'PDF' : 'catalogo-online');
     }
     if (page.templateId === 'offers') {
       tags.push('ofertas');
