@@ -1559,23 +1559,55 @@ export const d1Api = {
       convParams.push(endDateStr);
     }
 
-    const { results: statusRes } = await runQuery(`SELECT status, COUNT(id) as count FROM leads${whereClause} GROUP BY status`, params);
+    const { results: statusRes } = await runQuery(
+      `SELECT 
+         CASE 
+           WHEN (SELECT COUNT(*) FROM pedidos p WHERE p.leadId = l.id AND p.status IN ('finalizado', 'enviado')) > 0 THEN 'convertido'
+           ELSE l.status 
+         END as status,
+         COUNT(l.id) as count
+       FROM leads l
+       ${whereClause}
+       GROUP BY status`,
+      params
+    );
     const { results: sourceRes } = await runQuery(`SELECT origem, COUNT(id) as count FROM leads${whereClause} GROUP BY origem ORDER BY count DESC LIMIT 10`, params);
     const { results: dateRes } = await runQuery(`SELECT SUBSTR(dataCriacao, 1, 10) as date, COUNT(id) as count FROM leads${whereClause} AND dataCriacao IS NOT NULL GROUP BY date ORDER BY date ASC LIMIT 50`, params);
-    const { results: convDateRes } = await runQuery(`SELECT SUBSTR(dataUltimaConversao, 1, 10) as date, COUNT(id) as count FROM leads${convWhereClause} GROUP BY date ORDER BY date ASC LIMIT 50`, convParams);
+    
+    // Calcular linha do tempo de conversões baseando-se nos pedidos finalizados/enviados
+    const { results: convDateRes } = await runQuery(
+      `SELECT SUBSTR(dataCriacao, 1, 10) as date, COUNT(DISTINCT leadId) as count 
+       FROM pedidos 
+       ${whereClause} AND status IN ('finalizado', 'enviado')
+       GROUP BY date 
+       ORDER BY date ASC 
+       LIMIT 50`,
+      params
+    );
+
     const { results: utmRes } = await runQuery(`SELECT utm_source, COUNT(id) as count FROM leads${whereClause} AND utm_source IS NOT NULL AND utm_source != '' GROUP BY utm_source ORDER BY count DESC LIMIT 10`, params);
     const { results: stateRes } = await runQuery(`SELECT estado, COUNT(id) as count FROM leads${whereClause} AND estado IS NOT NULL AND estado != '' GROUP BY estado ORDER BY count DESC LIMIT 10`, params);
     const { results: cityRes } = await runQuery(`SELECT cidade, COUNT(id) as count FROM leads${whereClause} AND cidade IS NOT NULL AND cidade != '' GROUP BY cidade ORDER BY count DESC LIMIT 10`, params);
     
-    // Calcular faturamento real com base na coluna faturamento
-    const { results: faturamentoRes } = await runQuery(`SELECT SUM(faturamento) as faturamentoTotal FROM leads${whereClause} AND faturamento > 0`, params);
+    // Calcular faturamento real com base na tabela pedidos
+    const { results: faturamentoRes } = await runQuery(`SELECT SUM(valor) as faturamentoTotal FROM pedidos${whereClause} AND status != 'cancelado'`, params);
     let estimatedRevenue = 0;
     if (faturamentoRes && faturamentoRes.length > 0 && faturamentoRes[0].faturamentoTotal) {
       estimatedRevenue = faturamentoRes[0].faturamentoTotal;
     }
 
-    // Calcular Recompra (LTV)
-    const { results: recompraRes } = await runQuery(`SELECT COUNT(id) as totalRepurchasers, SUM(faturamento) as ltvRevenue FROM leads${whereClause} AND totalConversoes > 1`, params);
+    // Calcular Recompra (LTV) com base em leads com mais de 1 pedido finalizado/enviado no período
+    const { results: recompraRes } = await runQuery(
+      `SELECT COUNT(DISTINCT leadId) as totalRepurchasers, SUM(valor) as ltvRevenue 
+       FROM pedidos${whereClause} 
+       AND status IN ('finalizado', 'enviado')
+       AND leadId IN (
+         SELECT leadId FROM pedidos 
+         WHERE status IN ('finalizado', 'enviado') 
+         GROUP BY leadId HAVING COUNT(id) > 1
+       )`,
+      params
+    );
     let totalRepurchasers = 0;
     let ltvRevenue = 0;
     if (recompraRes && recompraRes.length > 0) {
@@ -1583,15 +1615,26 @@ export const d1Api = {
       ltvRevenue = recompraRes[0].ltvRevenue || 0;
     }
 
-    // Calcular Ciclo de Vendas Médio
+    // Calcular Ciclo de Vendas Médio em dias entre a criação do lead e o primeiro pedido finalizado/enviado
     let avgCicloVendas = 0;
     try {
-      const { results: cicloRes } = await runQuery(`SELECT AVG(cicloVendasDias) as avgCicloVendas FROM leads${whereClause} AND cicloVendasDias IS NOT NULL`, params);
+      const { results: cicloRes } = await runQuery(
+        `SELECT AVG(julianday(p.first_order_date) - julianday(l.dataCriacao)) as avgCicloVendas
+         FROM leads l
+         JOIN (
+           SELECT leadId, MIN(dataCriacao) as first_order_date 
+           FROM pedidos 
+           WHERE status IN ('finalizado', 'enviado')
+           GROUP BY leadId
+         ) p ON p.leadId = l.id
+         ${whereClause.replace('WHERE', 'AND')}`,
+        params
+      );
       if (cicloRes && cicloRes.length > 0 && cicloRes[0].avgCicloVendas) {
         avgCicloVendas = parseFloat(cicloRes[0].avgCicloVendas) || 0;
       }
     } catch (e) {
-      console.log('Erro ao calcular cicloVendasDias (talvez a coluna não exista ainda):', e);
+      console.log('Erro ao calcular cicloVendasDias:', e);
     }
 
     return {
