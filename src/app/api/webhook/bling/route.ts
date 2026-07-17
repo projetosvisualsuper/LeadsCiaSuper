@@ -201,7 +201,7 @@ async function getBlingSituationName(situationId: string, accessToken: string): 
 }
 
 // Função compartilhada para importar/atualizar o pedido a partir do ID do Bling
-async function processBlingOrder(orderId: string) {
+async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
   // 1. Carregar credenciais e tokens do Bling nas configurações do CRM
   const settings = await d1Api.getSettings();
   let accessToken = settings?.bling?.accessToken || '';
@@ -374,7 +374,9 @@ async function processBlingOrder(orderId: string) {
   const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
 
   const prettyStatus = situationNome || statusNamesMap[statusName] || statusName;
-  const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const formattedDate = webhookTimestamp 
+    ? new Date(webhookTimestamp * 1000).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    : new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
   // Mapear status para o CRM
   const isAndamento = statusName.includes('andamento') || statusName === '18' || statusName === '15';
@@ -530,7 +532,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ID do pedido não identificado no payload' }, { status: 400 });
     }
 
-    const result = await processBlingOrder(orderId.toString());
+    const result = await processBlingOrder(orderId.toString(), body.timestamp ? Number(body.timestamp) : undefined);
     return NextResponse.json(result);
 
   } catch (error: any) {
