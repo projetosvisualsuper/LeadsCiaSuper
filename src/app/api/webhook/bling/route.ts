@@ -61,9 +61,57 @@ async function appendPedidoObservacao(pedidoId: string, text: string) {
   }
 }
 
+function isBusinessHours(): boolean {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    });
+    
+    const parts = formatter.formatToParts(new Date());
+    const getValue = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
+    
+    const hour = getValue('hour');
+    const minute = getValue('minute');
+    
+    const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      weekday: 'long'
+    });
+    const weekdayStr = weekdayFormatter.format(new Date());
+    
+    const workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    if (!workingDays.includes(weekdayStr)) {
+      return false;
+    }
+    
+    const timeVal = hour * 60 + minute;
+    const startVal = 7 * 60 + 30; // 07:30
+    const endVal = 17 * 60 + 30;  // 17:30
+    
+    return timeVal >= startVal && timeVal <= endVal;
+  } catch (err) {
+    console.error('Erro ao verificar horário comercial:', err);
+    return false;
+  }
+}
+
 // Função auxiliar para disparar a notificação de WhatsApp se configurado
 async function sendBlingWhatsappNotification(pedidoId: string, leadId: string, orderNumber: string, settings: any) {
   const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  
+  if (!isBusinessHours()) {
+    const logText = `\n[WHATSAPP NOTIFICAÇÃO IGNORADA] Envio automático bloqueado fora do horário comercial (segunda a sexta, das 07:30 às 17:30) em ${formattedDate}.`;
+    await appendPedidoObservacao(pedidoId, logText);
+    return;
+  }
+
   try {
     const leadResult = await d1Api.runQuery(`SELECT nome, celular FROM leads WHERE id = ? LIMIT 1`, [leadId]);
     const targetLead = leadResult.results?.[0];
