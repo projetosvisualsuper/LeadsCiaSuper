@@ -390,6 +390,14 @@ async function processBlingOrder(orderId: string) {
   }
 
   if (pedidoLocal) {
+    if (pedidoLocal.status === crmStatus) {
+      return { 
+        success: true, 
+        message: `Pedido já está com o status ${crmStatus} no CRM. Nenhuma atualização necessária.`,
+        pedido: pedidoLocal
+      };
+    }
+
     await d1Api.updatePedidoStatus(pedidoLocal.id, crmStatus);
 
     const updateText = `\n[BLING ATUALIZAÇÃO] Pedido alterado para "${prettyStatus}" no Bling em ${formattedDate}.`;
