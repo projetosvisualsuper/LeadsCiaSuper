@@ -1833,9 +1833,11 @@ export const d1Api = {
   markAllPedidosAsRead: async (origem?: string): Promise<void> => {
     if (origem) {
       if (origem === 'mercos') {
-        await executeRun(`UPDATE pedidos SET isRead = 1 WHERE origem = 'mercos' AND isRead = 0`);
+        await executeRun(`UPDATE pedidos SET isRead = 1 WHERE origem = 'mercos' AND status != 'cancelado' AND isRead = 0`);
+      } else if (origem === 'cancelados') {
+        await executeRun(`UPDATE pedidos SET isRead = 1 WHERE status = 'cancelado' AND isRead = 0`);
       } else {
-        await executeRun(`UPDATE pedidos SET isRead = 1 WHERE (origem IS NULL OR origem != 'mercos') AND isRead = 0`);
+        await executeRun(`UPDATE pedidos SET isRead = 1 WHERE (origem IS NULL OR origem != 'mercos') AND status != 'cancelado' AND isRead = 0`);
       }
     } else {
       await executeRun(`UPDATE pedidos SET isRead = 1 WHERE isRead = 0`);

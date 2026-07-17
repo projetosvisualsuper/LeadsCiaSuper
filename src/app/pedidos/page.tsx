@@ -15,7 +15,7 @@ function PedidosContent() {
   const [expandedPedidoId, setExpandedPedidoId] = useState<string | null>(null);
   const [observacoesInput, setObservacoesInput] = useState<Record<string, string>>({});
   const [savingObs, setSavingObs] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'site' | 'mercos'>('site');
+  const [activeTab, setActiveTab] = useState<'site' | 'mercos' | 'cancelados'>('site');
   const [celularInput, setCelularInput] = useState<Record<string, string>>({});
   const [sendingNotification, setSendingNotification] = useState<string | null>(null);
   const [markingAllRead, setMarkingAllRead] = useState(false);
@@ -31,7 +31,11 @@ function PedidosContent() {
       if (pedidoIdParam) {
         const found = pedidos.find(p => p.id === pedidoIdParam);
         if (found) {
-          setActiveTab(found.origem === 'mercos' ? 'mercos' : 'site');
+          if (found.status === 'cancelado') {
+            setActiveTab('cancelados');
+          } else {
+            setActiveTab(found.origem === 'mercos' ? 'mercos' : 'site');
+          }
           setExpandedPedidoId(found.id);
           setObservacoesInput(prev => ({ ...prev, [found.id]: found.observacao || '' }));
           setCelularInput(prev => ({ ...prev, [found.id]: found.leadCelular || '' }));
@@ -88,7 +92,11 @@ function PedidosContent() {
     try {
       await api.markAllPedidosAsRead(activeTab);
       setPedidos(prev => prev.map(p => {
-        const matchesTab = activeTab === 'mercos' ? p.origem === 'mercos' : p.origem !== 'mercos';
+        const matchesTab = activeTab === 'cancelados'
+          ? p.status === 'cancelado'
+          : activeTab === 'mercos'
+            ? (p.origem === 'mercos' && p.status !== 'cancelado')
+            : (p.origem !== 'mercos' && p.status !== 'cancelado');
         if (matchesTab && !p.isRead) {
           return { ...p, isRead: true };
         }
@@ -250,10 +258,12 @@ function PedidosContent() {
     if (leadIdParam && p.leadId !== leadIdParam) {
       return false;
     }
-    if (activeTab === 'mercos') {
-      if (p.origem !== 'mercos') return false;
+    if (activeTab === 'cancelados') {
+      if (p.status !== 'cancelado') return false;
+    } else if (activeTab === 'mercos') {
+      if (p.origem !== 'mercos' || p.status === 'cancelado') return false;
     } else {
-      if (p.origem === 'mercos') return false;
+      if (p.origem === 'mercos' || p.status === 'cancelado') return false;
     }
 
     if (searchTerm) {
@@ -280,12 +290,14 @@ function PedidosContent() {
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b', margin: 0 }}>
             <ShoppingBag size={28} color="#059669" />
-            {activeTab === 'site' ? 'Pedidos do Site' : 'Pedidos do Mercos'}
+            {activeTab === 'site' ? 'Pedidos do Site' : activeTab === 'mercos' ? 'Pedidos do Mercos' : 'Pedidos Cancelados'}
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>
             {activeTab === 'site' 
               ? 'Gerencie cotações e compras recebidas através do site ou integrações.' 
-              : 'Gerencie pedidos recebidos diretamente da integração com o Mercos/Bling.'}
+              : activeTab === 'mercos'
+                ? 'Gerencie pedidos recebidos diretamente da integração com o Mercos/Bling.'
+                : 'Gerencie os pedidos que foram cancelados.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -392,6 +404,23 @@ function PedidosContent() {
           }}
         >
           Pedidos Mercos
+        </button>
+        <button 
+          onClick={() => setActiveTab('cancelados')}
+          style={{
+            padding: '0.6rem 1.2rem',
+            borderRadius: '8px',
+            border: 'none',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            background: activeTab === 'cancelados' ? '#ffffff' : 'transparent',
+            color: activeTab === 'cancelados' ? '#0f172a' : '#64748b',
+            boxShadow: activeTab === 'cancelados' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Cancelados
         </button>
       </div>
 
