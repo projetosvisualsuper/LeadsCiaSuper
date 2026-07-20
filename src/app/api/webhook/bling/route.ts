@@ -365,31 +365,63 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
   const cleanPhone = parsedPhones.celular;
   const cleanTelefone = parsedPhones.telefone;
 
-  const isOpen = statusName.includes('aberto') || statusName.includes('andamento') || statusName === '6' || statusName === '18' || statusName === '1' || statusName === '15';
-  const isFinalized = statusName.includes('atendido') || statusName.includes('enviado') || statusName.includes('finalizado') || statusName.includes('despachado') || statusName === '9' || statusName === '2';
-  const isCanceled = statusName.includes('cancelado') || statusName === '12' || statusName === '3';
+  const statusNameNormalized = situationNome ? situationNome.toLowerCase().trim() : statusName.toLowerCase().trim();
+  const statusId = (data.situacao?.id || '').toString();
 
-  // 4. Localizar o pedido correspondente no banco D1
-  const pedidos = await d1Api.getPedidos();
-  const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
-
-  const prettyStatus = situationNome || statusNamesMap[statusName] || statusName;
+  const prettyStatus = situationNome || statusNamesMap[statusId] || statusName || statusId;
   const formattedDate = webhookTimestamp 
     ? new Date(webhookTimestamp * 1000).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
     : new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-  // Mapear status para o CRM
-  const isAndamento = statusName.includes('andamento') || statusName === '18' || statusName === '15';
-  const isAtendido = statusName.includes('atendido') || statusName.includes('finalizado') || statusName === '9' || statusName === '2';
-
-  let crmStatus = 'pendente';
-  if (isCanceled) {
+  // Mapear status para o CRM com base em palavras-chave robustas
+  let crmStatus: 'pendente' | 'em_atendimento' | 'finalizado' | 'enviado' | 'cancelado' = 'pendente';
+  if (
+    statusNameNormalized.includes('cancel') || 
+    statusId === '12' || 
+    statusId === '3'
+  ) {
     crmStatus = 'cancelado';
-  } else if (isFinalized) {
-    crmStatus = isAtendido ? 'finalizado' : 'enviado';
-  } else if (isOpen) {
-    crmStatus = isAndamento ? 'em_atendimento' : 'pendente';
+  } else if (
+    statusNameNormalized.includes('enviado') || 
+    statusNameNormalized.includes('despachado') || 
+    statusNameNormalized.includes('transito') || 
+    statusNameNormalized.includes('rastre') || 
+    statusNameNormalized.includes('entrega') ||
+    statusId === '739691'
+  ) {
+    crmStatus = 'enviado';
+  } else if (
+    statusNameNormalized.includes('atendido') || 
+    statusNameNormalized.includes('finalizado') || 
+    statusNameNormalized.includes('concluid') || 
+    statusNameNormalized.includes('fechado') ||
+    statusId === '9' || 
+    statusId === '2'
+  ) {
+    crmStatus = 'finalizado';
+  } else if (
+    statusNameNormalized.includes('andamento') || 
+    statusNameNormalized.includes('logistica') || 
+    statusNameNormalized.includes('prd') || 
+    statusNameNormalized.includes('separa') || 
+    statusNameNormalized.includes('prepara') || 
+    statusNameNormalized.includes('produ') || 
+    statusNameNormalized.includes('fatur') || 
+    statusNameNormalized.includes('embal') || 
+    statusNameNormalized.includes('expedi') || 
+    statusNameNormalized.includes('atendimento') || 
+    statusId === '15' || 
+    statusId === '18' || 
+    statusId === '710514'
+  ) {
+    crmStatus = 'em_atendimento';
+  } else {
+    crmStatus = 'pendente';
   }
+
+  // 4. Localizar o pedido correspondente no banco D1
+  const pedidos = await d1Api.getPedidos();
+  const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
 
   if (pedidoLocal) {
     if (pedidoLocal.status === crmStatus) {
@@ -537,6 +569,16 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Erro no webhook do Bling:', error);
+    try {
+      await d1Api.saveSystemLog({
+        level: 'error',
+        source: 'Bling Webhook',
+        message: `Erro ao processar webhook do Bling: ${error.message || error}`,
+        details: JSON.stringify({ body })
+      });
+    } catch (logErr) {
+      console.error('Erro ao salvar log de erro no D1:', logErr);
+    }
     return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
   }
 }
