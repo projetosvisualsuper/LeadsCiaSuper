@@ -157,6 +157,19 @@ export const automationEngine = {
       const triggerNode = nodes.find((n: any) => n.type === 'trigger');
       if (!triggerNode) return;
 
+      // Validar canal de entrada se configurado no gatilho
+      if (triggerNode.data) {
+        const triggerChannel = triggerNode.data.channel || 'all';
+        if (triggerChannel !== 'all') {
+          const leadOrigem = (lead.origem || '').toLowerCase();
+          const matchesChannel = leadOrigem.includes(triggerChannel.toLowerCase());
+          if (!matchesChannel) {
+            console.log(`[Salesbot] Canal do lead "${lead.origem}" não corresponde ao canal do gatilho "${triggerChannel}". Pulando bot "${bot.name}".`);
+            return;
+          }
+        }
+      }
+
       // Throttle: evitar que o bot rode novamente para o mesmo lead dentro de 5 minutos
       // Isso impede que respostas do lead re-disparem o bot antes de completar o fluxo
       const throttleKey = `bot_last_run_${botId}_${lead.id}`;

@@ -17,6 +17,10 @@ export default memo(function TriggerNode({ id, data, isConnectable }: any) {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, triggerValue: e.target.value } } : n));
   };
 
+  const onChannelChange = (e: any) => {
+    setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, channel: e.target.value } } : n));
+  };
+
   const color = data.color || '#eab308';
 
   return (
@@ -29,7 +33,19 @@ export default memo(function TriggerNode({ id, data, isConnectable }: any) {
         <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'white', display: 'flex', padding: '4px' }}><Trash2 size={14} /></button>
       </div>
       <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <p style={{ fontSize: '11px', color: 'var(--secondary)' }}>Disparar este bot quando o lead enviar:</p>
+        <p style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px', fontWeight: 600 }}>Canal de Entrada:</p>
+        <select 
+          value={data.channel || 'all'} 
+          onChange={onChannelChange}
+          style={{ width: '100%', padding: '6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', fontWeight: 600, marginBottom: '6px' }}
+        >
+          <option value="all">Todos os Canais</option>
+          <option value="instagram">Instagram Direct</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="facebook">Facebook Messenger</option>
+        </select>
+
+        <p style={{ fontSize: '11px', color: 'var(--secondary)', marginBottom: '2px', fontWeight: 600 }}>Disparar este bot quando o lead enviar:</p>
         <select 
           value={data.triggerType || 'Palavra-chave Exata'} 
           onChange={onTriggerTypeChange}
