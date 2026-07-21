@@ -38,6 +38,14 @@ const templates: BotTemplate[] = [
     category: 'atendimento',
     icon: Clock,
     color: '#f59e0b'
+  },
+  {
+    id: 'funil-qualificacao-completo',
+    name: 'Funil de Qualificação Completo',
+    description: 'Saudação, segmentação de interesse, qualificação de perfil, coleta e validação de WhatsApp.',
+    category: 'gerar_leads',
+    icon: Zap,
+    color: '#ec4899'
   }
 ];
 

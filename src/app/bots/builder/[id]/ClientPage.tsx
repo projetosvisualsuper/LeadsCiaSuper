@@ -91,6 +91,32 @@ const templatesData: Record<string, { nodes: any[], edges: any[] }> = {
       { id: 'e1-2', source: '1', sourceHandle: 'true', target: '2', type: 'custom' },
       { id: 'e1-3', source: '1', sourceHandle: 'false', target: '3', type: 'custom' }
     ]
+  },
+  'funil-qualificacao-completo': {
+    nodes: [
+      { id: '1', type: 'trigger', position: { x: 250, y: -50 }, data: { label: 'Gatilho de Início', channel: 'all', triggerType: 'Qualquer Mensagem' } },
+      { id: '2', type: 'sendMessage', position: { x: 250, y: 120 }, data: { label: 'Fluxo 1 – Saudação', message: 'Olá! 👋 Seja bem-vindo(a)!\n\nObrigado por entrar em contato. Vou fazer algumas perguntas rápidas para direcionar você ao consultor mais adequado. Leva menos de 1 minuto. 😊' } },
+      { id: '3', type: 'sendMessage', position: { x: 250, y: 320 }, data: { label: 'Fluxo 2 – Entender Interesse', message: 'O que você procura hoje?\n\n1️⃣ Quero saber valores\n2️⃣ Quero contratar\n3️⃣ Tenho uma dúvida\n4️⃣ Outro assunto' } },
+      { id: '4', type: 'sendMessage', position: { x: 250, y: 520 }, data: { label: 'Fluxo 3 – Perfil (PF/PJ)', message: 'Para eu entender melhor, você está buscando isso para:\n\n1️⃣ Pessoa física\n2️⃣ Empresa' } },
+      { id: '5', type: 'sendMessage', position: { x: 250, y: 720 }, data: { label: 'Fluxo 3 – Necessidade', message: 'Qual é sua principal necessidade hoje?\n\nEssa resposta será enviada ao consultor.' } },
+      { id: '6', type: 'sendMessage', position: { x: 250, y: 920 }, data: { label: 'Fluxo 4 – Preparar Transferência', message: 'Perfeito! Agora vou encaminhar seu atendimento para um consultor especializado.\n\nPara agilizar o contato e enviar todas as informações, informe seu melhor WhatsApp com DDD.' } },
+      { id: '7', type: 'validation', position: { x: 250, y: 1120 }, data: { label: 'Fluxo 5 – Validação WhatsApp', validationType: 'Validar Telefone (BR)' } },
+      { id: '8', type: 'sendMessage', position: { x: 100, y: 1320 }, data: { label: 'Fluxo 5 – Sucesso', message: 'Perfeito! 😊\n\nNosso consultor iniciará o atendimento pelo WhatsApp em instantes.\n\nEnquanto isso, se desejar, você pode escrever qualquer detalhe adicional sobre o que procura.' } },
+      { id: '9', type: 'action', position: { x: 100, y: 1520 }, data: { label: 'Transferir Atendente' } },
+      { id: '10', type: 'sendMessage', position: { x: 450, y: 1320 }, data: { label: 'WhatsApp Inválido', message: 'Ops! O número que você digitou parece não ser válido.\n\nPor favor, digite novamente o seu WhatsApp com DDD (apenas números, ex: 11999999999):' } }
+    ],
+    edges: [
+      { id: 'e1-2', source: '1', target: '2', type: 'custom' },
+      { id: 'e2-3', source: '2', target: '3', type: 'custom' },
+      { id: 'e3-4', source: '3', target: '4', type: 'custom' },
+      { id: 'e4-5', source: '4', target: '5', type: 'custom' },
+      { id: 'e5-6', source: '5', target: '6', type: 'custom' },
+      { id: 'e6-7', source: '6', target: '7', type: 'custom' },
+      { id: 'e7-8', source: '7', sourceHandle: 'true', target: '8', type: 'custom' },
+      { id: 'e7-10', source: '7', sourceHandle: 'false', target: '10', type: 'custom' },
+      { id: 'e8-9', source: '8', target: '9', type: 'custom' },
+      { id: 'e10-7', source: '10', target: '7', type: 'custom' }
+    ]
   }
 };
 
