@@ -108,8 +108,18 @@ function AtendimentoContent() {
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
   const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
   const [serviceStages, setServiceStages] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.user) {
+          setUserProfile(data.user);
+        }
+      })
+      .catch(err => console.error('Erro ao carregar perfil do usuário:', err));
+
     api.getAllUserProfiles()
       .then(setSystemUsers)
       .catch(err => console.error('Erro ao carregar usuários:', err));
@@ -1395,470 +1405,614 @@ function AtendimentoContent() {
   return (
     <div className="atendimento-container">
       
-      {/* SIDEBAR DE CONVERSAS (REPROJETADO COMO KANBAN BOARD) */}
+      {/* SIDEBAR DE CONVERSAS (REPROJETADO COMO KANBAN BOARD OU LISTA SE FOR BÁSICO) */}
       <div 
         className={`conversas-sidebar ${selectedChatId && isMobile ? 'hidden-on-mobile' : ''}`}
         style={{ 
-          width: '100%', 
-          flex: 1, 
-          display: 'flex', 
+          width: userProfile?.role === 'basico' ? (isMobile ? '100%' : '350px') : '100%', 
+          flex: userProfile?.role === 'basico' ? 'none' : 1, 
+          display: (userProfile?.role === 'basico' && selectedChatId && isMobile) ? 'none' : 'flex', 
           flexDirection: 'column', 
           minWidth: 0,
-          background: '#f8fafc',
+          background: userProfile?.role === 'basico' ? '#ffffff' : '#f8fafc',
           borderRight: '1px solid #e2e8f0',
           height: '100%'
         }}
       >
-        <header style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
-          {/* Header Row 1 */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MessageSquare size={24} color="var(--primary)" />
-                Funil de Atendimento
-              </h2>
+        {userProfile?.role === 'basico' ? (
+          <>
+            {/* Header simplificado estilo WhatsApp */}
+            <header style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <MessageSquare size={20} color="var(--primary)" />
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+                  Atendimento
+                </h2>
+              </div>
               
-
-            </div>
-            
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={handleOpenOrStartChat}
-                  style={{ 
-                    background: '#25d366', 
-                    color: 'white', 
-                    border: 'none', 
-                    padding: '0.45rem 1.25rem', 
-                    borderRadius: '8px', 
-                    fontWeight: 700, 
-                    fontSize: '0.8rem', 
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  }}
-                  title="Iniciar ou abrir conversa com o número/nome buscado"
-                >
-                  <MessageCircle size={14} /> Iniciar/Abrir Conversa
-                </button>
-              )}
-
-              <button 
-                type="button"
-                onClick={handleAddStage}
-                style={{ 
-                  background: 'var(--primary)', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '0.45rem 1rem', 
-                  borderRadius: '8px', 
-                  fontWeight: 600, 
-                  fontSize: '0.8rem', 
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
-                }}
-              >
-                <Plus size={14} /> Nova Etapa
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => setIsAutomationModalOpen(true)}
-                title="Configurar Automações"
-                style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', cursor: 'pointer', padding: '0.45rem 0.75rem', color: '#1e40af', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-              >
-                <Zap size={14} /> Automações
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => setShowChannelSettingsModal(true)}
-                title="Personalizar Canais Visíveis"
-                style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', padding: '0.45rem 0.75rem', color: '#475569', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-              >
-                <Settings size={14} /> Personalizar
-              </button>
-
-              {/* Sync buttons */}
-              <button 
-                onClick={async () => {
-                  if (syncingYoutube) return;
-                  setSyncingYoutube(true);
-                  try {
-                    const res = await fetch('/api/webhook/youtube/sync');
-                    const data = await res.json();
-                    if (data.success) {
-                      alert(`${data.newMessages} novas mensagens do YouTube sincronizadas!`);
-                    } else {
-                      alert('Erro ao sincronizar YouTube: ' + (data.message || 'Erro desconhecido'));
-                    }
-                  } catch (e: any) {
-                    alert('Erro ao sincronizar YouTube: ' + e.message);
-                  } finally {
-                    setSyncingYoutube(false);
-                  }
-                }}
-                title="Sincronizar YouTube"
-                disabled={syncingYoutube}
-                style={{ background: '#f8fafc', border: '1px solid #cbd5e1', cursor: syncingYoutube ? 'wait' : 'pointer', opacity: syncingYoutube ? 0.8 : 1, padding: '5px', borderRadius: '6px' }}
-              >
-                {syncingYoutube ? <Loader2 size={16} className="animate-spin" /> : renderSocialIcon('youtube', 16)}
-              </button>
-
-              <button 
-                onClick={async () => {
-                  if (syncingTiktok) return;
-                  setSyncingTiktok(true);
-                  try {
-                    const res = await fetch('/api/webhook/tiktok/sync');
-                    const data = await res.json();
-                    if (data.success) {
-                      alert(`${data.newMessages} novas mensagens do TikTok sincronizadas!`);
-                    } else {
-                      alert('Erro ao sincronizar TikTok: ' + (data.message || 'Erro desconhecido'));
-                    }
-                  } catch (e: any) {
-                    alert('Erro ao sincronizar TikTok: ' + e.message);
-                  } finally {
-                    setSyncingTiktok(false);
-                  }
-                }}
-                title="Sincronizar TikTok"
-                disabled={syncingTiktok}
-                style={{ background: '#f8fafc', border: '1px solid #cbd5e1', cursor: syncingTiktok ? 'wait' : 'pointer', opacity: syncingTiktok ? 0.8 : 1, padding: '5px', borderRadius: '6px' }}
-              >
-                {syncingTiktok ? <Loader2 size={16} className="animate-spin" /> : renderSocialIcon('tiktok', 16)}
-              </button>
-            </div>
-          </div>
-
-          {/* Header Row 2 (Search and Filters) */}
-          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
-            <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : '1.5 1 200px', width: isMobile ? '100%' : 'auto' }}>
-              <input 
-                type="text" 
-                placeholder="Buscar lead ou mensagem..." 
-                value={searchQuery}
-                onChange={e => {
-                  isUrlInitiated.current = false;
-                  setSearchQuery(e.target.value);
-                }}
-                style={{ width: '100%', padding: '0.45rem 2rem 0.45rem 2rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
-              />
-              <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '8px', top: '10px' }} />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
+              {/* Busca */}
+              <div style={{ position: 'relative', width: '100%', marginBottom: '0.5rem' }}>
+                <input 
+                  type="text" 
+                  placeholder="Buscar conversa..." 
+                  value={searchQuery}
+                  onChange={e => {
                     isUrlInitiated.current = false;
-                    setSearchQuery('');
-                    hasAutoStarted.current = null;
+                    setSearchQuery(e.target.value);
                   }}
+                  style={{ width: '100%', padding: '0.45rem 2rem 0.45rem 2rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                />
+                <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '8px', top: '10px' }} />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      isUrlInitiated.current = false;
+                      setSearchQuery('');
+                      hasAutoStarted.current = null;
+                    }}
+                    style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filtros Rápidos */}
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <button
+                  onClick={() => { setFilterUnread(false); setFilterUnreadOnly(false); }}
                   style={{
-                    position: 'absolute',
-                    right: '8px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#94a3b8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '4px',
-                    borderRadius: '50%',
-                    transition: 'color 0.2s'
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    border: '1px solid ' + (!filterUnread && !filterUnreadOnly ? 'var(--primary)' : '#cbd5e1'),
+                    background: !filterUnread && !filterUnreadOnly ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                    color: !filterUnread && !filterUnreadOnly ? 'var(--primary)' : '#64748b',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
                   }}
-                  onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
-                  onMouseOut={e => e.currentTarget.style.color = '#94a3b8'}
                 >
-                  <X size={14} />
+                  Todos
                 </button>
-              )}
-            </div>
+                <button
+                  onClick={() => { setFilterUnread(true); setFilterUnreadOnly(false); }}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    border: '1px solid ' + (filterUnread ? 'var(--primary)' : '#cbd5e1'),
+                    background: filterUnread ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                    color: filterUnread ? 'var(--primary)' : '#64748b',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Aguardando
+                </button>
+                <button
+                  onClick={() => { setFilterUnreadOnly(true); setFilterUnread(false); }}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    border: '1px solid ' + (filterUnreadOnly ? '#22c55e' : '#cbd5e1'),
+                    background: filterUnreadOnly ? 'rgba(34, 197, 94, 0.1)' : 'white',
+                    color: filterUnreadOnly ? '#22c55e' : '#64748b',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Não lidas
+                </button>
+              </div>
+            </header>
 
-            <select 
-              value={filterConnection}
-              onChange={e => setFilterConnection(e.target.value)}
-              style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 140px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
-            >
-              <option value="all">Todas as conexões</option>
-              {connections.map(conn => (
-                <option key={conn.id} value={conn.id}>{conn.name || conn.evolutionInstanceName}</option>
-              ))}
-            </select>
-
-            <select 
-              value={filterChannel}
-              onChange={e => setFilterChannel(e.target.value)}
-              style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 130px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
-            >
-              <option value="all">Todos os Canais</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="facebook">Facebook Messenger</option>
-              <option value="instagram">Instagram</option>
-              <option value="youtube">YouTube</option>
-              <option value="tiktok">TikTok</option>
-              <option value="whatsapp_widget">Widget WhatsApp</option>
-            </select>
-
-            <select 
-              value={filterContactType}
-              onChange={e => setFilterContactType(e.target.value)}
-              style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 140px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
-            >
-              <option value="all">Todos os Contatos</option>
-              <option value="external">Clientes (Externos)</option>
-              <option value="internal">Colaboradores (Internos)</option>
-            </select>
-
-            <button
-              onClick={() => setFilterUnread(!filterUnread)}
-              style={{
-                width: isMobile ? '100%' : 'auto',
-                flex: isMobile ? '1 1 100%' : '0.8 1 120px',
-                padding: '0.45rem',
-                borderRadius: '8px',
-                border: '1px solid',
-                borderColor: filterUnread ? 'var(--primary)' : '#cbd5e1',
-                background: filterUnread ? 'rgba(99, 102, 241, 0.1)' : '#ffffff',
-                color: filterUnread ? 'var(--primary)' : '#475569',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                height: '32px'
-              }}
-            >
-              Não respondidas
-              {chats.filter(c => c.lastMessageIsIncoming === 1).length > 0 && (
-                <span style={{ background: 'var(--primary)', color: 'white', fontSize: '0.65rem', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                  {chats.filter(c => c.lastMessageIsIncoming === 1).length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setFilterUnreadOnly(!filterUnreadOnly)}
-              style={{
-                width: isMobile ? '100%' : 'auto',
-                flex: isMobile ? '1 1 100%' : '0.8 1 110px',
-                padding: '0.45rem',
-                borderRadius: '8px',
-                border: '1px solid',
-                borderColor: filterUnreadOnly ? '#22c55e' : '#cbd5e1',
-                background: filterUnreadOnly ? 'rgba(34, 197, 94, 0.1)' : '#ffffff',
-                color: filterUnreadOnly ? '#22c55e' : '#475569',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                height: '32px',
-                boxSizing: 'border-box'
-              }}
-            >
-              Não lidas
-              {chats.filter(c => (c.unreadCount || 0) > 0).length > 0 && (
-                <span style={{ 
-                  background: '#22c55e', 
-                  color: 'white', 
-                  fontSize: '0.65rem', 
-                  borderRadius: '50%', 
-                  width: '16px', 
-                  height: '16px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  fontWeight: 800
-                }}>
-                  {chats.filter(c => (c.unreadCount || 0) > 0).length}
-                </span>
-              )}
-            </button>
-          </div>
-        </header>
-
-        {/* KANBAN BOARD BODY */}
-        <div style={{ flex: 1, display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem', background: '#f1f5f9' }}>
-          {orderedColumns.filter(col => visibleColumns.includes(col.id)).map(col => {
-            const stageChats = filteredChats.filter(chat => {
-              if (col.id === 'all_channels') return true;
-              if (col.id === 'instagram') return chat.channel === 'instagram';
-              if (col.id === 'facebook') return chat.channel === 'facebook';
-              if (col.id === 'youtube') return chat.channel === 'youtube';
-              if (col.id === 'tiktok') return chat.channel === 'tiktok';
-              if (col.id.startsWith('whatsapp_')) {
-                const connId = col.id.replace('whatsapp_', '');
-                return chat.channel === 'whatsapp' && chat.connectionId === connId;
-              }
-              return false;
-            });
-
-            const maxTimeStr = getColumnMaxUnansweredTime(stageChats);
-
-            return (
-              <div 
-                key={col.id}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDropCard(e, col.id)}
-                style={{
-                  width: '280px',
-                  minWidth: '280px',
-                  background: '#f8fafc',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  maxHeight: '100%',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                }}
-              >
-                {/* Column Header */}
-                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
-                    <span 
-                      style={{ 
-                        fontWeight: 700, 
-                        fontSize: '0.85rem', 
-                        color: '#1e293b', 
-                        whiteSpace: 'nowrap', 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {col.name}
-                    </span>
-                    <span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>
-                      {stageChats.length}
-                    </span>
-                  </div>
-                  {maxTimeStr && (
-                    <span 
-                      style={{ 
-                        background: 'rgba(239, 68, 68, 0.1)', 
-                        color: '#ef4444', 
-                        fontSize: '0.65rem', 
-                        fontWeight: 700, 
-                        padding: '2px 6px', 
-                        borderRadius: '6px',
-                        whiteSpace: 'nowrap'
-                      }}
-                      title="Maior tempo de espera por resposta nesta coluna"
-                    >
-                      Espera: {maxTimeStr}
-                    </span>
-                  )}
+            {/* Lista Vertical de Conversas */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              {filteredChats.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  Nenhuma conversa encontrada
                 </div>
-
-                {/* Column Cards List */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {stageChats.length === 0 ? (
-                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem', border: '1px dashed #cbd5e1', borderRadius: '8px' }}>
-                      Solte leads aqui
-                    </div>
-                  ) : (
-                    stageChats.map(chat => {
-                      const isSelected = selectedChatId === chat.id;
-                      const hasUnread = (chat.unreadCount || 0) > 0;
-                      
-                      return (
-                        <div 
-                          key={chat.id}
-                          draggable="true"
-                          onDragStart={(e) => handleDragStartCard(e, chat.id)}
-                          onClick={() => setSelectedChatId(chat.id)}
-                          style={{
-                            padding: '0.85rem',
-                            background: isSelected ? '#eff6ff' : '#ffffff',
-                            borderRadius: '10px',
-                            border: '1px solid ' + (isSelected ? '#3b82f6' : (hasUnread ? '#22c55e' : '#e2e8f0')),
-                            cursor: 'grab',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.5rem'
-                          }}
-                        >
-                          {/* Card Top Row */}
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#cbd5e1', overflow: 'hidden', flexShrink: 0 }}>
-                              {chat.leadAvatar ? <img src={chat.leadAvatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={14} color="#94a3b8" />}
-                            </div>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {chat.leadName}
-                              </div>
-                            </div>
-                            <div style={{ flexShrink: 0 }}>
-                              {getChannelIcon(chat.channel, 14)}
-                            </div>
-                          </div>
-
-                          {/* Last message preview */}
-                          <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              ) : (
+                filteredChats.map(chat => {
+                  const isSelected = selectedChatId === chat.id;
+                  const hasUnread = (chat.unreadCount || 0) > 0;
+                  
+                  return (
+                    <div 
+                      key={chat.id}
+                      onClick={() => setSelectedChatId(chat.id)}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        background: isSelected ? '#f1f5f9' : 'transparent',
+                        borderBottom: '1px solid #f1f5f9',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#cbd5e1', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {chat.leadAvatar ? <img src={chat.leadAvatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={20} color="#94a3b8" />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {chat.leadName}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                            {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, marginRight: '8px' }}>
                             {chat.lastMessage || 'Iniciando conversa...'}
                           </p>
-
-                          {/* Card Footer */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
-                                {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-                              {chat.lastMessageIsIncoming === 1 && (() => {
-                                const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
-                                const diffMins = Math.floor(ms / 60000);
-                                let timeStr = 'Aguardando';
-                                if (diffMins >= 1) {
-                                  if (diffMins < 60) timeStr = `${diffMins}m`;
-                                  else {
-                                    const diffHours = Math.floor(diffMins / 60);
-                                    if (diffHours < 24) timeStr = `${diffHours}h`;
-                                    else timeStr = `${Math.floor(diffHours / 24)}d`;
-                                  }
-                                }
-                                return (
-                                  <span style={{ 
-                                    fontSize: '0.65rem', 
-                                    background: 'rgba(239, 68, 68, 0.1)', 
-                                    color: '#ef4444', 
-                                    padding: '1px 5px', 
-                                    borderRadius: '4px', 
-                                    fontWeight: 700,
-                                    whiteSpace: 'nowrap'
-                                  }}>
-                                    {timeStr}
-                                  </span>
-                                );
-                              })()}
-                            </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                            {getChannelIcon(chat.channel, 12)}
                             {hasUnread && (
-                              <span style={{ background: '#22c55e', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+                              <span style={{ background: '#22c55e', color: 'white', fontSize: '0.65rem', fontWeight: 800, borderRadius: '50%', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' }}>
                                 {chat.unreadCount}
                               </span>
                             )}
                           </div>
                         </div>
-                      );
-                    })
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <header style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
+              {/* Header Row 1 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <MessageSquare size={24} color="var(--primary)" />
+                    Funil de Atendimento
+                  </h2>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleOpenOrStartChat}
+                      style={{ 
+                        background: '#25d366', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '0.45rem 1.25rem', 
+                        borderRadius: '8px', 
+                        fontWeight: 700, 
+                        fontSize: '0.8rem', 
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      }}
+                      title="Iniciar ou abrir conversa com o número/nome buscado"
+                    >
+                      <MessageCircle size={14} /> Iniciar/Abrir Conversa
+                    </button>
                   )}
+
+                  {userProfile?.role !== 'basico' && (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={handleAddStage}
+                        style={{ 
+                          background: 'var(--primary)', 
+                          color: 'white', 
+                          border: 'none', 
+                          padding: '0.45rem 1rem', 
+                          borderRadius: '8px', 
+                          fontWeight: 600, 
+                          fontSize: '0.8rem', 
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}
+                      >
+                        <Plus size={14} /> Nova Etapa
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => setIsAutomationModalOpen(true)}
+                        title="Configurar Automações"
+                        style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', cursor: 'pointer', padding: '0.45rem 0.75rem', color: '#1e40af', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                      >
+                        <Zap size={14} /> Automações
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => setShowChannelSettingsModal(true)}
+                        title="Personalizar Canais Visíveis"
+                        style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', padding: '0.45rem 0.75rem', color: '#475569', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                      >
+                        <Settings size={14} /> Personalizar
+                      </button>
+                    </>
+                  )}
+
+                  {/* Sync buttons */}
+                  <button 
+                    onClick={async () => {
+                      if (syncingYoutube) return;
+                      setSyncingYoutube(true);
+                      try {
+                        const res = await fetch('/api/webhook/youtube/sync');
+                        const data = await res.json();
+                        if (data.success) {
+                          alert(`${data.newMessages} novas mensagens do YouTube sincronizadas!`);
+                        } else {
+                          alert('Erro ao sincronizar YouTube: ' + (data.message || 'Erro desconhecido'));
+                        }
+                      } catch (e: any) {
+                        alert('Erro ao sincronizar YouTube: ' + e.message);
+                      } finally {
+                        setSyncingYoutube(false);
+                      }
+                    }}
+                    title="Sincronizar YouTube"
+                    disabled={syncingYoutube}
+                    style={{ background: '#f8fafc', border: '1px solid #cbd5e1', cursor: syncingYoutube ? 'wait' : 'pointer', opacity: syncingYoutube ? 0.8 : 1, padding: '5px', borderRadius: '6px' }}
+                  >
+                    {syncingYoutube ? <Loader2 size={16} className="animate-spin" /> : renderSocialIcon('youtube', 16)}
+                  </button>
+
+                  <button 
+                    onClick={async () => {
+                      if (syncingTiktok) return;
+                      setSyncingTiktok(true);
+                      try {
+                        const res = await fetch('/api/webhook/tiktok/sync');
+                        const data = await res.json();
+                        if (data.success) {
+                          alert(`${data.newMessages} novas mensagens do TikTok sincronizadas!`);
+                        } else {
+                          alert('Erro ao sincronizar TikTok: ' + (data.message || 'Erro desconhecido'));
+                        }
+                      } catch (e: any) {
+                        alert('Erro ao sincronizar TikTok: ' + e.message);
+                      } finally {
+                        setSyncingTiktok(false);
+                      }
+                    }}
+                    title="Sincronizar TikTok"
+                    disabled={syncingTiktok}
+                    style={{ background: '#f8fafc', border: '1px solid #cbd5e1', cursor: syncingTiktok ? 'wait' : 'pointer', opacity: syncingTiktok ? 0.8 : 1, padding: '5px', borderRadius: '6px' }}
+                  >
+                    {syncingTiktok ? <Loader2 size={16} className="animate-spin" /> : renderSocialIcon('tiktok', 16)}
+                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Header Row 2 (Search and Filters) */}
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
+                <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : '1.5 1 200px', width: isMobile ? '100%' : 'auto' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Buscar lead ou mensagem..." 
+                    value={searchQuery}
+                    onChange={e => {
+                      isUrlInitiated.current = false;
+                      setSearchQuery(e.target.value);
+                    }}
+                    style={{ width: '100%', padding: '0.45rem 2rem 0.45rem 2rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                  />
+                  <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '8px', top: '10px' }} />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        isUrlInitiated.current = false;
+                        setSearchQuery('');
+                        hasAutoStarted.current = null;
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#94a3b8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '4px',
+                        borderRadius: '50%',
+                        transition: 'color 0.2s'
+                      }}
+                      onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
+                      onMouseOut={e => e.currentTarget.style.color = '#94a3b8'}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <select 
+                  value={filterConnection}
+                  onChange={e => setFilterConnection(e.target.value)}
+                  style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 140px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                >
+                  <option value="all">Todas as conexões</option>
+                  {connections.map(conn => (
+                    <option key={conn.id} value={conn.id}>{conn.name || conn.evolutionInstanceName}</option>
+                  ))}
+                </select>
+
+                <select 
+                  value={filterChannel}
+                  onChange={e => setFilterChannel(e.target.value)}
+                  style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 130px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                >
+                  <option value="all">Todos os Canais</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="facebook">Facebook Messenger</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="whatsapp_widget">Widget WhatsApp</option>
+                </select>
+
+                <select 
+                  value={filterContactType}
+                  onChange={e => setFilterContactType(e.target.value)}
+                  style={{ width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : '1 1 140px', padding: '0.45rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                >
+                  <option value="all">Todos os Contatos</option>
+                  <option value="external">Clientes (Externos)</option>
+                  <option value="internal">Colaboradores (Internos)</option>
+                </select>
+
+                <button
+                  onClick={() => setFilterUnread(!filterUnread)}
+                  style={{
+                    width: isMobile ? '100%' : 'auto',
+                    flex: isMobile ? '1 1 100%' : '0.8 1 120px',
+                    padding: '0.45rem',
+                    borderRadius: '8px',
+                    border: '1px solid',
+                    borderColor: filterUnread ? 'var(--primary)' : '#cbd5e1',
+                    background: filterUnread ? 'rgba(99, 102, 241, 0.1)' : '#ffffff',
+                    color: filterUnread ? 'var(--primary)' : '#475569',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    height: '32px'
+                  }}
+                >
+                  Não respondidas
+                  {chats.filter(c => c.lastMessageIsIncoming === 1).length > 0 && (
+                    <span style={{ background: 'var(--primary)', color: 'white', fontSize: '0.65rem', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                      {chats.filter(c => c.lastMessageIsIncoming === 1).length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setFilterUnreadOnly(!filterUnreadOnly)}
+                  style={{
+                    width: isMobile ? '100%' : 'auto',
+                    flex: isMobile ? '1 1 100%' : '0.8 1 110px',
+                    padding: '0.45rem',
+                    borderRadius: '8px',
+                    border: '1px solid',
+                    borderColor: filterUnreadOnly ? '#22c55e' : '#cbd5e1',
+                    background: filterUnreadOnly ? 'rgba(34, 197, 94, 0.1)' : '#ffffff',
+                    color: filterUnreadOnly ? '#22c55e' : '#475569',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    height: '32px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  Não lidas
+                  {chats.filter(c => (c.unreadCount || 0) > 0).length > 0 && (
+                    <span style={{ 
+                      background: '#22c55e', 
+                      color: 'white', 
+                      fontSize: '0.65rem', 
+                      borderRadius: '50%', 
+                      width: '16px', 
+                      height: '16px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      fontWeight: 800
+                    }}>
+                      {chats.filter(c => (c.unreadCount || 0) > 0).length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </header>
+
+            {/* KANBAN BOARD BODY */}
+            <div style={{ flex: 1, display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem', background: '#f1f5f9' }}>
+              {orderedColumns.filter(col => visibleColumns.includes(col.id)).map(col => {
+                const stageChats = filteredChats.filter(chat => {
+                  if (col.id === 'all_channels') return true;
+                  if (col.id === 'instagram') return chat.channel === 'instagram';
+                  if (col.id === 'facebook') return chat.channel === 'facebook';
+                  if (col.id === 'youtube') return chat.channel === 'youtube';
+                  if (col.id === 'tiktok') return chat.channel === 'tiktok';
+                  if (col.id.startsWith('whatsapp_')) {
+                    const connId = col.id.replace('whatsapp_', '');
+                    return chat.channel === 'whatsapp' && chat.connectionId === connId;
+                  }
+                  return chat.etapaAtendimento === col.id || (!chat.etapaAtendimento && col.id === 'novo');
+                });
+                
+                const maxTimeStr = getColumnMaxUnansweredTime(stageChats);
+                
+                return (
+                  <div 
+                    key={col.id}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDropCard(e, col.id)}
+                    style={{ 
+                      width: '280px', 
+                      minWidth: '280px',
+                      background: '#f8fafc', 
+                      borderRadius: '12px', 
+                      border: '1px solid #e2e8f0',
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      maxHeight: '100%',
+                      boxShadow: '0 1px 3px 0 rgba(0,0,0,0.05)',
+                      flexShrink: 0
+                    }}
+                  >
+                    {/* Column Header */}
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{col.name}</span>
+                        <span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.7rem', fontWeight: 800, padding: '2px 6px', borderRadius: '10px' }}>
+                          {stageChats.length}
+                        </span>
+                      </div>
+                      
+                      {maxTimeStr && (
+                        <span 
+                          style={{ 
+                            background: 'rgba(239, 68, 68, 0.1)', 
+                            color: '#ef4444', 
+                            fontSize: '0.65rem', 
+                            fontWeight: 700, 
+                            padding: '2px 6px', 
+                            borderRadius: '6px',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Maior tempo de espera por resposta nesta coluna"
+                        >
+                          Espera: {maxTimeStr}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Column Cards List */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {stageChats.length === 0 ? (
+                        <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem', border: '1px dashed #cbd5e1', borderRadius: '8px' }}>
+                          Solte leads aqui
+                        </div>
+                      ) : (
+                        stageChats.map(chat => {
+                          const isSelected = selectedChatId === chat.id;
+                          const hasUnread = (chat.unreadCount || 0) > 0;
+                          
+                          return (
+                            <div 
+                              key={chat.id}
+                              draggable="true"
+                              onDragStart={(e) => handleDragStartCard(e, chat.id)}
+                              onClick={() => setSelectedChatId(chat.id)}
+                              style={{
+                                padding: '0.85rem',
+                                background: isSelected ? '#eff6ff' : '#ffffff',
+                                borderRadius: '10px',
+                                border: '1px solid ' + (isSelected ? '#3b82f6' : (hasUnread ? '#22c55e' : '#e2e8f0')),
+                                cursor: 'grab',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem'
+                              }}
+                            >
+                              {/* Card Top Row */}
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#cbd5e1', overflow: 'hidden', flexShrink: 0 }}>
+                                  {chat.leadAvatar ? <img src={chat.leadAvatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={14} color="#94a3b8" />}
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {chat.leadName}
+                                  </div>
+                                </div>
+                                <div style={{ flexShrink: 0 }}>
+                                  {getChannelIcon(chat.channel, 14)}
+                                </div>
+                              </div>
+
+                              {/* Last message preview */}
+                              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {chat.lastMessage || 'Iniciando conversa...'}
+                              </p>
+
+                              {/* Card Footer */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                                    {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                  {chat.lastMessageIsIncoming === 1 && (() => {
+                                    const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
+                                    const diffMins = Math.floor(ms / 60000);
+                                    let timeStr = 'Aguardando';
+                                    if (diffMins >= 1) {
+                                      if (diffMins < 60) timeStr = `${diffMins}m`;
+                                      else {
+                                        const diffHours = Math.floor(diffMins / 60);
+                                        if (diffHours < 24) timeStr = `${diffHours}h`;
+                                        else timeStr = `${Math.floor(diffHours / 24)}d`;
+                                      }
+                                    }
+                                    return (
+                                      <span style={{ 
+                                        fontSize: '0.65rem', 
+                                        background: 'rgba(239, 68, 68, 0.1)', 
+                                        color: '#ef4444', 
+                                        padding: '1px 5px', 
+                                        borderRadius: '4px', 
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {timeStr}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
+                                {hasUnread && (
+                                  <span style={{ background: '#22c55e', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', padding: '1px 6px', borderRadius: '10px' }}>
+                                    {chat.unreadCount}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* ÁREA DE CHAT (REPROJETADA COMO DRAWER DE ATENDIMENTO) */}
