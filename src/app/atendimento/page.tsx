@@ -2999,7 +2999,8 @@ function AtendimentoContent() {
                       <select 
                         value={activeChat.connectionId || ''}
                         onChange={(e) => handleChangeChatConnection(e.target.value)}
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                        disabled={userProfile?.role === 'basico'}
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', cursor: userProfile?.role === 'basico' ? 'not-allowed' : 'default', backgroundColor: userProfile?.role === 'basico' ? '#f1f5f9' : 'white' }}
                       >
                         <option value="">Selecione uma conexão...</option>
                         {connections.map(conn => (
