@@ -114,9 +114,21 @@ const executeRun = async (sql: string, params: any[] = []): Promise<any> => {
 
 export const d1Api = {
   // Leads
-  getLeads: async (limitCount: number = 5000): Promise<Lead[]> => {
-    const sql = `SELECT * FROM leads ORDER BY dataUltimaAtividade DESC, dataCriacao DESC LIMIT ?`;
-    const { results } = await runQuery(sql, [limitCount]);
+  getLeads: async (limitCount: number = 5000, connectionId?: string): Promise<Lead[]> => {
+    let sql = `SELECT * FROM leads`;
+    let params: any[] = [];
+    if (connectionId) {
+      sql = `
+        SELECT DISTINCT l.* 
+        FROM leads l
+        INNER JOIN chats c ON c.leadId = l.id
+        WHERE c.connectionId = ?
+      `;
+      params.push(connectionId);
+    }
+    sql += ` ORDER BY dataUltimaAtividade DESC, dataCriacao DESC LIMIT ?`;
+    params.push(limitCount);
+    const { results } = await runQuery(sql, params);
     return (results || []).map((row: any) => ({
       ...row,
       consentimentoLGPD: row.consentimentoLGPD === 1,
@@ -883,8 +895,7 @@ export const d1Api = {
     await executeRun(`UPDATE chats SET etapaAtendimento = ? WHERE id = ?`, [etapa, chatId]);
   },
 
-  // Chats / Inbox
-  getChats: async (assignedTo?: string): Promise<ChatSession[]> => {
+  getChats: async (assignedTo?: string, connectionId?: string): Promise<ChatSession[]> => {
     await d1Api.ensureEtapaAtendimentoColumn();
     let sql = `
       SELECT c.*, 
@@ -892,9 +903,17 @@ export const d1Api = {
       FROM chats c
     `;
     let params: any[] = [];
+    let conditions: string[] = [];
     if (assignedTo) {
-      sql += ` WHERE c.assignedTo = ? `;
+      conditions.push(`c.assignedTo = ?`);
       params.push(assignedTo);
+    }
+    if (connectionId) {
+      conditions.push(`c.connectionId = ?`);
+      params.push(connectionId);
+    }
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(' AND ');
     }
     sql += ` ORDER BY c.lastTimestamp DESC, c.dataCriacao DESC `;
     const { results } = await runQuery(sql, params);
@@ -1911,17 +1930,28 @@ export const d1Api = {
     await executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [opportunity.assignedTo, opportunity.leadId]);
   },
 
-  getOpportunities: async (assignedTo?: string): Promise<Opportunity[]> => {
+  getOpportunities: async (assignedTo?: string, connectionId?: string): Promise<Opportunity[]> => {
     let query = `
       SELECT o.*, l.nome as leadNome, l.celular as leadCelular, l.email as leadEmail, l.origem as leadOrigem
       FROM opportunities o
       LEFT JOIN leads l ON o.leadId = l.id
     `;
     let params: any[] = [];
+    let conditions: string[] = [];
+    
     if (assignedTo) {
-      query += ` WHERE o.assignedTo = ? `;
+      conditions.push(`o.assignedTo = ?`);
       params.push(assignedTo);
     }
+    if (connectionId) {
+      conditions.push(`o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)`);
+      params.push(connectionId);
+    }
+    
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+    
     query += ` ORDER BY o.dataCriacao DESC LIMIT 5000 `;
     
     const { results } = await runQuery(query, params);
@@ -1952,13 +1982,24 @@ export const d1Api = {
     await executeRun(`UPDATE opportunities SET assignedTo = ? WHERE id = ?`, [assignedTo, oppId]);
   },
 
-  getUnreadOpportunitiesCount: async (assignedTo?: string): Promise<number> => {
-    let query = `SELECT COUNT(id) as count FROM opportunities WHERE isRead = 0`;
+  getUnreadOpportunitiesCount: async (assignedTo?: string, connectionId?: string): Promise<number> => {
+    let query = `SELECT COUNT(o.id) as count FROM opportunities o WHERE o.isRead = 0`;
     let params: any[] = [];
+    let conditions: string[] = [];
+    
     if (assignedTo) {
-      query += ` AND assignedTo = ?`;
+      conditions.push(`o.assignedTo = ?`);
       params.push(assignedTo);
     }
+    if (connectionId) {
+      conditions.push(`o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)`);
+      params.push(connectionId);
+    }
+    
+    if (conditions.length > 0) {
+      query += ` AND ` + conditions.join(' AND ');
+    }
+    
     const { results } = await runQuery(query, params);
     return results && results.length > 0 ? results[0].count : 0;
   },

@@ -41,7 +41,7 @@ import {
 import { UserProfile, Lead } from '@/types/crm';
 
 const rolePermissions: Record<string, string[]> = {
-  basico: ['/leads', '/oportunidades', '/chat-interno'],
+  basico: ['/leads', '/oportunidades', '/chat-interno', '/atendimento'],
   intermediario: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/pedidos', '/oportunidades'],
   master: ['/', '/leads', '/atendimento', '/chat-interno', '/bots', '/campanhas', '/segmentacoes', '/relatorios', '/integracoes', '/captura-editor', '/whatsapp', '/bio', '/popups', '/conexoes', '/configuracoes', '/usuarios', '/logs', '/pedidos', '/oportunidades']
 };

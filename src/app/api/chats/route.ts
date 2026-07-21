@@ -60,14 +60,20 @@ export async function GET(req: NextRequest) {
       ?.substring('session_token='.length);
 
     let assignedToFilter: string | undefined = undefined;
+    let connectionIdFilter: string | undefined = undefined;
 
     if (token) {
       try {
         const decoded = await verifyToken(token);
         if (decoded && decoded.uid) {
           const profile = await d1Api.getUserProfile(decoded.uid);
-          if (profile && profile.role !== 'admin' && profile.role !== 'master') {
-            assignedToFilter = decoded.uid;
+          if (profile) {
+            if (profile.role !== 'admin' && profile.role !== 'master') {
+              assignedToFilter = decoded.uid;
+            }
+            if (profile.whatsappConnectionId) {
+              connectionIdFilter = profile.whatsappConnectionId;
+            }
           }
         }
       } catch (err) {
@@ -75,7 +81,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const chats = await d1Api.getChats(assignedToFilter);
+    const chats = await d1Api.getChats(assignedToFilter, connectionIdFilter);
 
     // Tenta resolver avatares em falta para os chats de WhatsApp e renovar avatares expirados do Meta (Instagram/Facebook) antes de retornar
     try {

@@ -37,6 +37,7 @@ export async function GET(request: Request) {
 
     // Determina o filtro de atribuição
     let assignedToFilter: string | undefined = undefined;
+    let connectionIdFilter: string | undefined = undefined;
 
     // Se o usuário não for master/admin, ele só pode ver as próprias oportunidades
     if ((user.role as string) !== 'admin' && (user.role as string) !== 'master') {
@@ -45,12 +46,16 @@ export async function GET(request: Request) {
       assignedToFilter = filterUser;
     }
 
+    if (user.whatsappConnectionId) {
+      connectionIdFilter = user.whatsappConnectionId;
+    }
+
     if (getCountOnly) {
-      const count = await d1Api.getUnreadOpportunitiesCount(assignedToFilter);
+      const count = await d1Api.getUnreadOpportunitiesCount(assignedToFilter, connectionIdFilter);
       return NextResponse.json({ count });
     }
 
-    const opportunities = await d1Api.getOpportunities(assignedToFilter);
+    const opportunities = await d1Api.getOpportunities(assignedToFilter, connectionIdFilter);
     return NextResponse.json(opportunities);
   } catch (error: any) {
     console.error('Erro no GET /api/opportunities:', error);
