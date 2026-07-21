@@ -841,6 +841,29 @@ export default function OportunidadesPage() {
                             >
                               <Send size={16} /> Conversar no WhatsApp Web <ExternalLink size={14} />
                             </a>
+
+                            <Link 
+                              href={`/atendimento?search=${encodeURIComponent(opp.leadCelular || opp.leadNome)}`}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                background: 'var(--primary)', 
+                                color: '#ffffff',
+                                padding: '0.65rem 1rem', 
+                                borderRadius: '8px',
+                                textDecoration: 'none',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)',
+                                transition: 'transform 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                              <MessageSquare size={16} /> Conversa (Sistema)
+                            </Link>
                             
                             <Link 
                               href={`/leads?search=${opp.leadCelular || opp.leadNome}`} 
