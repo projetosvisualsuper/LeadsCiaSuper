@@ -1542,9 +1542,37 @@ function AtendimentoContent() {
                           <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {chat.leadName}
                           </span>
-                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                            {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {chat.lastMessageIsIncoming === 1 && (() => {
+                              const ms = getBusinessTimeMs(new Date(chat.lastTimestamp || chat.dataCriacao || 0), new Date());
+                              const diffMins = Math.floor(ms / 60000);
+                              let timeStr = 'Aguardando';
+                              if (diffMins >= 1) {
+                                if (diffMins < 60) timeStr = `${diffMins}m`;
+                                else {
+                                  const diffHours = Math.floor(diffMins / 60);
+                                  if (diffHours < 24) timeStr = `${diffHours}h`;
+                                  else timeStr = `${Math.floor(diffHours / 24)}d`;
+                                }
+                              }
+                              return (
+                                <span style={{ 
+                                  background: 'rgba(239, 68, 68, 0.1)', 
+                                  color: '#ef4444', 
+                                  padding: '1px 5px', 
+                                  borderRadius: '4px', 
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {timeStr}
+                                </span>
+                              );
+                            })()}
+                            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                              {chat.lastTimestamp ? new Date(chat.lastTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                          </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, marginRight: '8px' }}>
