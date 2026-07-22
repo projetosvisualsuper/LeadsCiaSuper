@@ -25,11 +25,14 @@ if (req.method === 'POST') {
           try {
             const { sql, params } = JSON.parse(body);
             
-            let sqlWithParams = sql;
-            params.forEach(param => {
+            let sqlWithParams = '';
+            let parts = sql.split('?');
+            for (let i = 0; i < parts.length - 1; i++) {
+              const param = params[i];
               const val = typeof param === 'string' ? `'${param.replace(/'/g, "''")}'` : param === null ? 'NULL' : param;
-              sqlWithParams = sqlWithParams.replace('?', val);
-            });
+              sqlWithParams += parts[i] + val;
+            }
+            sqlWithParams += parts[parts.length - 1];
 
             const fs = require('fs');
             const path = require('path');
@@ -39,7 +42,7 @@ if (req.method === 'POST') {
             fs.writeFileSync(tempFilePath, sqlWithParams, 'utf-8');
 
             try {
-              const cmd = `npx wrangler d1 execute gerency-leads-db --file="${tempFilePath}" --local --json`;
+              const cmd = `chcp 65001 > nul && npx wrangler d1 execute gerency-leads-db --file="${tempFilePath}" --local --json`;
               const stdout = execSync(cmd, { 
                 cwd: process.cwd(), 
                 encoding: 'utf-8', 
