@@ -33,6 +33,27 @@ export const automationEngine = {
       const lead = leadResults && leadResults.length > 0 ? leadResults[0] as Lead : null;
       if (!lead) return;
 
+      // Se for mensagem de entrada, pula automações se o lead já tiver consultor atribuído em chat ou oportunidade ativa
+      if (eventType === 'mensagem_entrada') {
+        const { results: chatResults } = await d1Api.runQuery(
+          `SELECT assignedTo FROM chats WHERE leadId = ? AND assignedTo IS NOT NULL AND assignedTo != '' LIMIT 1`,
+          [leadId]
+        );
+        if (chatResults && chatResults.length > 0) {
+          console.log(`[BOT] Lead ${leadId} já possui consultor no chat (${chatResults[0].assignedTo}). Ignorando automação.`);
+          return;
+        }
+
+        const { results: oppResults } = await d1Api.runQuery(
+          `SELECT assignedTo FROM opportunities WHERE leadId = ? AND assignedTo IS NOT NULL AND assignedTo != '' AND status != 'perdida' AND status != 'ganha' AND status != 'arquivada' LIMIT 1`,
+          [leadId]
+        );
+        if (oppResults && oppResults.length > 0) {
+          console.log(`[BOT] Lead ${leadId} já possui consultor na oportunidade (${oppResults[0].assignedTo}). Ignorando automação.`);
+          return;
+        }
+      }
+
       // 2. Buscar todas as automações ativas para o canal atual e também para 'all_channels' (todos os canais)
       const automations = await d1Api.getPipelineAutomations(currentStage);
       const activeAutomations = automations.filter(a => a.ativo === 1 && a.tipoGatilho === eventType);
