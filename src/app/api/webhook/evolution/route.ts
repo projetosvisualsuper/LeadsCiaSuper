@@ -181,7 +181,15 @@ export async function POST(req: NextRequest) {
         // Tenta encontrar o texto em diferentes níveis (v1.x vs v2.x)
         const msg = messageObj.message || messageObj;
         
-        if (msg.conversation) {
+        const reactionObj = msg.reactionMessage || messageObj.reactionMessage;
+        if (reactionObj) {
+          const emoji = reactionObj.text;
+          if (emoji) {
+            messageText = `Reagiu: ${emoji}`;
+          } else {
+            return new NextResponse('OK', { status: 200 });
+          }
+        } else if (msg.conversation) {
           messageText = msg.conversation;
         } else if (msg.extendedTextMessage?.text) {
           messageText = msg.extendedTextMessage.text;
