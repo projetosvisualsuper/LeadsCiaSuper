@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       finalArgs = [args[0], origin];
     } else if (method === 'getLeads') {
       const limitVal = args[0] !== undefined ? args[0] : 5000;
-      finalArgs = [limitVal, connectionIdFilter];
+      finalArgs = [limitVal, undefined];
     } else if (method === 'getChats') {
       finalArgs = [assignedToFilter, connectionIdFilter];
     }
