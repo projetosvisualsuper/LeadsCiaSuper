@@ -2251,43 +2251,45 @@ function AtendimentoContent() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: 'auto' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Etapa:</span>
-                  <select
-                    value={activeChat?.etapaAtendimento || 'novo'}
-                    onChange={async (e) => {
-                      const newStage = e.target.value;
-                      setChats(prev => prev.map(c => c.id === selectedChatId ? { ...c, etapaAtendimento: newStage } : c));
-                      await fetch('/api/chats', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: selectedChatId, etapaAtendimento: newStage })
-                      });
-                      if (activeChat?.leadId) {
-                        await fetch('/api/pipeline-automations/test', {
-                          method: 'POST',
+                {userProfile?.role !== 'basico' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: 'auto' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Etapa:</span>
+                    <select
+                      value={activeChat?.etapaAtendimento || 'novo'}
+                      onChange={async (e) => {
+                        const newStage = e.target.value;
+                        setChats(prev => prev.map(c => c.id === selectedChatId ? { ...c, etapaAtendimento: newStage } : c));
+                        await fetch('/api/chats', {
+                          method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ leadId: activeChat.leadId, currentStage: newStage, eventType: 'quando_criado' })
+                          body: JSON.stringify({ id: selectedChatId, etapaAtendimento: newStage })
                         });
-                      }
-                    }}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '20px',
-                      border: '1px solid #e2e8f0',
-                      background: '#f8fafc',
-                      color: '#0f172a',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                  >
-                    {serviceStages.map(stg => (
-                      <option key={stg.id} value={stg.id}>{stg.name}</option>
-                    ))}
-                  </select>
-                </div>
+                        if (activeChat?.leadId) {
+                          await fetch('/api/pipeline-automations/test', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ leadId: activeChat.leadId, currentStage: newStage, eventType: 'quando_criado' })
+                          });
+                        }
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '20px',
+                        border: '1px solid #e2e8f0',
+                        background: '#f8fafc',
+                        color: '#0f172a',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      {serviceStages.map(stg => (
+                        <option key={stg.id} value={stg.id}>{stg.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </header>
 

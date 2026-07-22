@@ -376,14 +376,16 @@ export default function OportunidadesPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button 
-            type="button"
-            onClick={() => setIsAutomationModalOpen(true)}
-            title="Configurar Automações"
-            style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', cursor: 'pointer', padding: '0.5rem 1rem', color: '#1e40af', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-          >
-            <Zap size={16} /> Automações
-          </button>
+          {currentUser?.role !== 'basico' && (
+            <button 
+              type="button"
+              onClick={() => setIsAutomationModalOpen(true)}
+              title="Configurar Automações"
+              style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', cursor: 'pointer', padding: '0.5rem 1rem', color: '#1e40af', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <Zap size={16} /> Automações
+            </button>
+          )}
           <button 
             onClick={fetchOpportunities} 
             disabled={loading}
@@ -409,49 +411,53 @@ export default function OportunidadesPage() {
         flexWrap: 'wrap',
         alignItems: 'flex-end'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '180px', flex: 1 }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Vendedor / Responsável</label>
-          <select 
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-            style={{ 
-              padding: '0.45rem 0.75rem', 
-              borderRadius: '8px', 
-              border: '1px solid #cbd5e1', 
-              fontSize: '0.8rem', 
-              background: 'white',
-              outline: 'none',
-              height: '36px'
-            }}
-          >
-            <option value="todos">Todos os Vendedores</option>
-            {systemUsers.map(u => (
-              <option key={u.uid} value={u.uid}>{u.displayName || u.email}</option>
-            ))}
-          </select>
-        </div>
+        {currentUser?.role !== 'basico' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '180px', flex: 1 }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Vendedor / Responsável</label>
+            <select 
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              style={{ 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #cbd5e1', 
+                fontSize: '0.8rem', 
+                background: 'white',
+                outline: 'none',
+                height: '36px'
+              }}
+            >
+              <option value="todos">Todos os Vendedores</option>
+              {systemUsers.map(u => (
+                <option key={u.uid} value={u.uid}>{u.displayName || u.email}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '180px', flex: 1 }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Conexão / Canal</label>
-          <select 
-            value={filterConnection}
-            onChange={(e) => setFilterConnection(e.target.value)}
-            style={{ 
-              padding: '0.45rem 0.75rem', 
-              borderRadius: '8px', 
-              border: '1px solid #cbd5e1', 
-              fontSize: '0.8rem', 
-              background: 'white',
-              outline: 'none',
-              height: '36px'
-            }}
-          >
-            <option value="todos">Todas as Conexões</option>
-            {uniqueConnections.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
+        {currentUser?.role !== 'basico' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '180px', flex: 1 }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Conexão / Canal</label>
+            <select 
+              value={filterConnection}
+              onChange={(e) => setFilterConnection(e.target.value)}
+              style={{ 
+                padding: '0.45rem 0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #cbd5e1', 
+                fontSize: '0.8rem', 
+                background: 'white',
+                outline: 'none',
+                height: '36px'
+              }}
+            >
+              <option value="todos">Todas as Conexões</option>
+              {uniqueConnections.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flex: 1, minWidth: '250px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '120px' }}>
