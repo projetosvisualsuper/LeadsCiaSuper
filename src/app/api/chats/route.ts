@@ -74,10 +74,10 @@ export async function GET(req: NextRequest) {
         if (decoded && decoded.uid) {
           const profile = await d1Api.getUserProfile(decoded.uid);
           if (profile) {
-            if (profile.role !== 'admin' && profile.role !== 'master') {
+            if (profile.role !== 'admin' && profile.role !== 'master' && profile.role !== 'intermediario') {
               assignedToFilter = decoded.uid;
             }
-            if (profile.whatsappConnectionId) {
+            if (profile.role !== 'intermediario' && profile.whatsappConnectionId) {
               connectionIdFilter = profile.whatsappConnectionId;
             }
           }
