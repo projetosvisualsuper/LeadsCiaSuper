@@ -1933,6 +1933,11 @@ export const d1Api = {
     );
     // Também atualiza a atribuição do chat
     await executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [opportunity.assignedTo, opportunity.leadId]);
+    
+    // Sincronizar a conexão do chat com o consultor atribuído
+    if (opportunity.assignedTo) {
+      await d1Api.syncChatConnectionWithAssignedUser(opportunity.leadId, opportunity.assignedTo);
+    }
   },
 
   getOpportunities: async (assignedTo?: string, connectionId?: string): Promise<Opportunity[]> => {
@@ -1987,6 +1992,9 @@ export const d1Api = {
       const leadId = results[0].leadId;
       // Atualiza a atribuição do chat correspondente
       await executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [assignedTo, leadId]);
+      
+      // Sincronizar a conexão do chat com o consultor atribuído
+      await d1Api.syncChatConnectionWithAssignedUser(leadId, assignedTo);
     }
     // Atualiza a oportunidade
     await executeRun(`UPDATE opportunities SET assignedTo = ? WHERE id = ?`, [assignedTo, oppId]);
@@ -2017,6 +2025,25 @@ export const d1Api = {
     
     const { results } = await runQuery(query, params);
     return results && results.length > 0 ? results[0].count : 0;
+  },
+
+  syncChatConnectionWithAssignedUser: async (leadId: string, assignedTo: string): Promise<void> => {
+    try {
+      if (!assignedTo) return;
+      const userProfile = await d1Api.getUserProfile(assignedTo);
+      if (userProfile && userProfile.whatsappConnectionId) {
+        const { results: connRes } = await runQuery(`SELECT name, evolutionInstanceName FROM whatsapp_connections WHERE id = ? LIMIT 1`, [userProfile.whatsappConnectionId]);
+        if (connRes && connRes.length > 0) {
+          const connName = connRes[0].name || connRes[0].evolutionInstanceName || 'WhatsApp';
+          await executeRun(
+            `UPDATE chats SET connectionId = ?, connectionName = ? WHERE leadId = ?`,
+            [userProfile.whatsappConnectionId, connName, leadId]
+          );
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao sincronizar conexão do chat com usuário atribuído:', e);
+    }
   },
 
   deleteOpportunity: async (oppId: string): Promise<void> => {
