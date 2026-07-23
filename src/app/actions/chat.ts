@@ -42,6 +42,43 @@ export async function sendOmnichannelMessageAction(
     if (channel === 'whatsapp') {
       let targetConnectionId = connectionId;
 
+      // Buscar se o lead está atribuído a algum consultor que tenha conexão própria
+      try {
+        let leadId = recipientIdOrPhone;
+        // Encontrar o lead associado pelo telefone se for um número de WhatsApp
+        if (!recipientIdOrPhone.includes('@') && recipientIdOrPhone.replace(/\D/g, '').length >= 8) {
+          let cleanPhone = recipientIdOrPhone.replace(/\D/g, '');
+          let strippedPhone = cleanPhone;
+          if (cleanPhone.startsWith('55') && cleanPhone.length >= 12) {
+            strippedPhone = cleanPhone.substring(2);
+          }
+          const { results: leadRes } = await d1Api.runQuery(
+            `SELECT id FROM leads WHERE celular LIKE ? OR telefone LIKE ? LIMIT 1`,
+            [`%${strippedPhone}%`, `%${strippedPhone}%`]
+          );
+          if (leadRes && leadRes.length > 0) {
+            leadId = leadRes[0].id;
+          }
+        }
+
+        const { results: chatRes } = await d1Api.runQuery(`SELECT assignedTo FROM chats WHERE leadId = ? LIMIT 1`, [leadId]);
+        let assignedTo = chatRes?.[0]?.assignedTo;
+        
+        if (!assignedTo) {
+          const { results: oppRes } = await d1Api.runQuery(`SELECT assignedTo FROM opportunities WHERE leadId = ? LIMIT 1`, [leadId]);
+          assignedTo = oppRes?.[0]?.assignedTo;
+        }
+
+        if (assignedTo) {
+          const userProfile = await d1Api.getUserProfile(assignedTo);
+          if (userProfile && userProfile.whatsappConnectionId) {
+            targetConnectionId = userProfile.whatsappConnectionId;
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao resolver conexão do consultor no envio:', err);
+      }
+
       // Se não temos um ID de conexão, ou se queremos garantir que usamos a principal
       if (!targetConnectionId) {
         const connections = await d1Api.getWhatsappConnections();
