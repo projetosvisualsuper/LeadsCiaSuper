@@ -19,9 +19,10 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = await file.arrayBuffer();
-    const extension = file.name.split('.').pop() || 'bin';
-    const safeName = Math.random().toString(36).substring(2, 10);
-    const fileName = `${chatId}/${safeName}.${extension}`;
+    const originalName = file.name;
+    const cleanOriginalName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const safeFolder = Math.random().toString(36).substring(2, 10);
+    const fileName = `${chatId}/${safeFolder}/${cleanOriginalName}`;
 
     await bucket.put(fileName, buffer, {
       httpMetadata: { contentType: file.type }
