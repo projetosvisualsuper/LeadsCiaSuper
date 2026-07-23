@@ -130,9 +130,15 @@ export const automationEngine = {
 
         // Ação: Atribuir Usuário
         if (auto.atribuirUsuarioId) {
-          // Atualiza o lead e também a atribuição de chat/oportunidade
-          await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [auto.atribuirUsuarioId, lead.id]);
-          await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [auto.atribuirUsuarioId, lead.id]);
+          const targetUser = await d1Api.getUserProfile(auto.atribuirUsuarioId);
+          if (targetUser && targetUser.absenceEnabled === 1) {
+            console.log(`[AUTOMATION] Consultor ${auto.atribuirUsuarioId} está ausente. Não atribuindo lead.`);
+          } else {
+            // Atualiza o lead e também a atribuição de chat/oportunidade
+            await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [auto.atribuirUsuarioId, lead.id]);
+            await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [auto.atribuirUsuarioId, lead.id]);
+            await d1Api.syncChatConnectionWithAssignedUser(lead.id, auto.atribuirUsuarioId);
+          }
         }
 
         // Ação: Alterar Etapa do Lead
@@ -634,18 +640,24 @@ export const automationEngine = {
         } else if (currentNode.type === 'action') {
           const actionType = currentNode.data?.actionType || '';
           
-          if (actionType === 'Mudar usuário resp.') {
+           if (actionType === 'Mudar usuário resp.') {
             const targetUserId = currentNode.data?.targetUserId;
             if (targetUserId) {
-              await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`, [new Date().toISOString(), lead.id]);
-              await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
-              
-              // Verifica se a oportunidade existe para este lead, se não, cria uma nova
-              const { results: opps } = await d1Api.runQuery(`SELECT id FROM opportunities WHERE leadId = ? LIMIT 1`, [lead.id]);
-              if (opps && opps.length > 0) {
-                await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+              const targetUser = await d1Api.getUserProfile(targetUserId);
+              if (targetUser && targetUser.absenceEnabled === 1) {
+                console.log(`[BOT] Consultor ${targetUserId} está ausente. Não mudando usuário responsável.`);
               } else {
-                await d1Api.saveOpportunity({ leadId: lead.id, assignedTo: targetUserId });
+                await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ? WHERE id = ?`, [new Date().toISOString(), lead.id]);
+                await d1Api.executeRun(`UPDATE chats SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+                
+                // Verifica se a oportunidade existe para este lead, se não, cria uma nova
+                const { results: opps } = await d1Api.runQuery(`SELECT id FROM opportunities WHERE leadId = ? LIMIT 1`, [lead.id]);
+                if (opps && opps.length > 0) {
+                  await d1Api.executeRun(`UPDATE opportunities SET assignedTo = ? WHERE leadId = ?`, [targetUserId, lead.id]);
+                } else {
+                  await d1Api.saveOpportunity({ leadId: lead.id, assignedTo: targetUserId });
+                }
+                await d1Api.syncChatConnectionWithAssignedUser(lead.id, targetUserId);
               }
             }
           } else if (actionType === 'Mudar o status do lead') {

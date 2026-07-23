@@ -754,12 +754,14 @@ export const d1Api = {
 
   // User Management
   getUserProfile: async (uid: string): Promise<UserProfile | null> => {
+    await d1Api.ensureUserAbsenceColumns();
     const { results } = await runQuery(`SELECT * FROM users WHERE uid = ? LIMIT 1`, [uid]);
     if (!results || results.length === 0) return null;
     return results[0] as UserProfile;
   },
 
   createUserProfile: async (profile: UserProfile): Promise<UserProfile> => {
+    await d1Api.ensureUserAbsenceColumns();
     // Se for o primeiro usuário, aprova automaticamente como admin
     const { results: anyUsers } = await runQuery(`SELECT uid FROM users LIMIT 1`);
     if (!anyUsers || anyUsers.length === 0) {
@@ -768,11 +770,12 @@ export const d1Api = {
     }
 
     const sql = `
-      INSERT INTO users (uid, email, name, status, role, dataSolicitacao, dataAprovacao, whatsappConnectionId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (uid, email, name, status, role, dataSolicitacao, dataAprovacao, whatsappConnectionId, absenceEnabled, absenceMessage)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(uid) DO UPDATE SET
         email = excluded.email, name = excluded.name, status = excluded.status, role = excluded.role,
-        whatsappConnectionId = excluded.whatsappConnectionId
+        whatsappConnectionId = excluded.whatsappConnectionId,
+        absenceEnabled = excluded.absenceEnabled, absenceMessage = excluded.absenceMessage
     `;
     const params = [
       profile.uid,
@@ -782,7 +785,9 @@ export const d1Api = {
       profile.role,
       profile.dataSolicitacao || new Date().toISOString(),
       profile.dataAprovacao || null,
-      profile.whatsappConnectionId || null
+      profile.whatsappConnectionId || null,
+      profile.absenceEnabled || 0,
+      profile.absenceMessage || ''
     ];
     await executeRun(sql, params);
     return profile;
@@ -801,6 +806,7 @@ export const d1Api = {
   },
 
   getAllUserProfiles: async (): Promise<UserProfile[]> => {
+    await d1Api.ensureUserAbsenceColumns();
     const { results } = await runQuery(`SELECT * FROM users ORDER BY dataSolicitacao DESC`);
     return results as UserProfile[];
   },
@@ -888,6 +894,15 @@ export const d1Api = {
     } catch (e) {
       // Ignora se a coluna já existir
     }
+  },
+
+  ensureUserAbsenceColumns: async (): Promise<void> => {
+    try {
+      await executeRun(`ALTER TABLE users ADD COLUMN absenceEnabled INTEGER DEFAULT 0`);
+    } catch (e) {}
+    try {
+      await executeRun(`ALTER TABLE users ADD COLUMN absenceMessage TEXT DEFAULT ''`);
+    } catch (e) {}
   },
 
   updateChatEtapa: async (chatId: string, etapa: string): Promise<void> => {

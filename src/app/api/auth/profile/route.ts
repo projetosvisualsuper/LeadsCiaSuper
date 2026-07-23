@@ -24,14 +24,19 @@ export async function PATCH(request: Request) {
     }
 
     const data = await request.json();
-    const { avatarUrl } = data;
+    const { avatarUrl, absenceEnabled, absenceMessage } = data;
 
-    if (avatarUrl === undefined) {
+    const updates: any = {};
+    if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+    if (absenceEnabled !== undefined) updates.absenceEnabled = absenceEnabled;
+    if (absenceMessage !== undefined) updates.absenceMessage = absenceMessage;
+
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json({ success: false, message: 'Nenhum dado fornecido para atualização.' }, { status: 400 });
     }
 
     // Atualizar no banco
-    await d1Api.updateUserProfile(decoded.uid, { avatarUrl });
+    await d1Api.updateUserProfile(decoded.uid, updates);
 
     // Buscar perfil atualizado
     const profile = await d1Api.getUserProfile(decoded.uid);

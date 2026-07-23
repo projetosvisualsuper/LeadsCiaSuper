@@ -287,6 +287,8 @@ export interface UserProfile {
   dataSolicitacao: string;
   dataAprovacao?: string;
   whatsappConnectionId?: string;
+  absenceEnabled?: number;
+  absenceMessage?: string;
 }
 
 export interface Segmentation {

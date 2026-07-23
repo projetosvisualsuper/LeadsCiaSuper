@@ -528,6 +528,7 @@ export async function POST(req: NextRequest) {
       
       const hasChat = chatResults && chatResults.length > 0;
       let matchedChat = hasChat ? chatResults[0] : null;
+      let activeAssignedTo: string | undefined = undefined;
 
       // Se o chat foi encontrado no formato antigo (sem o 9), migramos as tabelas para o formato novo (com 9)
       if (matchedChat && matchedChat.id === oldChatId && oldChatId !== chatId) {
@@ -573,7 +574,15 @@ export async function POST(req: NextRequest) {
           `SELECT uid FROM users WHERE whatsappConnectionId = ? LIMIT 1`,
           [connectionId]
         );
-        const assignedToId = linkedUsers && linkedUsers.length > 0 ? linkedUsers[0].uid : undefined;
+        let assignedToId = linkedUsers && linkedUsers.length > 0 ? linkedUsers[0].uid : undefined;
+        if (assignedToId) {
+          const targetUser = await d1Api.getUserProfile(assignedToId);
+          if (targetUser && targetUser.absenceEnabled === 1) {
+            console.log(`[WEBHOOK] Dono da conexão ${assignedToId} está ausente. Deixando chat sem atribuição.`);
+            assignedToId = undefined;
+          }
+        }
+        activeAssignedTo = assignedToId;
 
         // Criar nova sessão de chat
         const newChat: ChatSession = {
@@ -644,9 +653,15 @@ export async function POST(req: NextRequest) {
             [connectionId]
           );
           if (linkedUsers && linkedUsers.length > 0) {
-            assignedTo = linkedUsers[0].uid;
+            const targetUser = await d1Api.getUserProfile(linkedUsers[0].uid);
+            if (targetUser && targetUser.absenceEnabled === 1) {
+              console.log(`[WEBHOOK] Dono da conexão ${linkedUsers[0].uid} está ausente. Não vinculando automaticamente.`);
+            } else {
+              assignedTo = linkedUsers[0].uid;
+            }
           }
         }
+        activeAssignedTo = assignedTo;
 
         await d1Api.executeRun(
           `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ?, leadAvatar = ?, assignedTo = ? WHERE id = ?`,
@@ -690,6 +705,28 @@ export async function POST(req: NextRequest) {
           }
         } catch (err) {
           console.error('Falha ao verificar Autoresponder:', err);
+        }
+      }
+
+      // 6.C Mensagem de Ausência do Consultor Atribuído
+      if (!isFromMe && activeAssignedTo) {
+        try {
+          const consultant = await d1Api.getUserProfile(activeAssignedTo);
+          if (consultant && consultant.absenceEnabled === 1 && consultant.absenceMessage) {
+            // Apenas enviar se for a primeira mensagem não lida
+            const isFirstUnread = !hasChat || (matchedChat && (matchedChat.unreadCount || 0) === 0);
+            if (isFirstUnread) {
+              console.log(`[ABSENCE] Consultor ${activeAssignedTo} está ausente. Enviando mensagem de ausência.`);
+              sendOmnichannelMessageAction(
+                phoneNumber,
+                'whatsapp',
+                consultant.absenceMessage,
+                connectionId
+              ).catch(err => console.error('Erro ao enviar mensagem de ausência:', err));
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao verificar mensagem de ausência:', err);
         }
       }
 

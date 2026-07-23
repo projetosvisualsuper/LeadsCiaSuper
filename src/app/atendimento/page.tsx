@@ -222,6 +222,48 @@ function AtendimentoContent() {
   const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
   const [customAlert, setCustomAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
+  // Estados para Ausência de Consultores
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
+  const [absenceEnabled, setAbsenceEnabled] = useState(false);
+  const [absenceMessage, setAbsenceMessage] = useState('');
+  const [savingAbsence, setSavingAbsence] = useState(false);
+
+  useEffect(() => {
+    if (userProfile) {
+      setAbsenceEnabled(userProfile.absenceEnabled === 1);
+      setAbsenceMessage(userProfile.absenceMessage || '');
+    }
+  }, [userProfile]);
+
+  const handleSaveAbsence = async () => {
+    setSavingAbsence(true);
+    try {
+      const response = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          absenceEnabled: absenceEnabled ? 1 : 0,
+          absenceMessage: absenceMessage
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setUserProfile(data.user);
+          showAlert('Configurações de ausência salvas com sucesso!', 'success');
+          setShowAbsenceModal(false);
+        }
+      } else {
+        showAlert('Erro ao salvar configurações de ausência.', 'error');
+      }
+    } catch (err) {
+      console.error('Erro ao salvar ausência:', err);
+      showAlert('Erro interno ao salvar configurações.', 'error');
+    } finally {
+      setSavingAbsence(false);
+    }
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem('crm_hidden_messages');
     if (saved) {
@@ -1426,11 +1468,41 @@ function AtendimentoContent() {
           <>
             {/* Header simplificado estilo WhatsApp */}
             <header style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <MessageSquare size={20} color="var(--primary)" />
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
-                  Atendimento
-                </h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <MessageSquare size={20} color="var(--primary)" />
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+                    Atendimento
+                  </h2>
+                </div>
+                {/* Botão de Ausência */}
+                <button
+                  type="button"
+                  onClick={() => setShowAbsenceModal(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: userProfile?.absenceEnabled ? '#fee2e2' : '#f8fafc',
+                    color: userProfile?.absenceEnabled ? '#991b1b' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: userProfile?.absenceEnabled ? '#ef4444' : '#22c55e',
+                    display: 'inline-block'
+                  }}></span>
+                  {userProfile?.absenceEnabled ? 'Ausente' : 'Disponível'}
+                </button>
               </div>
               
               {/* Busca */}
@@ -1607,6 +1679,35 @@ function AtendimentoContent() {
                     <MessageSquare size={24} color="var(--primary)" />
                     Funil de Atendimento
                   </h2>
+                  {/* Botão de Ausência */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAbsenceModal(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: userProfile?.absenceEnabled ? '#fee2e2' : '#f8fafc',
+                      color: userProfile?.absenceEnabled ? '#991b1b' : '#334155',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      height: '32px'
+                    }}
+                  >
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: userProfile?.absenceEnabled ? '#ef4444' : '#22c55e',
+                      display: 'inline-block'
+                    }}></span>
+                    {userProfile?.absenceEnabled ? 'Ausente' : 'Disponível'}
+                  </button>
                 </div>
                 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -3600,6 +3701,161 @@ function AtendimentoContent() {
         }}>
           <span>{customAlert.message}</span>
           <button onClick={() => setCustomAlert(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginLeft: '0.5rem', fontSize: '1rem', fontWeight: 'bold' }}>&times;</button>
+        </div>
+      )}
+
+      {/* MODAL DE AUSÊNCIA */}
+      {showAbsenceModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '450px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            overflow: 'hidden'
+          }}>
+            <header style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Clock size={20} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>
+                  Mensagem de Ausência
+                </h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowAbsenceModal(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Toggle de Ativo/Inativo */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block' }}>
+                    Modo Ausente
+                  </label>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                    Ative para disparar respostas automáticas e parar de receber novos leads.
+                  </span>
+                </div>
+                <div 
+                  onClick={() => setAbsenceEnabled(!absenceEnabled)}
+                  style={{
+                    width: '46px',
+                    height: '24px',
+                    background: absenceEnabled ? '#ef4444' : '#cbd5e1',
+                    borderRadius: '12px',
+                    position: 'relative',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s',
+                    padding: '2px'
+                  }}
+                >
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    background: 'white',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    left: absenceEnabled ? '24px' : '2px',
+                    top: '2px',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                  }}></div>
+                </div>
+              </div>
+
+              {/* Textarea da Mensagem */}
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>
+                  Mensagem de Ausência
+                </label>
+                <textarea
+                  value={absenceMessage}
+                  onChange={(e) => setAbsenceMessage(e.target.value)}
+                  placeholder="Olá! No momento estou ausente e não poderei responder. Assim que retornar entrarei em contato!"
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                    resize: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </div>
+
+            <footer style={{
+              padding: '1rem 1.5rem',
+              background: '#f8fafc',
+              borderTop: '1px solid #f1f5f9',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowAbsenceModal(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  color: '#475569'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAbsence}
+                disabled={savingAbsence}
+                style={{
+                  padding: '0.5rem 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'var(--primary)',
+                  color: 'white',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: savingAbsence ? 'wait' : 'pointer',
+                  opacity: savingAbsence ? 0.7 : 1
+                }}
+              >
+                {savingAbsence ? 'Salvando...' : 'Salvar'}
+              </button>
+            </footer>
+          </div>
         </div>
       )}
     </div>
