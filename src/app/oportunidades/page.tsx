@@ -870,7 +870,7 @@ export default function OportunidadesPage() {
                             </a>
 
                             <Link 
-                              href={`/atendimento?search=${encodeURIComponent(opp.leadCelular || opp.leadNome)}`}
+                              href={`/atendimento?search=${encodeURIComponent(opp.leadCelular || opp.leadNome)}&leadId=${opp.leadId}&name=${encodeURIComponent(opp.leadNome)}`}
                               style={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 

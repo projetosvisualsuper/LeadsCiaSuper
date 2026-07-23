@@ -28,7 +28,13 @@ export async function GET(req: NextRequest) {
         if (cleanPhone.startsWith('55') && cleanPhone.length >= 12) {
           strippedPhone = cleanPhone.substring(2);
         }
-        query = `SELECT * FROM leads WHERE id = ? OR celular LIKE ? OR telefone LIKE ? LIMIT 1`;
+        query = `
+          SELECT * FROM leads 
+          WHERE id = ? 
+             OR REPLACE(REPLACE(REPLACE(REPLACE(celular, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ? 
+             OR REPLACE(REPLACE(REPLACE(REPLACE(telefone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ? 
+          LIMIT 1
+        `;
         params = [leadId, `%${strippedPhone}%`, `%${strippedPhone}%`];
       }
 

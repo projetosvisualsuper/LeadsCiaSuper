@@ -251,6 +251,7 @@ function AtendimentoContent() {
         const url = new URL(window.location.href);
         url.searchParams.delete('search');
         url.searchParams.delete('name');
+        url.searchParams.delete('leadId');
         window.history.replaceState(null, '', url.pathname + url.search);
       }
     } else {
@@ -1019,6 +1020,7 @@ function AtendimentoContent() {
       const chatId = `whatsapp_${cleanNumber}`;
       const legacyChatId = `${cleanNumber}@s.whatsapp.net`;
       const leadNameFromUrl = searchParams.get('name');
+      const leadIdFromUrl = searchParams.get('leadId');
       
       // Verifica se já existe (prevenção para não duplicar a conversa)
       const existing = chats.find(c => 
@@ -1034,7 +1036,7 @@ function AtendimentoContent() {
 
       const newChat: ChatSession = {
         id: chatId,
-        leadId: cleanNumber,
+        leadId: leadIdFromUrl || cleanNumber,
         leadName: leadNameFromUrl || `Lead ${cleanNumber}`,
         channel: 'whatsapp',
         lastMessage: 'Iniciando conversa...',
