@@ -904,13 +904,18 @@ export const d1Api = {
     `;
     let params: any[] = [];
     let conditions: string[] = [];
-    if (assignedTo) {
-      conditions.push(`c.assignedTo = ?`);
-      params.push(assignedTo);
-    }
-    if (connectionId) {
-      conditions.push(`c.connectionId = ?`);
-      params.push(connectionId);
+    if (assignedTo && connectionId) {
+      conditions.push(`(c.assignedTo = ? OR (c.assignedTo IS NULL AND c.connectionId = ?))`);
+      params.push(assignedTo, connectionId);
+    } else {
+      if (assignedTo) {
+        conditions.push(`c.assignedTo = ?`);
+        params.push(assignedTo);
+      }
+      if (connectionId) {
+        conditions.push(`c.connectionId = ?`);
+        params.push(connectionId);
+      }
     }
     if (conditions.length > 0) {
       sql += ` WHERE ` + conditions.join(' AND ');
@@ -1939,13 +1944,18 @@ export const d1Api = {
     let params: any[] = [];
     let conditions: string[] = [];
     
-    if (assignedTo) {
-      conditions.push(`o.assignedTo = ?`);
-      params.push(assignedTo);
-    }
-    if (connectionId) {
-      conditions.push(`o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)`);
-      params.push(connectionId);
+    if (assignedTo && connectionId) {
+      conditions.push(`(o.assignedTo = ? OR (o.assignedTo IS NULL AND o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)))`);
+      params.push(assignedTo, connectionId);
+    } else {
+      if (assignedTo) {
+        conditions.push(`o.assignedTo = ?`);
+        params.push(assignedTo);
+      }
+      if (connectionId) {
+        conditions.push(`o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)`);
+        params.push(connectionId);
+      }
     }
     
     if (conditions.length > 0) {
@@ -1987,13 +1997,18 @@ export const d1Api = {
     let params: any[] = [];
     let conditions: string[] = [];
     
-    if (assignedTo) {
-      conditions.push(`o.assignedTo = ?`);
-      params.push(assignedTo);
-    }
-    if (connectionId) {
-      conditions.push(`o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)`);
-      params.push(connectionId);
+    if (assignedTo && connectionId) {
+      conditions.push(`(o.assignedTo = ? OR (o.assignedTo IS NULL AND o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)))`);
+      params.push(assignedTo, connectionId);
+    } else {
+      if (assignedTo) {
+        conditions.push(`o.assignedTo = ?`);
+        params.push(assignedTo);
+      }
+      if (connectionId) {
+        conditions.push(`o.leadId IN (SELECT leadId FROM chats WHERE connectionId = ?)`);
+        params.push(connectionId);
+      }
     }
     
     if (conditions.length > 0) {
