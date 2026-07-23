@@ -14,6 +14,49 @@ export async function POST(req: NextRequest) {
     console.error(JSON.stringify(body, null, 2));
     console.error('#################################################');
 
+    // --- EVENTOS DE EXCLUSÃO DE MENSAGENS DIRETAS (messages.delete) ---
+    if (body.event === 'messages.delete') {
+      const data = body.data;
+      if (data && data.key && data.key.id) {
+        const targetMessageId = data.key.id;
+        console.log(`🗑️ Mensagem deletada via evento messages.delete: ${targetMessageId}`);
+        await d1Api.executeRun(`DELETE FROM messages WHERE id = ?`, [targetMessageId]);
+      }
+      return new NextResponse('OK', { status: 200 });
+    }
+
+    // --- EVENTOS DE CHAT (Arquivamento e Exclusão) ---
+    if (body.event === 'chats.update' || body.event === 'chats.upsert') {
+      const data = body.data;
+      if (data && data.id) {
+        const phoneNumber = data.id.split('@')[0];
+        const chatId = `whatsapp_${phoneNumber}`;
+        
+        // Verificar se é arquivamento
+        if (data.archive !== undefined) {
+          const isArchived = data.archive === true;
+          const status = isArchived ? 'archived' : 'active';
+          console.log(`📦 Chat ${chatId} status alterado no WhatsApp: ${status}`);
+          await d1Api.executeRun(`UPDATE chats SET status = ? WHERE id = ?`, [status, chatId]);
+        }
+      }
+      return new NextResponse('OK', { status: 200 });
+    }
+
+    if (body.event === 'chats.delete') {
+      const data = body.data;
+      if (data && data.id) {
+        const phoneNumber = data.id.split('@')[0];
+        const chatId = `whatsapp_${phoneNumber}`;
+        console.log(`🗑️ Chat deletado no WhatsApp: ${chatId}`);
+        
+        // Deletar chat e mensagens correspondentes do CRM
+        await d1Api.executeRun(`DELETE FROM chats WHERE id = ?`, [chatId]);
+        await d1Api.executeRun(`DELETE FROM messages WHERE chatId = ?`, [chatId]);
+      }
+      return new NextResponse('OK', { status: 200 });
+    }
+
     // A Evolution envia vários eventos, queremos focar em novas mensagens
     if (body.event === 'messages.upsert' || body.event === 'messages.update') {
       const instanceName = body.instance;
@@ -174,6 +217,89 @@ export async function POST(req: NextRequest) {
       
       // Extrair o texto da mensagem (A estrutura da Evolution/Baileys varia entre versões)
       const messageObj = data.message;
+
+      // 1. Verificar se é uma mensagem apagada/revogada (Delete for Everyone)
+      const isRevoked = 
+        data.messageStubType === 'REVOKE' || 
+        data.messageStubType === 68 ||
+        (messageObj?.protocolMessage && (messageObj.protocolMessage.type === 3 || messageObj.protocolMessage.type === 'REVOKE'));
+
+      if (isRevoked) {
+        const targetMessageId = messageObj?.protocolMessage?.key?.id || data.key.id;
+        console.log(`🗑️ Mensagem apagada no WhatsApp: ${targetMessageId}`);
+        
+        await d1Api.executeRun(`DELETE FROM messages WHERE id = ?`, [targetMessageId]);
+        
+        // Atualiza a última mensagem do chat correspondente
+        try {
+          const { results: lastMsgs } = await d1Api.runQuery(
+            `SELECT content, timestamp FROM messages WHERE chatId = ? ORDER BY timestamp DESC LIMIT 1`,
+            [`whatsapp_${phoneNumber}`]
+          );
+          if (lastMsgs && lastMsgs.length > 0) {
+            await d1Api.executeRun(
+              `UPDATE chats SET lastMessage = ?, lastTimestamp = ? WHERE id = ?`,
+              [lastMsgs[0].content, lastMsgs[0].timestamp, `whatsapp_${phoneNumber}`]
+            );
+          } else {
+            await d1Api.executeRun(
+              `UPDATE chats SET lastMessage = 'Conversa iniciada', lastTimestamp = ? WHERE id = ?`,
+              [new Date().toISOString(), `whatsapp_${phoneNumber}`]
+            );
+          }
+        } catch (e) {
+          console.error('Erro ao atualizar última mensagem do chat pós-delete:', e);
+        }
+        return new NextResponse('OK', { status: 200 });
+      }
+
+      // 2. Verificar se é uma mensagem editada
+      const isEdited = 
+        messageObj?.protocolMessage && 
+        (messageObj.protocolMessage.type === 14 || messageObj.protocolMessage.type === 'MESSAGE_EDIT');
+
+      if (isEdited) {
+        const targetMessageId = messageObj.protocolMessage.key.id;
+        const protoMsg = messageObj.protocolMessage.editedMessage?.message || messageObj.protocolMessage.editedMessage;
+        const editedText = protoMsg?.conversation || 
+                           protoMsg?.extendedTextMessage?.text || 
+                           protoMsg?.imageMessage?.caption || 
+                           protoMsg?.videoMessage?.caption || 
+                           '';
+        
+        console.log(`✏️ Mensagem editada no WhatsApp: ${targetMessageId} -> ${editedText}`);
+        if (editedText) {
+          await d1Api.executeRun(`UPDATE messages SET content = ? WHERE id = ?`, [editedText, targetMessageId]);
+          
+          try {
+            await d1Api.executeRun(
+              `UPDATE chats SET lastMessage = ? WHERE id = ? AND (SELECT id FROM messages WHERE chatId = ? ORDER BY timestamp DESC LIMIT 1) = ?`,
+              [editedText, `whatsapp_${phoneNumber}`, `whatsapp_${phoneNumber}`, targetMessageId]
+            );
+          } catch (e) {}
+        }
+        return new NextResponse('OK', { status: 200 });
+      }
+
+      // 3. Se for um evento update que traz mensagem direta atualizada (Edição em algumas versões)
+      if (body.event === 'messages.update' && messageObj && !isEdited && !isRevoked) {
+        const msg = messageObj.message || messageObj;
+        const editedText = msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption;
+        if (editedText) {
+          const targetMessageId = data.key.id;
+          console.log(`✏️ Mensagem atualizada/editada via update: ${targetMessageId} -> ${editedText}`);
+          await d1Api.executeRun(`UPDATE messages SET content = ? WHERE id = ?`, [editedText, targetMessageId]);
+          
+          try {
+            await d1Api.executeRun(
+              `UPDATE chats SET lastMessage = ? WHERE id = ? AND (SELECT id FROM messages WHERE chatId = ? ORDER BY timestamp DESC LIMIT 1) = ?`,
+              [editedText, `whatsapp_${phoneNumber}`, `whatsapp_${phoneNumber}`, targetMessageId]
+            );
+          } catch (e) {}
+        }
+        return new NextResponse('OK', { status: 200 });
+      }
+
       let messageText = '';
       let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
       
