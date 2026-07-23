@@ -266,9 +266,28 @@ export const automationEngine = {
 
         // 1. Executar a ação do nó atual
         if (currentNode.type === 'sendMessage') {
+          // Buscar consultor atualmente atribuído ao lead (se houver)
+          let consultantName = '';
+          let consultantPhone = '';
+
+          const { results: chatRes } = await d1Api.runQuery(`SELECT assignedTo FROM chats WHERE leadId = ? LIMIT 1`, [lead.id]);
+          const assignedUserId = chatRes?.[0]?.assignedTo;
+          if (assignedUserId) {
+            const consultant = await d1Api.getUserProfile(assignedUserId);
+            if (consultant) {
+              consultantName = consultant.name || '';
+              if (consultant.whatsappConnectionId) {
+                const conn = await d1Api.getWhatsappConnectionById(consultant.whatsappConnectionId);
+                consultantPhone = conn?.phoneNumber || '';
+              }
+            }
+          }
+
           const messageText = (currentNode.data?.message || '')
             .replace('[Contato: Primeiro nome]', lead.nome.split(' ')[0])
-            .replace('[Contato: Nome completo]', lead.nome);
+            .replace('[Contato: Nome completo]', lead.nome)
+            .replace(/\[Consultor:\s*Nome\]/gi, consultantName)
+            .replace(/\[Consultor:\s*Telefone\]/gi, consultantPhone);
 
           const phone = lead.celular || lead.telefone;
           console.log(`[BOT] sendMessage: phone=${phone ? 'ok' : 'MISSING'} msgLen=${messageText.length} nodeId=${currentNode.id}`);
@@ -613,17 +632,51 @@ export const automationEngine = {
               }
             }
             
-            const nextIndex = (lastIndex + 1) % options.length;
-            const chosenOption = options[nextIndex];
-            
-            console.log(`[BOT] RoundRobin: último=${lastIndex}, próximo=${nextIndex}, opção:`, JSON.stringify(chosenOption));
+            // Filtrar opções para pular consultores ausentes (se a opção estiver vinculada a um nó de alteração de usuário)
+            let selectedOption = null;
+            let selectedIndex = lastIndex;
+
+            for (let i = 1; i <= options.length; i++) {
+              const candidateIndex = (lastIndex + i) % options.length;
+              const candidateOption = options[candidateIndex];
+              const candidateHandleId = `opt-${candidateOption.id}`;
+              const candidateEdge = edges.find((e: any) => e.source === currentNode.id && e.sourceHandle === candidateHandleId);
+
+              if (candidateEdge) {
+                const targetNode = nodes.find((n: any) => n.id === candidateEdge.target);
+                // Se o nó destino for uma ação de mudar usuário, verificar ausência
+                if (targetNode && targetNode.type === 'action' && targetNode.data?.actionType === 'Mudar usuário resp.') {
+                  const targetUserId = targetNode.data?.targetUserId;
+                  if (targetUserId) {
+                    const targetUser = await d1Api.getUserProfile(targetUserId);
+                    if (targetUser && targetUser.absenceEnabled === 1) {
+                      console.log(`[BOT] RoundRobin: Consultor ${targetUserId} (${targetUser.name}) está ausente. Pulando opção ${candidateOption.id}.`);
+                      continue; // Pula este consultor e testa o próximo da fila!
+                    }
+                  }
+                }
+              }
+
+              // Se passou pela verificação, escolhe este candidato
+              selectedOption = candidateOption;
+              selectedIndex = candidateIndex;
+              break;
+            }
+
+            // Fallback caso todos estejam ausentes: usa a ordem padrão
+            if (!selectedOption) {
+              selectedIndex = (lastIndex + 1) % options.length;
+              selectedOption = options[selectedIndex];
+            }
+
+            console.log(`[BOT] RoundRobin: último=${lastIndex}, escolhido=${selectedIndex}, opção:`, JSON.stringify(selectedOption));
 
             await d1Api.executeRun(
               `INSERT OR REPLACE INTO settings (key, valueJson) VALUES (?, ?)`,
-              [stateKey, JSON.stringify(nextIndex)]
+              [stateKey, JSON.stringify(selectedIndex)]
             );
             
-            const targetHandleId = `opt-${chosenOption.id}`;
+            const targetHandleId = `opt-${selectedOption.id}`;
             console.log(`[BOT] RoundRobin: buscando aresta com sourceHandle="${targetHandleId}"`);
             const branchEdge = edges.find((e: any) => e.source === currentNode.id && e.sourceHandle === targetHandleId);
             
