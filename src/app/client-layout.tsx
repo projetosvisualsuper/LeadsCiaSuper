@@ -538,7 +538,17 @@ export default function ClientLayout({
     try {
       const data = await api.getWhatsappConnections();
       if (Array.isArray(data)) {
-        const disconnected = data.filter((c: any) => c.status !== 'connected');
+        let disconnected = data.filter((c: any) => c.status !== 'connected');
+        
+        // Se não for admin ou master, mostrar apenas a conexão vinculada ao usuário logado
+        if (userProfile && userProfile.role !== 'admin' && userProfile.role !== 'master') {
+          if (userProfile.whatsappConnectionId) {
+            disconnected = disconnected.filter((c: any) => c.id === userProfile.whatsappConnectionId);
+          } else {
+            disconnected = [];
+          }
+        }
+        
         setDisconnectedConnections(disconnected);
       }
     } catch (e) {
