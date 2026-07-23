@@ -25,6 +25,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ key:
     headers.set('etag', object.httpEtag);
     headers.set('Cache-Control', 'public, max-age=31536000'); // Cache longo (1 ano) já que as mensagens não mudam
 
+    const { searchParams } = new URL(req.url);
+    const shouldDownload = searchParams.get('download') === 'true';
+    if (shouldDownload) {
+      const filename = fileKey.split('/').pop() || 'arquivo';
+      headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    }
+
     return new NextResponse(object.body, {
       status: 200,
       headers

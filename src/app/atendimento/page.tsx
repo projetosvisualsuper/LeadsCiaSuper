@@ -34,7 +34,8 @@ import {
   Square,
   Plus,
   Upload,
-  Zap
+  Zap,
+  Download
 } from 'lucide-react';
 import PipelineAutomationModal from '@/components/bots/PipelineAutomationModal';
 
@@ -2460,27 +2461,47 @@ function AtendimentoContent() {
                       {msg.mediaUrl ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {msg.type === 'image' && (
-                            <img 
-                              src={msg.mediaUrl} 
-                              alt="Imagem" 
-                              style={{ maxWidth: '100%', maxHeight: '250px', display: 'block', borderRadius: '8px', cursor: 'pointer' }} 
-                              onClick={() => window.open(msg.mediaUrl, '_blank')}
-                            />
+                            <div style={{ position: 'relative', width: 'fit-content', maxWidth: '100%' }}>
+                              <img 
+                                src={msg.mediaUrl} 
+                                alt="Imagem" 
+                                style={{ maxWidth: '100%', maxHeight: '250px', display: 'block', borderRadius: '8px', cursor: 'pointer' }} 
+                                onClick={() => window.open(msg.mediaUrl, '_blank')}
+                              />
+                              <a href={`${msg.mediaUrl}?download=true`} download style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', borderRadius: '6px', textDecoration: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} title="Baixar imagem">
+                                <Download size={16} />
+                              </a>
+                            </div>
                           )}
                           {msg.type === 'video' && (
-                            <video 
-                              src={msg.mediaUrl} 
-                              controls 
-                              style={{ maxWidth: '100%', maxHeight: '250px', display: 'block', borderRadius: '8px' }} 
-                            />
+                            <div style={{ position: 'relative', width: 'fit-content', maxWidth: '100%' }}>
+                              <video 
+                                src={msg.mediaUrl} 
+                                controls 
+                                style={{ maxWidth: '100%', maxHeight: '250px', display: 'block', borderRadius: '8px' }} 
+                              />
+                              <a href={`${msg.mediaUrl}?download=true`} download style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', borderRadius: '6px', textDecoration: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} title="Baixar vídeo">
+                                <Download size={16} />
+                              </a>
+                            </div>
                           )}
                           {msg.type === 'audio' && (
-                            <AudioPlayer src={msg.mediaUrl} isIncoming={msg.isIncoming} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                              <AudioPlayer src={msg.mediaUrl} isIncoming={msg.isIncoming} />
+                              <a href={`${msg.mediaUrl}?download=true`} download style={{ color: msg.isIncoming ? '#475569' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', textDecoration: 'none', flexShrink: 0 }} title="Baixar áudio">
+                                <Download size={16} />
+                              </a>
+                            </div>
                           )}
                           {msg.type === 'file' && (
-                            <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(0,0,0,0.05)', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
-                              <Paperclip size={16} /> <span>Abrir Documento</span>
-                            </a>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', maxWidth: '280px' }}>
+                              <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'rgba(0,0,0,0.05)', padding: '0.5rem 0.75rem', borderRadius: '8px', flex: 1, minWidth: 0 }}>
+                                <Paperclip size={16} style={{ flexShrink: 0 }} /> <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>Visualizar</span>
+                              </a>
+                              <a href={`${msg.mediaUrl}?download=true`} download style={{ color: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', textDecoration: 'none', flexShrink: 0 }} title="Baixar arquivo">
+                                <Download size={16} />
+                              </a>
+                            </div>
                           )}
                           {/* Renderiza a legenda (se houver) e não for os textos padrão */}
                           {msg.content && !['📷 Imagem', '🎥 Vídeo', '🎵 Áudio', '📄 Documento'].includes(msg.content) && (

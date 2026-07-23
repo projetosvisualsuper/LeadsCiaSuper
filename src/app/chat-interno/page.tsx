@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { InternalChat, InternalMessage, UserProfile } from '@/types/crm';
-import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward, ChevronLeft, ChevronDown, Upload, Phone } from 'lucide-react';
+import { Search, Plus, Send, User, Users, MoreVertical, MessageSquare, Paperclip, Smile, Check, CheckCheck, Info, X, FileText, Image as ImageIcon, Pencil, Trash2, Camera, UserPlus, UserMinus, Mic, Square, Reply, Forward, ChevronLeft, ChevronDown, Upload, Phone, Download } from 'lucide-react';
 
 const EMOJIS = ['😀','😂','😍','😭','🙏','👍','🔥','❤️','🎉','😊','😎','🤔','😡','🥺','✨','💯','🙌','👏','👀','🚀'];
 
@@ -1282,14 +1282,29 @@ export default function ChatInternoPage() {
                                 {msg.mediaUrl && (
                                   <div style={{ marginBottom: '0.25rem' }}>
                                     {msg.mediaMimeType?.startsWith('audio') || msg.mediaUrl.match(/\.(webm|mp3|ogg|wav|m4a)$/i) ? (
-                                      <AudioPlayer src={msg.mediaUrl} isIncoming={!isMe} />
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                                        <AudioPlayer src={msg.mediaUrl} isIncoming={!isMe} />
+                                        <a href={`${msg.mediaUrl}?download=true`} download style={{ color: !isMe ? '#475569' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', textDecoration: 'none', flexShrink: 0 }} title="Baixar áudio">
+                                          <Download size={16} />
+                                        </a>
+                                      </div>
                                     ) : msg.mediaMimeType?.startsWith('image') || msg.mediaUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                                      <img src={msg.mediaUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.mediaUrl, '_blank')} />
+                                      <div style={{ position: 'relative', width: 'fit-content', maxWidth: '100%' }}>
+                                        <img src={msg.mediaUrl} alt="Anexo" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => window.open(msg.mediaUrl, '_blank')} />
+                                        <a href={`${msg.mediaUrl}?download=true`} download style={{ position: 'absolute', top: '8px', right: '8px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', borderRadius: '6px', textDecoration: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} title="Baixar imagem">
+                                          <Download size={16} />
+                                        </a>
+                                      </div>
                                     ) : (
-                                      <a href={msg.mediaUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit' }}>
-                                        <FileText size={20} />
-                                        <span style={{ fontSize: '0.85rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Arquivo Anexo</span>
-                                      </a>
+                                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', maxWidth: '280px' }}>
+                                        <a href={msg.mediaUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '4px', textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
+                                          <FileText size={20} style={{ flexShrink: 0 }} />
+                                          <span style={{ fontSize: '0.85rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>Visualizar</span>
+                                        </a>
+                                        <a href={`${msg.mediaUrl}?download=true`} download style={{ color: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', textDecoration: 'none', flexShrink: 0 }} title="Baixar arquivo">
+                                          <Download size={16} />
+                                        </a>
+                                      </div>
                                     )}
                                   </div>
                                 )}

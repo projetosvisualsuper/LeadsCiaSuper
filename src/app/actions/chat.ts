@@ -234,12 +234,24 @@ export async function sendOmnichannelMessageAction(
             if (quotedObj) payload.quoted = quotedObj;
           } else {
             evolutionReqUrl = `${apiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
+            
+            let filename = 'documento.pdf';
+            try {
+              const urlParts = finalMediaUrl.split('/');
+              const lastPart = urlParts[urlParts.length - 1];
+              if (lastPart && lastPart.includes('.')) {
+                filename = decodeURIComponent(lastPart);
+              }
+            } catch (e) {}
+
             payload = {
               number: cleanNumber,
               mediatype: mt,
               mimetype: mediaMimeType || "application/octet-stream",
               caption: text !== 'Arquivo enviado' && !text.startsWith('Arquivo enviado:') ? text : '',
               media: finalMediaUrl,
+              fileName: filename,
+              filename: filename,
               options: defaultOptions
             };
             if (quotedObj) payload.quoted = quotedObj;
