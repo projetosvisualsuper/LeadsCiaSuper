@@ -94,6 +94,11 @@ export default function ClientLayout({
   const [unreadLogsCount, setUnreadLogsCount] = useState(0);
   const [unreadPedidosCount, setUnreadPedidosCount] = useState(0);
   const [unreadOportunidadesCount, setUnreadOportunidadesCount] = useState(0);
+  const [socialUnreadCount, setSocialUnreadCount] = useState(0);
+  const prevWhatsappUnreadRef = useRef(0);
+  const prevSocialUnreadRef = useRef(0);
+  const isInitialWhatsappRef = useRef(true);
+  const isInitialSocialRef = useRef(true);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [disconnectedConnections, setDisconnectedConnections] = useState<any[]>([]);
 
@@ -558,7 +563,8 @@ export default function ClientLayout({
           const res = await fetch(`/api/chats/unread?t=${Date.now()}`);
           const data = await res.json();
           if (data.unreadCount !== undefined) {
-            setWhatsappUnreadCount(data.unreadCount);
+            setWhatsappUnreadCount(data.whatsappCount || 0);
+            setSocialUnreadCount(data.socialCount || 0);
           }
         } catch(e) { }
       };
@@ -588,7 +594,7 @@ export default function ClientLayout({
         fetchUnreadChats();
         fetchWhatsappUnread();
         checkConnectionsStatus();
-      }, 30000); // Check a cada 30s
+      }, 15000); // Check a cada 15s
 
       const handleVisibilityChange = () => {
         if (!document.hidden) {
@@ -705,6 +711,87 @@ export default function ClientLayout({
       console.error('Falha ao tocar som de notificação:', e);
     }
   };
+
+  // Função para tocar sinal sonoro de redes sociais (triplo tom ascendente) usando Web Audio API
+  const playSocialChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      
+      // Tom 1 - grave médio com onda triangular
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(440, now); // Lá4
+      osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // Mi5
+      gain1.gain.setValueAtTime(0.4, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.4);
+
+      // Tom 2 - agudo
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(659.25, now + 0.1); // Mi5
+      osc2.frequency.exponentialRampToValueAtTime(987.77, now + 0.22); // Si5
+      gain2.gain.setValueAtTime(0.4, now + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.1);
+      osc2.stop(now + 0.5);
+
+      // Tom 3 - mais agudo
+      const osc3 = audioCtx.createOscillator();
+      const gain3 = audioCtx.createGain();
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(987.77, now + 0.2); // Si5
+      osc3.frequency.exponentialRampToValueAtTime(1318.51, now + 0.35); // Mi6
+      gain3.gain.setValueAtTime(0.4, now + 0.2);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc3.connect(gain3);
+      gain3.connect(audioCtx.destination);
+      osc3.start(now + 0.2);
+      osc3.stop(now + 0.6);
+    } catch (e) {
+      console.error('Falha ao tocar som de notificação de rede social:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (isInitialWhatsappRef.current) {
+      prevWhatsappUnreadRef.current = whatsappUnreadCount;
+      isInitialWhatsappRef.current = false;
+      return;
+    }
+    if (whatsappUnreadCount > prevWhatsappUnreadRef.current) {
+      api.getSettings().then(settings => {
+        if (settings?.notificacoes?.novasMensagens !== false) {
+          playChime();
+        }
+      }).catch(() => playChime());
+    }
+    prevWhatsappUnreadRef.current = whatsappUnreadCount;
+  }, [whatsappUnreadCount]);
+
+  useEffect(() => {
+    if (isInitialSocialRef.current) {
+      prevSocialUnreadRef.current = socialUnreadCount;
+      isInitialSocialRef.current = false;
+      return;
+    }
+    if (socialUnreadCount > prevSocialUnreadRef.current) {
+      api.getSettings().then(settings => {
+        if (settings?.notificacoes?.novasMensagens !== false) {
+          playSocialChime();
+        }
+      }).catch(() => playSocialChime());
+    }
+    prevSocialUnreadRef.current = socialUnreadCount;
+  }, [socialUnreadCount]);
 
   const lastLeadIdRef = useRef<string | null>(null);
 

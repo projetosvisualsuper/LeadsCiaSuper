@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
       ?.substring('session_token='.length);
 
     let sql = `
-      SELECT COUNT(id) as unreadCount 
+      SELECT 
+        SUM(CASE WHEN channel = 'whatsapp' THEN 1 ELSE 0 END) as whatsappCount,
+        SUM(CASE WHEN channel != 'whatsapp' THEN 1 ELSE 0 END) as socialCount,
+        COUNT(id) as unreadCount
       FROM chats 
       WHERE unreadCount > 0
     `;
@@ -37,9 +40,12 @@ export async function GET(req: NextRequest) {
     }
 
     const { results } = await (d1Api as any).runQuery(sql, params);
-    const unreadCount = results?.[0]?.unreadCount || 0;
+    const resultRow = results?.[0] || {};
+    const unreadCount = resultRow.unreadCount || 0;
+    const whatsappCount = resultRow.whatsappCount || 0;
+    const socialCount = resultRow.socialCount || 0;
 
-    return NextResponse.json({ unreadCount });
+    return NextResponse.json({ unreadCount, whatsappCount, socialCount });
   } catch (error: any) {
     console.error('Error in GET /api/chats/unread:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
