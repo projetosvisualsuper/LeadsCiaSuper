@@ -280,47 +280,22 @@ export async function POST(req: NextRequest) {
           await processMetaMessage(body.object, entry.id, leadId, messageText, messageType, isEcho, '', mediaUrl);
         }
         
-        // 2. Processar Comentários
+        // 2. Processar Comentários e Formulários (Leadgen)
         const changes = entry.changes || [];
         for (const change of changes) {
-          if (change.field !== 'comments') continue;
-          const commentValue = change.value;
-          if (!commentValue || !commentValue.from || !commentValue.text) continue;
-          
-          let messageText = `[Comentário na Postagem]: ${commentValue.text}`;
-          let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
-          let commentMediaUrl = null;
-          let isEcho = false;
-          let tempLeadName = commentValue.from.username || commentValue.from.name || '';
-          let leadId = commentValue.from.id;
-          
-          // Buscar imagem do post/comentário
-          const mediaId = commentValue.media?.id;
-          if (mediaId) {
-            try {
-              const settings = await d1Api.getSettings();
-              const token = body.object === 'instagram' 
-                ? ((settings as any)?.omnichannel?.instagramAccessToken || (settings as any)?.instagramAccessToken)
-                : ((settings as any)?.omnichannel?.messengerAccessToken || (settings as any)?.messengerAccessToken);
-
-              if (token) {
-                const mediaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}?fields=media_url,thumbnail_url,media_type&access_token=${token}`);
-                if (mediaRes.ok) {
-                  const mediaData = await mediaRes.json();
-                  commentMediaUrl = mediaData.media_url || mediaData.thumbnail_url || null;
-                  if (commentMediaUrl) {
-                    messageType = 'image';
-                  }
-                }
-              }
-            } catch (e) {
-              console.error("Erro ao buscar media do comentario:", e);
-            }
-          }
-          
-          if (commentValue.from.id === entry.id) {
-            isEcho = true;
-            if (commentValue.parent_id) {
+          if (change.field === 'comments') {
+            const commentValue = change.value;
+            if (!commentValue || !commentValue.from || !commentValue.text) continue;
+            
+            let messageText = `[Comentário na Postagem]: ${commentValue.text}`;
+            let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
+            let commentMediaUrl = null;
+            let isEcho = false;
+            let tempLeadName = commentValue.from.username || commentValue.from.name || '';
+            let leadId = commentValue.from.id;
+            
+            const mediaId = commentValue.media?.id;
+            if (mediaId) {
               try {
                 const settings = await d1Api.getSettings();
                 const token = body.object === 'instagram' 
@@ -328,22 +303,161 @@ export async function POST(req: NextRequest) {
                   : ((settings as any)?.omnichannel?.messengerAccessToken || (settings as any)?.messengerAccessToken);
 
                 if (token) {
-                  const parentRes = await fetch(`https://graph.facebook.com/v19.0/${commentValue.parent_id}?fields=from&access_token=${token}`);
-                  if (parentRes.ok) {
-                    const parentData = await parentRes.json();
-                    if (parentData.from && parentData.from.id) {
-                      leadId = parentData.from.id;
-                      tempLeadName = parentData.from.username || parentData.from.name || '';
-                    }
+                  const mediaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}?fields=media_url,thumbnail_url,media_type&access_token=${token}`);
+                  if (mediaRes.ok) {
+                    const mediaData = await mediaRes.json();
+                    commentMediaUrl = mediaData.media_url || mediaData.thumbnail_url || null;
+                    if (commentMediaUrl) messageType = 'image';
                   }
                 }
-              } catch (e) {
-                console.error("Erro ao buscar parent comment:", e);
+              } catch (e) { console.error("Erro ao buscar media do comentario:", e); }
+            }
+            
+            if (commentValue.from.id === entry.id) {
+              isEcho = true;
+              if (commentValue.parent_id) {
+                try {
+                  const settings = await d1Api.getSettings();
+                  const token = body.object === 'instagram' 
+                    ? ((settings as any)?.omnichannel?.instagramAccessToken || (settings as any)?.instagramAccessToken)
+                    : ((settings as any)?.omnichannel?.messengerAccessToken || (settings as any)?.messengerAccessToken);
+
+                  if (token) {
+                    const parentRes = await fetch(`https://graph.facebook.com/v19.0/${commentValue.parent_id}?fields=from&access_token=${token}`);
+                    if (parentRes.ok) {
+                      const parentData = await parentRes.json();
+                      if (parentData.from && parentData.from.id) {
+                        leadId = parentData.from.id;
+                        tempLeadName = parentData.from.username || parentData.from.name || '';
+                      }
+                    }
+                  }
+                } catch (e) { console.error("Erro ao buscar parent comment:", e); }
+              }
+            }
+            
+            await processMetaMessage(body.object, entry.id, leadId, messageText, messageType, isEcho, tempLeadName, commentMediaUrl);
+          }
+
+          // 3. Processar Formulários de Lead (Lead Ads / Instant Forms)
+          if (change.field === 'leadgen') {
+            const leadgenValue = change.value;
+            if (leadgenValue && leadgenValue.leadgen_id) {
+              const leadgenId = leadgenValue.leadgen_id;
+              const pageId = leadgenValue.page_id || entry.id;
+              console.log(`📌 Novo Formulário de Lead recebido (Leadgen ID: ${leadgenId})`);
+
+              try {
+                const settings = await d1Api.getSettings();
+                const token = body.object === 'instagram' 
+                  ? ((settings as any)?.omnichannel?.instagramAccessToken || (settings as any)?.instagramAccessToken)
+                  : ((settings as any)?.omnichannel?.messengerAccessToken || (settings as any)?.messengerAccessToken);
+
+                if (token) {
+                  // Consultar dados do lead via Meta Graph API
+                  const leadRes = await fetch(`https://graph.facebook.com/v19.0/${leadgenId}?access_token=${token}`);
+                  if (leadRes.ok) {
+                    const leadData = await leadRes.json();
+                    const fieldData = leadData.field_data || [];
+
+                    let nome = '';
+                    let email = '';
+                    let telefone = '';
+                    let observacoes: string[] = [];
+
+                    fieldData.forEach((field: any) => {
+                      const name = (field.name || '').toLowerCase();
+                      const val = Array.isArray(field.values) ? field.values[0] : field.values;
+                      if (!val) return;
+
+                      if (name.includes('full_name') || name.includes('nome') || name.includes('first_name')) {
+                        nome = val;
+                      } else if (name.includes('email') || name.includes('e-mail')) {
+                        email = val;
+                      } else if (name.includes('phone') || name.includes('telefone') || name.includes('celular')) {
+                        telefone = val.replace(/\D/g, '');
+                      } else {
+                        observacoes.push(`${field.name}: ${val}`);
+                      }
+                    });
+
+                    const cleanPhone = telefone ? (telefone.length === 10 || telefone.length === 11 ? '55' + telefone : telefone) : '';
+                    const leadId = cleanPhone || `meta_lead_${leadgenId}`;
+
+                    // Criar ou Atualizar Lead no CRM com a tag #instagram-lead-ads
+                    await d1Api.saveLead({
+                      id: leadId,
+                      nome: nome || `Lead Instagram (${leadgenId.substr(0,6)})`,
+                      email: email || '',
+                      celular: cleanPhone,
+                      telefone: cleanPhone,
+                      origem: 'Instagram Lead Ads',
+                      status: 'novo',
+                      tags: ['#instagram-lead-ads', '#meta-lead'],
+                      consentimentoLGPD: true,
+                      observacoes: `[FORMULÁRIO INSTAGRAM]\n${observacoes.join('\n')}`,
+                      isMetaLead: true,
+                      dataCriacao: new Date().toISOString()
+                    });
+
+                    console.log(`✅ Lead salvo via Instagram Leadgen API: ${nome} (${cleanPhone})`);
+                  }
+                }
+              } catch (leadgenErr) {
+                console.error('Erro ao processar webhook Leadgen da Meta:', leadgenErr);
               }
             }
           }
-          
-          await processMetaMessage(body.object, entry.id, leadId, messageText, messageType, isEcho, tempLeadName, commentMediaUrl);
+        }
+      }
+    } else if (body.object === 'page') {
+      const entries = body.entry || [];
+      for (const entry of entries) {
+        const changes = entry.changes || [];
+        for (const change of changes) {
+          if (change.field === 'leadgen') {
+            const leadgenValue = change.value;
+            if (leadgenValue && leadgenValue.leadgen_id) {
+              const leadgenId = leadgenValue.leadgen_id;
+              console.log(`📌 Novo Leadgen da Página (ID: ${leadgenId})`);
+              try {
+                const settings = await d1Api.getSettings();
+                const token = (settings as any)?.omnichannel?.messengerAccessToken || (settings as any)?.messengerAccessToken;
+                if (token) {
+                  const leadRes = await fetch(`https://graph.facebook.com/v19.0/${leadgenId}?access_token=${token}`);
+                  if (leadRes.ok) {
+                    const leadData = await leadRes.json();
+                    const fieldData = leadData.field_data || [];
+                    let nome = '', email = '', telefone = '', observacoes: string[] = [];
+                    fieldData.forEach((field: any) => {
+                      const name = (field.name || '').toLowerCase();
+                      const val = Array.isArray(field.values) ? field.values[0] : field.values;
+                      if (!val) return;
+                      if (name.includes('full_name') || name.includes('nome')) nome = val;
+                      else if (name.includes('email')) email = val;
+                      else if (name.includes('phone') || name.includes('telefone')) telefone = val.replace(/\D/g, '');
+                      else observacoes.push(`${field.name}: ${val}`);
+                    });
+                    const cleanPhone = telefone ? (telefone.length === 10 || telefone.length === 11 ? '55' + telefone : telefone) : '';
+                    await d1Api.saveLead({
+                      id: cleanPhone || `meta_lead_${leadgenId}`,
+                      nome: nome || `Lead Meta (${leadgenId.substr(0,6)})`,
+                      email: email || '',
+                      celular: cleanPhone,
+                      telefone: cleanPhone,
+                      origem: 'Meta Lead Ads',
+                      status: 'novo',
+                      tags: ['#meta-lead-ads'],
+                      consentimentoLGPD: true,
+                      observacoes: `[FORMULÁRIO META]\n${observacoes.join('\n')}`,
+                      isMetaLead: true,
+                      dataCriacao: new Date().toISOString()
+                    });
+                  }
+                }
+              } catch (e) { console.error('Erro no leadgen page:', e); }
+            }
+          }
         }
       }
     } else if (body.object === 'whatsapp_business_account') {
