@@ -671,13 +671,40 @@ function LeadsContent() {
                 type="text" 
                 placeholder="Buscar por nome, empresa ou contato..." 
                 className="btn-outline"
-                style={{ width: '100%', paddingLeft: '2.5rem', borderRadius: 'var(--radius)', height: '42px', border: '1px solid var(--border)' }}
+                style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem', borderRadius: 'var(--radius)', height: '42px', border: '1px solid var(--border)' }}
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1); // Volta para pag 1 ao buscar
                 }}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                    borderRadius: '50%'
+                  }}
+                  title="Limpar pesquisa"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
             <div style={{ position: 'relative' }}>
               <button 
