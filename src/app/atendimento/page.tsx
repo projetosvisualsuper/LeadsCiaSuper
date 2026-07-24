@@ -3894,6 +3894,10 @@ function AtendimentoContent() {
                 {savingAbsence ? 'Salvando...' : 'Salvar'}
               </button>
             </footer>
+          </div>
+        </div>
+      )}
+
       {/* MODAL INICIAR NOVA CONVERSA WHATSAPP */}
       {showNewChatModal && (
         <div style={{
