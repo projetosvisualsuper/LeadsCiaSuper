@@ -178,6 +178,7 @@ function LeadsContent() {
     email: '',
     telefone: '',
     celular: '',
+    documento: '',
     origem: 'Manual',
     status: 'novo' as LeadStatus,
     tags: '',
@@ -214,6 +215,7 @@ function LeadsContent() {
       email: formData.email,
       telefone: formData.telefone,
       celular: formData.celular,
+      documento: formData.documento,
       origem: formData.origem,
       dataCriacao: editingLead?.dataCriacao || new Date().toISOString(),
       status: formData.status,
@@ -238,6 +240,7 @@ function LeadsContent() {
         email: lead.email,
         telefone: lead.telefone || '',
         celular: lead.celular || '',
+        documento: lead.documento || '',
         origem: lead.origem,
         status: lead.status,
         tags: lead.tags.join(', '),
@@ -253,6 +256,7 @@ function LeadsContent() {
         email: '',
         telefone: '',
         celular: '',
+        documento: '',
         origem: 'Manual',
         status: 'novo',
         tags: '',
@@ -1044,6 +1048,10 @@ function LeadsContent() {
                     <p style={{ fontWeight: 500 }}>{viewingLead.telefone || 'Não informado'}</p>
                   </div>
                   <div>
+                    <p style={{ fontSize: '0.75rem', opacity: 0.5 }}>CPF / CNPJ</p>
+                    <p style={{ fontWeight: 500 }}>{viewingLead.documento || 'Não informado'}</p>
+                  </div>
+                  <div>
                     <p style={{ fontSize: '0.75rem', opacity: 0.5 }}>Empresa</p>
                     <p style={{ fontWeight: 500 }}>{viewingLead.empresa || 'Não informado'}</p>
                   </div>
@@ -1285,6 +1293,17 @@ function LeadsContent() {
                   <option value="convertido">Convertido</option>
                   <option value="perdido">Perdido</option>
                 </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem' }}>CPF ou CNPJ</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: 000.000.000-00 ou 00.000.000/0001-00" 
+                  className="btn-outline" 
+                  style={{ width: '100%', height: '40px', padding: '0 0.75rem' }} 
+                  value={formData.documento} 
+                  onChange={e => setFormData({...formData, documento: e.target.value})}
+                />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Empresa</label>
