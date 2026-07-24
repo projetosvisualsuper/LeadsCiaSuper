@@ -590,7 +590,20 @@ function AtendimentoContent() {
     e.preventDefault();
     if (!newMessage.trim() || !selectedChatId) return;
 
-    const chat = chats.find(c => c.id === selectedChatId);
+    let chat = chats.find(c => c.id === selectedChatId);
+    if (!chat && selectedChatId) {
+      const cleanPhone = selectedChatId.replace(/^whatsapp_|^instagram_|^facebook_/, '');
+      chat = {
+        id: selectedChatId,
+        leadId: cleanPhone,
+        leadName: selectedLead?.nome || `Lead ${cleanPhone}`,
+        lastMessage: newMessage,
+        lastTimestamp: new Date().toISOString(),
+        unreadCount: 0,
+        dataCriacao: new Date().toISOString(),
+        channel: selectedChatId.startsWith('instagram_') ? 'instagram' : selectedChatId.startsWith('facebook_') ? 'facebook' : 'whatsapp'
+      } as any;
+    }
     if (!chat) return;
 
     const msg: any = {
