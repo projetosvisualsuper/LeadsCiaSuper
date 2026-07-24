@@ -25,7 +25,7 @@ export async function sendOmnichannelMessageAction(
         return { success: false, error: `Token de acesso não configurado para ${channel}.` };
       }
 
-      const response = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, {
+      const response = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -35,7 +35,14 @@ export async function sendOmnichannelMessageAction(
       });
 
       const data = await response.json();
-      return response.ok ? { success: true, data } : { success: false, error: data.error?.message || 'Erro na API (Meta)' };
+      
+      if (!response.ok) {
+        console.error(`Erro no envio Meta (${channel}):`, JSON.stringify(data));
+        const errorMsg = data.error?.message || 'Erro desconhecido na API da Meta';
+        return { success: false, error: `${errorMsg} (Código: ${data.error?.code || response.status})` };
+      }
+
+      return { success: true, data };
     }
 
     // 2. Lógica para WHATSAPP

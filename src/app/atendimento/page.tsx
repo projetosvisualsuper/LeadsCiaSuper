@@ -228,6 +228,10 @@ function AtendimentoContent() {
   const [absenceMessage, setAbsenceMessage] = useState('');
   const [savingAbsence, setSavingAbsence] = useState(false);
 
+  // Estado para Iniciar Nova Conversa WhatsApp
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState('');
+
   useEffect(() => {
     if (userProfile) {
       setAbsenceEnabled(userProfile.absenceEnabled === 1);
@@ -331,13 +335,13 @@ function AtendimentoContent() {
 
   // Efeito para auto-iniciar ou abrir a conversa ao carregar busca de telefone/lead
   useEffect(() => {
-    if (isUrlInitiated.current && chats.length > 0 && searchQuery && !selectedChatId && hasAutoStarted.current !== searchQuery) {
+    if (isUrlInitiated.current && searchQuery && !selectedChatId && hasAutoStarted.current !== searchQuery) {
       let cleanNumber = searchQuery.replace(/\D/g, '');
       if (cleanNumber.length === 10 || cleanNumber.length === 11) {
         cleanNumber = '55' + cleanNumber;
       }
       
-      const existing = chats.find(c => 
+      let existing = chats.find(c => 
         c.id === `whatsapp_${cleanNumber}` || 
         c.id === `${cleanNumber}@s.whatsapp.net` || 
         (c.leadId && c.leadId.includes(cleanNumber)) ||
@@ -348,12 +352,21 @@ function AtendimentoContent() {
         setSelectedChatId(existing.id);
         hasAutoStarted.current = searchQuery;
         isUrlInitiated.current = false;
-      } else {
-        if (cleanNumber && cleanNumber.length >= 8 && connections.length > 0) {
-          hasAutoStarted.current = searchQuery;
-          handleStartNewChat();
-          isUrlInitiated.current = false;
-        }
+      } else if (cleanNumber && cleanNumber.length >= 8) {
+        // Se a conversa ainda não existir no estado chats (ex: consultor com filtro), busca o lead diretamente
+        fetch(`/api/chats?leadId=${encodeURIComponent(cleanNumber)}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(leadData => {
+            if (leadData) {
+              setSelectedLead(leadData);
+            }
+          })
+          .catch(() => {});
+
+        const newChatId = `whatsapp_${cleanNumber}`;
+        setSelectedChatId(newChatId);
+        hasAutoStarted.current = searchQuery;
+        isUrlInitiated.current = false;
       }
     }
   }, [chats, searchQuery, selectedChatId, connections]);
@@ -469,8 +482,9 @@ function AtendimentoContent() {
     };
 
     const chat = chats.find(c => c.id === selectedChatId);
-    if (chat) {
-      fetch(`/api/chats?leadId=${encodeURIComponent(chat.leadId)}`)
+    const targetLeadId = chat ? chat.leadId : selectedChatId.replace(/^whatsapp_|^instagram_|^facebook_/, '');
+    if (targetLeadId) {
+      fetch(`/api/chats?leadId=${encodeURIComponent(targetLeadId)}`)
         .then(res => res.ok ? res.json() : null)
         .then(leadData => {
           if (leadData) setSelectedLead(leadData);
@@ -1475,34 +1489,59 @@ function AtendimentoContent() {
                     Atendimento
                   </h2>
                 </div>
-                {/* Botão de Ausência */}
-                <button
-                  type="button"
-                  onClick={() => setShowAbsenceModal(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: userProfile?.absenceEnabled ? '#fee2e2' : '#f8fafc',
-                    color: userProfile?.absenceEnabled ? '#991b1b' : '#334155',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <span style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: userProfile?.absenceEnabled ? '#ef4444' : '#22c55e',
-                    display: 'inline-block'
-                  }}></span>
-                  {userProfile?.absenceEnabled ? 'Ausente' : 'Disponível'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewChatModal(true)}
+                    title="Nova Conversa no WhatsApp"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: 'var(--primary)',
+                      color: '#ffffff',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Plus size={14} />
+                    <span>Nova Conversa</span>
+                  </button>
+                  {/* Botão de Ausência */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAbsenceModal(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: userProfile?.absenceEnabled ? '#fee2e2' : '#f8fafc',
+                      color: userProfile?.absenceEnabled ? '#991b1b' : '#334155',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: userProfile?.absenceEnabled ? '#ef4444' : '#22c55e',
+                      display: 'inline-block'
+                    }}></span>
+                    {userProfile?.absenceEnabled ? 'Ausente' : 'Disponível'}
+                  </button>
+                </div>
               </div>
               
               {/* Busca */}
@@ -3855,6 +3894,165 @@ function AtendimentoContent() {
                 {savingAbsence ? 'Salvando...' : 'Salvar'}
               </button>
             </footer>
+      {/* MODAL INICIAR NOVA CONVERSA WHATSAPP */}
+      {showNewChatModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '440px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            overflow: 'hidden'
+          }}>
+            <header style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#ffffff'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: '#dcfce7',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <MessageCircle size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    Iniciar Conversa no WhatsApp
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                    Digite o número com DDD para abrir o atendimento
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewChatModal(false);
+                  setNewChatPhone('');
+                }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              let clean = newChatPhone.replace(/\D/g, '');
+              if (!clean) return;
+              if (clean.length === 10 || clean.length === 11) {
+                clean = '55' + clean;
+              }
+              if (clean.length < 10) {
+                showAlert('Por favor, digite um número válido com DDD.', 'error');
+                return;
+              }
+
+              const targetChatId = `whatsapp_${clean}`;
+              setSelectedChatId(targetChatId);
+              setSearchQuery(clean);
+
+              fetch(`/api/chats?leadId=${encodeURIComponent(clean)}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(leadData => {
+                  if (leadData) setSelectedLead(leadData);
+                })
+                .catch(() => {});
+
+              setShowNewChatModal(false);
+              setNewChatPhone('');
+            }}>
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.5rem' }}>
+                    Número do WhatsApp / Celular:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 5541999998888 ou 41999998888"
+                    value={newChatPhone}
+                    onChange={e => setNewChatPhone(e.target.value)}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <footer style={{
+                padding: '1rem 1.5rem',
+                background: '#f8fafc',
+                borderTop: '1px solid #f1f5f9',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewChatModal(false);
+                    setNewChatPhone('');
+                  }}
+                  style={{
+                    padding: '0.55rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: 'white',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    color: '#475569'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.55rem 1.25rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: 'white',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Iniciar Conversa
+                </button>
+              </footer>
+            </form>
           </div>
         </div>
       )}
