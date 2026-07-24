@@ -1247,8 +1247,9 @@ function AtendimentoContent() {
     // 2. Filtro por Canal
     const matchesChannel = filterChannel === 'all' || chat.channel === filterChannel;
 
-    // 3. Filtro de Não Respondidas
-    const matchesUnread = !filterUnread || chat.lastMessageIsIncoming === 1;
+    // 3. Filtro de Não Respondidas (Aguardando resposta do consultor)
+    const isUnanswered = chat.lastMessageIsIncoming === 1 || (chat.lastMessageIsIncoming as any) === true;
+    const matchesUnread = !filterUnread || isUnanswered;
 
     // 4. Filtro por Status da Conversa (Ativa vs. Arquivada)
     const chatStatus = chat.status || 'active';
@@ -1654,7 +1655,7 @@ function AtendimentoContent() {
                     borderRadius: '10px',
                     fontWeight: 700
                   }}>
-                    {chats.filter(c => c.lastMessageIsIncoming === 1).length}
+                    {chats.filter(c => c.lastMessageIsIncoming === 1 || (c.lastMessageIsIncoming as any) === true).length}
                   </span>
                 </button>
                 <button
