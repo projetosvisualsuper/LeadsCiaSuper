@@ -1599,7 +1599,7 @@ function AtendimentoContent() {
                 )}
               </div>
 
-              {/* Filtros Rápidos */}
+              {/* Filtros Rápidos com Contadores */}
               <div style={{ display: 'flex', gap: '0.4rem' }}>
                 <button
                   onClick={() => { setFilterUnread(false); setFilterUnreadOnly(false); }}
@@ -1611,10 +1611,23 @@ function AtendimentoContent() {
                     color: !filterUnread && !filterUnreadOnly ? 'var(--primary)' : '#64748b',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
                   }}
                 >
-                  Todos
+                  <span>Todos</span>
+                  <span style={{
+                    background: !filterUnread && !filterUnreadOnly ? 'var(--primary)' : '#e2e8f0',
+                    color: !filterUnread && !filterUnreadOnly ? '#ffffff' : '#475569',
+                    fontSize: '0.65rem',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    fontWeight: 700
+                  }}>
+                    {chats.length}
+                  </span>
                 </button>
                 <button
                   onClick={() => { setFilterUnread(true); setFilterUnreadOnly(false); }}
@@ -1626,10 +1639,23 @@ function AtendimentoContent() {
                     color: filterUnread ? 'var(--primary)' : '#64748b',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
                   }}
                 >
-                  Aguardando
+                  <span>Aguardando</span>
+                  <span style={{
+                    background: filterUnread ? 'var(--primary)' : '#ef4444',
+                    color: '#ffffff',
+                    fontSize: '0.65rem',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    fontWeight: 700
+                  }}>
+                    {chats.filter(c => c.lastMessageIsIncoming === 1).length}
+                  </span>
                 </button>
                 <button
                   onClick={() => { setFilterUnreadOnly(true); setFilterUnread(false); }}
@@ -1641,10 +1667,23 @@ function AtendimentoContent() {
                     color: filterUnreadOnly ? '#22c55e' : '#64748b',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
                   }}
                 >
-                  Não lidas
+                  <span>Não lidas</span>
+                  <span style={{
+                    background: '#22c55e',
+                    color: '#ffffff',
+                    fontSize: '0.65rem',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    fontWeight: 700
+                  }}>
+                    {chats.filter(c => (c.unreadCount || 0) > 0).length}
+                  </span>
                 </button>
               </div>
             </header>
