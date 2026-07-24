@@ -487,7 +487,18 @@ function AtendimentoContent() {
       fetch(`/api/chats?leadId=${encodeURIComponent(targetLeadId)}`)
         .then(res => res.ok ? res.json() : null)
         .then(leadData => {
-          if (leadData) setSelectedLead(leadData);
+          if (leadData) {
+            setSelectedLead(leadData);
+          } else if (/^\d+$/.test(targetLeadId)) {
+            // Se o lead ainda não existir no banco, cria objeto temporário com o celular para exibir na barra lateral e permitir o envio
+            setSelectedLead({
+              id: targetLeadId,
+              nome: `Lead ${targetLeadId}`,
+              celular: targetLeadId,
+              telefone: targetLeadId,
+              dataCadastro: new Date().toISOString()
+            } as any);
+          }
         })
         .catch(err => console.error("Erro ao buscar lead:", err));
     }
@@ -2266,15 +2277,15 @@ function AtendimentoContent() {
               <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="chat-header-left">
                   <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                    {activeChat?.leadAvatar ? (
-                      <img src={activeChat.leadAvatar} alt={activeChat.leadName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {activeChat?.leadAvatar || selectedLead?.avatar ? (
+                      <img src={activeChat?.leadAvatar || selectedLead?.avatar} alt={activeChat?.leadName || selectedLead?.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <User size={18} color="#94a3b8" />
                     )}
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <h3 className="chat-lead-name" style={{ margin: 0 }}>{chats.find(c => c.id === selectedChatId)?.leadName}</h3>
+                      <h3 className="chat-lead-name" style={{ margin: 0 }}>{activeChat?.leadName || selectedLead?.nome || (selectedChatId ? `Lead ${selectedChatId.replace(/\D/g, '')}` : '')}</h3>
                       {activeChat?.isInternal === 1 && (
                         <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
                           Interno
@@ -2284,7 +2295,7 @@ function AtendimentoContent() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#10b981' }}>
                         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></div>
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {chats.find(c => c.id === selectedChatId)?.channel.toUpperCase()}</span>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Canal: {(activeChat?.channel || (selectedChatId?.startsWith('instagram_') ? 'instagram' : selectedChatId?.startsWith('facebook_') ? 'facebook' : 'whatsapp')).toUpperCase()}</span>
                       </div>
                       {unansweredTimeStr && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#ef4444' }}>
