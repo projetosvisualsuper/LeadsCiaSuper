@@ -1489,59 +1489,62 @@ function AtendimentoContent() {
                     Atendimento
                   </h2>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewChatModal(true)}
-                    title="Nova Conversa no WhatsApp"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '5px 10px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: 'var(--primary)',
-                      color: '#ffffff',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <Plus size={14} />
-                    <span>Nova Conversa</span>
-                  </button>
-                  {/* Botão de Ausência */}
-                  <button
-                    type="button"
-                    onClick={() => setShowAbsenceModal(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      border: '1px solid #cbd5e1',
-                      background: userProfile?.absenceEnabled ? '#fee2e2' : '#f8fafc',
-                      color: userProfile?.absenceEnabled ? '#991b1b' : '#334155',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <span style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: userProfile?.absenceEnabled ? '#ef4444' : '#22c55e',
-                      display: 'inline-block'
-                    }}></span>
-                    {userProfile?.absenceEnabled ? 'Ausente' : 'Disponível'}
-                  </button>
-                </div>
+                {/* Botão de Ausência */}
+                <button
+                  type="button"
+                  onClick={() => setShowAbsenceModal(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: userProfile?.absenceEnabled ? '#fee2e2' : '#f8fafc',
+                    color: userProfile?.absenceEnabled ? '#991b1b' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: userProfile?.absenceEnabled ? '#ef4444' : '#22c55e',
+                    display: 'inline-block'
+                  }}></span>
+                  {userProfile?.absenceEnabled ? 'Ausente' : 'Disponível'}
+                </button>
+              </div>
+
+              {/* Linha dedicada para o botão Nova Conversa */}
+              <div style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowNewChatModal(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    width: '100%',
+                    padding: '0.55rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Plus size={16} />
+                  <span>Nova Conversa no WhatsApp</span>
+                </button>
               </div>
               
               {/* Busca */}

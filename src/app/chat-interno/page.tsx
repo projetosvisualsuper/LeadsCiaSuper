@@ -109,6 +109,11 @@ export default function ChatInternoPage() {
   const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
   const [customAlert, setCustomAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
+  // Estados de Pesquisa e Nova Conversa no WhatsApp
+  const [searchInternalQuery, setSearchInternalQuery] = useState('');
+  const [showNewWaModal, setShowNewWaModal] = useState(false);
+  const [newWaPhone, setNewWaPhone] = useState('');
+
   useEffect(() => {
     const saved = localStorage.getItem('crm_hidden_messages');
     if (saved) {
@@ -963,10 +968,67 @@ export default function ChatInternoPage() {
           </button>
         </div>
 
+        {/* Caixa de Busca e Botão de Nova Conversa */}
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {activeTab === 'whatsapp' && (
+            <button
+              type="button"
+              onClick={() => setShowNewWaModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'var(--primary)',
+                color: '#ffffff',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
+              }}
+            >
+              <Plus size={16} />
+              <span>Nova Conversa WhatsApp</span>
+            </button>
+          )}
+
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input 
+              type="text" 
+              placeholder={activeTab === 'whatsapp' ? "Buscar conversa no WhatsApp..." : "Buscar no Chat..."} 
+              value={searchInternalQuery}
+              onChange={e => setSearchInternalQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.45rem 2rem 0.45rem 2rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+            />
+            <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '8px', top: '10px' }} />
+            {searchInternalQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchInternalQuery('')}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {activeTab === 'system' ? (
             <>
-              {chats.map(chat => (
+              {chats
+                .filter(chat => {
+                  if (!searchInternalQuery.trim()) return true;
+                  const name = getChatName(chat).toLowerCase();
+                  const last = (chat.lastMessage || '').toLowerCase();
+                  const q = searchInternalQuery.toLowerCase();
+                  return name.includes(q) || last.includes(q);
+                })
+                .map(chat => (
                 <div 
                   key={chat.id} 
                   onClick={() => { setSelectedChat(chat); setShowGroupInfo(false); setShowEmojiPicker(false); setEditingMessageId(null); setNewMessage(''); }}
@@ -1040,7 +1102,16 @@ export default function ChatInternoPage() {
             </>
           ) : (
             <>
-              {whatsappChats.map(chat => (
+              {whatsappChats
+                .filter(chat => {
+                  if (!searchInternalQuery.trim()) return true;
+                  const name = (chat.leadName || '').toLowerCase();
+                  const phone = (chat.id || '').toLowerCase();
+                  const last = (chat.lastMessage || '').toLowerCase();
+                  const q = searchInternalQuery.toLowerCase();
+                  return name.includes(q) || phone.includes(q) || last.includes(q);
+                })
+                .map(chat => (
                 <div 
                   key={chat.id} 
                   onClick={() => { setSelectedWhatsappChat(chat); setShowEmojiPicker(false); setNewMessage(''); }}
@@ -2191,6 +2262,174 @@ export default function ChatInternoPage() {
         }}>
           <span>{customAlert.message}</span>
           <button onClick={() => setCustomAlert(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginLeft: '0.5rem', fontSize: '1rem', fontWeight: 'bold' }}>&times;</button>
+        </div>
+      )}
+
+      {/* Modal Iniciar Nova Conversa no WhatsApp no Chat Interno */}
+      {showNewWaModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '440px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            overflow: 'hidden'
+          }}>
+            <header style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#ffffff'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: '#dcfce7',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <MessageSquare size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    Iniciar Conversa no WhatsApp
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                    Digite o número com DDD para abrir o atendimento
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewWaModal(false);
+                  setNewWaPhone('');
+                }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              let clean = newWaPhone.replace(/\D/g, '');
+              if (!clean) return;
+              if (clean.length === 10 || clean.length === 11) {
+                clean = '55' + clean;
+              }
+              if (clean.length < 10) {
+                showAlert('Por favor, digite um número válido com DDD.', 'error');
+                return;
+              }
+
+              const targetChatId = `whatsapp_${clean}`;
+              const existing = whatsappChats.find(c => c.id === targetChatId);
+
+              if (existing) {
+                setSelectedWhatsappChat(existing);
+              } else {
+                const newChatObj = {
+                  id: targetChatId,
+                  leadId: clean,
+                  leadName: `Lead ${clean}`,
+                  lastMessage: 'Iniciando conversa...',
+                  channel: 'whatsapp'
+                };
+                setSelectedWhatsappChat(newChatObj);
+              }
+
+              setShowNewWaModal(false);
+              setNewWaPhone('');
+            }}>
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.5rem' }}>
+                    Número do WhatsApp / Celular:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 5541999998888 ou 41999998888"
+                    value={newWaPhone}
+                    onChange={e => setNewWaPhone(e.target.value)}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <footer style={{
+                padding: '1rem 1.5rem',
+                background: '#f8fafc',
+                borderTop: '1px solid #f1f5f9',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewWaModal(false);
+                    setNewWaPhone('');
+                  }}
+                  style={{
+                    padding: '0.55rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: 'white',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    color: '#475569'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.55rem 1.25rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: 'white',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Iniciar Conversa
+                </button>
+              </footer>
+            </form>
+          </div>
         </div>
       )}
     </div>
