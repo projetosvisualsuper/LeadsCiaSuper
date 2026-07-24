@@ -181,7 +181,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result);
     }
 
-    const result = await d1Api.sendMessage(body);
+    const cookieHeader = req.headers.get('cookie') || '';
+    const token = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('session_token='))
+      ?.substring('session_token='.length);
+
+    let currentUserId: string | undefined = undefined;
+    if (token) {
+      try {
+        const decoded = await verifyToken(token);
+        if (decoded && decoded.uid) {
+          currentUserId = decoded.uid;
+        }
+      } catch (err) {
+        console.error('Error verifying token in POST /api/chats:', err);
+      }
+    }
+
+    const result = await d1Api.sendMessage({ ...body, currentUserId });
     return NextResponse.json({ success: true, message: result });
   } catch (error: any) {
     console.error('Error in POST /api/chats:', error);

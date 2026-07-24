@@ -920,8 +920,8 @@ export const d1Api = {
     let params: any[] = [];
     let conditions: string[] = [];
     if (assignedTo && connectionId) {
-      conditions.push(`(c.assignedTo = ? OR (c.assignedTo IS NULL AND c.connectionId = ?))`);
-      params.push(assignedTo, connectionId);
+      conditions.push(`c.assignedTo = ?`);
+      params.push(assignedTo);
     } else {
       if (assignedTo) {
         conditions.push(`c.assignedTo = ?`);
@@ -991,9 +991,10 @@ export const d1Api = {
       
       if (resultUpdate.changes === 0 && message.leadId) {
         // Se não atualizou nada, o chat não existe ainda e precisamos criá-lo
+        const creatorId = message.currentUserId || (message.senderId && message.senderId !== 'atendente_admin' ? message.senderId : null);
         const sqlNewChat = `
-          INSERT INTO chats (id, leadId, leadName, leadAvatar, channel, lastMessage, lastTimestamp, unreadCount, status, dataCriacao)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO chats (id, leadId, leadName, leadAvatar, channel, lastMessage, lastTimestamp, unreadCount, status, dataCriacao, assignedTo, connectionId, connectionName)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)
         `;
         const paramsNewChat = [
           finalChatId,
@@ -1005,7 +1006,8 @@ export const d1Api = {
           new Date().toISOString(),
           0,
           'active',
-          new Date().toISOString()
+          new Date().toISOString(),
+          creatorId
         ];
         await executeRun(sqlNewChat, paramsNewChat);
       }
