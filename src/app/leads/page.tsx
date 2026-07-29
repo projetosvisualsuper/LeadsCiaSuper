@@ -197,7 +197,7 @@ function LeadsContent() {
 
   const refreshLeads = async () => {
     try {
-      const data = await api.getLeads(50000); // Aumentado para suportar todos os leads sem sobrecarregar
+      const data = await api.getLeads(5000); // Carregamento otimizado
       setLeads(data);
     } catch (error) {
       console.error("Erro ao recarregar leads:", error);
@@ -380,40 +380,86 @@ function LeadsContent() {
     alert('Segmentação criada com sucesso!');
   };
 
+  const formatPhoneForExport = (phone?: string) => {
+    if (!phone) return '';
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 13 && digits.startsWith('55')) {
+      const ddd = digits.substring(2, 4);
+      const num = digits.substring(4);
+      if (num.length === 9) return `(${ddd}) ${num.substring(0, 5)}-${num.substring(5)}`;
+      if (num.length === 8) return `(${ddd}) ${num.substring(0, 4)}-${num.substring(4)}`;
+    } else if (digits.length === 11) {
+      return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}`;
+    } else if (digits.length === 10) {
+      return `(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}`;
+    }
+    return phone;
+  };
+
+  const formatDateForExport = (isoStr?: string) => {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch {
+      return isoStr;
+    }
+  };
+
   const handleExportLeads = () => {
     if (leads.length === 0) return;
-    
-    // Header do CSV
-    const headers = ['id', 'nome', 'email', 'telefone', 'empresa', 'cidade', 'estado', 'origem', 'dataCriacao', 'status', 'tags', 'observacoes'];
-    
-    // Instrução para o Excel reconhecer o separador ponto-e-vírgula automaticamente
-    let csvContent = 'sep=;\n';
-    csvContent += headers.join(';') + '\n';
-    
-    // Linhas do CSV
-    csvContent += leads.map(lead => [
-      lead.id,
-      `"${lead.nome}"`,
-      lead.email,
-      `"${lead.telefone || ''}"`,
-      `"${lead.empresa || ''}"`,
-      `"${lead.cidade || ''}"`,
-      `"${lead.estado || ''}"`,
-      `"${lead.origem}"`,
-      lead.dataCriacao,
-      lead.status,
-      `"${lead.tags.join(', ')}"`,
-      `"${(lead.observacoes || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`
-    ].join(';')).join('\n');
 
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const exportData = leads.map(lead => ({
+      'ID': lead.id || '',
+      'Nome': lead.nome || '',
+      'E-mail': lead.email || '',
+      'Telefone': formatPhoneForExport(lead.telefone),
+      'Empresa': lead.empresa || '',
+      'Cidade': lead.cidade || '',
+      'Estado': lead.estado || '',
+      'Origem': lead.origem || '',
+      'Data de Criação': formatDateForExport(lead.dataCriacao),
+      'Status': lead.status ? (lead.status.charAt(0).toUpperCase() + lead.status.slice(1)) : '',
+      'Tags': Array.isArray(lead.tags) ? lead.tags.join(', ') : '',
+      'Observações': (lead.observacoes || '').replace(/\n/g, ' ')
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    worksheet['!cols'] = [
+      { wch: 14 }, // ID
+      { wch: 28 }, // Nome
+      { wch: 28 }, // E-mail
+      { wch: 18 }, // Telefone
+      { wch: 22 }, // Empresa
+      { wch: 18 }, // Cidade
+      { wch: 10 }, // Estado
+      { wch: 22 }, // Origem
+      { wch: 18 }, // Data de Criação
+      { wch: 12 }, // Status
+      { wch: 25 }, // Tags
+      { wch: 40 }  // Observações
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads');
+
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `backup_leads_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.download = `backup_leads_${new Date().toISOString().split('T')[0]}.xlsx`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
