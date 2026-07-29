@@ -536,7 +536,8 @@ export default function ClientLayout({
 
   const checkConnectionsStatus = async () => {
     try {
-      const data = await api.getWhatsappConnections();
+      const res = await fetch('/api/whatsapp/evolution/sync-status');
+      const data = res.ok ? await res.json() : await api.getWhatsappConnections();
       if (Array.isArray(data)) {
         let disconnected = data.filter((c: any) => c.status !== 'connected');
         

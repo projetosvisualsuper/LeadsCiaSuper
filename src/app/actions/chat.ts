@@ -304,7 +304,7 @@ export async function sendOmnichannelMessageAction(
         
         console.log(`>>> Enviando para Evolution: ${cleanNumber} (LID: ${isLid}, Media: ${!!mediaUrl})`);
 
-        const response = await fetch(evolutionReqUrl, {
+        let response = await fetch(evolutionReqUrl, {
           method: 'POST',
           headers: {
             'apikey': globalApiKey,
@@ -313,10 +313,39 @@ export async function sendOmnichannelMessageAction(
           body: JSON.stringify(payload)
         });
 
-        const data = await response.json();
-        console.log('>>> Resposta do Docker:', JSON.stringify(data));
+        let data = await response.json();
+        console.log('>>> Resposta da Evolution API:', JSON.stringify(data));
         
-        return response.ok ? { success: true, data } : { success: false, error: data.error || 'Erro no Docker' };
+        // Se falhou por instância fechada ou desconectada, tenta reconectar e reenviar 1 vez
+        if (!response.ok && instanceName) {
+          console.warn(`⚠️ Tentativa de envio falhou na instância ${instanceName}. Tentando reconectar...`);
+          try {
+            const reconnectRes = await fetch(`${apiUrl.replace(/\/$/, '')}/instance/connect/${instanceName}`, {
+              method: 'GET',
+              headers: { 'apikey': globalApiKey }
+            });
+            if (reconnectRes.ok) {
+              await new Promise(resolve => setTimeout(resolve, 1500));
+              const retryRes = await fetch(evolutionReqUrl, {
+                method: 'POST',
+                headers: {
+                  'apikey': globalApiKey,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+              });
+              if (retryRes.ok) {
+                const retryData = await retryRes.json();
+                await d1Api.updateWhatsappConnection(conn.id, { status: 'connected' }).catch(() => {});
+                return { success: true, data: retryData };
+              }
+            }
+          } catch (reconnectErr) {
+            console.error('Erro na tentativa de reconexão automática:', reconnectErr);
+          }
+        }
+
+        return response.ok ? { success: true, data } : { success: false, error: data.error || 'Erro no envio da Evolution API' };
       }
     }
 
