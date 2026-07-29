@@ -960,7 +960,7 @@ export default function OportunidadesPage() {
                             </a>
 
                             <Link 
-                              href={`/atendimento?search=${encodeURIComponent(opp.leadCelular || opp.leadNome)}&leadId=${opp.leadId}&name=${encodeURIComponent(opp.leadNome)}`}
+                              href={`/atendimento?search=${encodeURIComponent(opp.leadCelular || opp.leadNome || '')}&leadId=${opp.leadId || ''}&chatId=${opp.leadCelular ? `whatsapp_${opp.leadCelular.replace(/\D/g, '')}` : ''}&name=${encodeURIComponent(opp.leadNome || '')}`}
                               style={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 
@@ -1011,7 +1011,7 @@ export default function OportunidadesPage() {
                               Sem telefone celular (Origem: <strong>{opp.leadOrigem || 'Rede Social'}</strong>).
                             </div>
                             <Link 
-                              href={`/atendimento?search=${encodeURIComponent(opp.leadNome || opp.leadId || '')}&leadId=${opp.leadId || ''}&name=${encodeURIComponent(opp.leadNome || '')}`}
+                              href={`/atendimento?search=${encodeURIComponent(opp.leadNome || opp.leadId || '')}&leadId=${opp.leadId || ''}&chatId=${opp.leadOrigem?.toLowerCase().includes('instagram') ? `instagram_${opp.leadId}` : opp.leadOrigem?.toLowerCase().includes('facebook') ? `facebook_${opp.leadId}` : ''}&name=${encodeURIComponent(opp.leadNome || '')}`}
                               style={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 

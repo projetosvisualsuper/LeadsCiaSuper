@@ -189,6 +189,8 @@ function AtendimentoContent() {
   const chatMenuRef = useRef<HTMLDivElement>(null);
   const hasAutoStarted = useRef<string | null>(null);
   const isUrlInitiated = useRef(false);
+  const urlTargetLeadId = useRef<string | null>(null);
+  const urlTargetChatId = useRef<string | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -289,29 +291,32 @@ function AtendimentoContent() {
   // Efeito para capturar busca ou chat selecionado vindo de outras páginas
   useEffect(() => {
     const search = searchParams.get('search');
-    if (search) {
-      setSearchQuery(search);
+    const leadId = searchParams.get('leadId');
+    const cid = searchParams.get('chatId');
+
+    if (search || leadId || cid) {
+      if (search) setSearchQuery(search);
+      if (leadId) urlTargetLeadId.current = leadId;
+      if (cid) {
+        urlTargetChatId.current = cid;
+        setSelectedChatId(cid);
+      }
       isUrlInitiated.current = true;
+
       // Remove os parâmetros da URL para evitar que fiquem presos na barra de endereço ou histórico
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.delete('search');
         url.searchParams.delete('name');
         url.searchParams.delete('leadId');
+        url.searchParams.delete('chatId');
         window.history.replaceState(null, '', url.pathname + url.search);
       }
     } else {
-      // Se a URL não tem o parâmetro 'search', só limpamos se NÃO foi limpo programaticamente por nós mesmos
-      if (isUrlInitiated.current) {
-        // Permite manter true para dar tempo do chats carregar assincronamente e disparar o auto-open
-      } else {
+      if (!isUrlInitiated.current) {
         setSearchQuery('');
         hasAutoStarted.current = null;
       }
-    }
-    const cid = searchParams.get('chatId');
-    if (cid) {
-      setSelectedChatId(cid);
     }
   }, [searchParams]);
 
@@ -321,6 +326,8 @@ function AtendimentoContent() {
       setSearchQuery('');
       hasAutoStarted.current = null;
       isUrlInitiated.current = false;
+      urlTargetLeadId.current = null;
+      urlTargetChatId.current = null;
     }
   }, [pathname]);
 
@@ -330,31 +337,48 @@ function AtendimentoContent() {
       setSearchQuery('');
       hasAutoStarted.current = null;
       isUrlInitiated.current = false;
+      urlTargetLeadId.current = null;
+      urlTargetChatId.current = null;
     };
   }, []);
 
-  // Efeito para auto-iniciar ou abrir a conversa ao carregar busca de telefone/lead
+  // Efeito para auto-iniciar ou abrir a conversa ao carregar busca de telefone/lead/chatId
   useEffect(() => {
-    if (isUrlInitiated.current && searchQuery && !selectedChatId && hasAutoStarted.current !== searchQuery) {
-      let cleanNumber = searchQuery.replace(/\D/g, '');
+    if (isUrlInitiated.current && (searchQuery || urlTargetLeadId.current || urlTargetChatId.current) && !selectedChatId) {
+      let cleanNumber = searchQuery ? searchQuery.replace(/\D/g, '') : '';
       if (cleanNumber.length === 10 || cleanNumber.length === 11) {
         cleanNumber = '55' + cleanNumber;
       }
       
-      let existing = chats.find(c => 
-        c.id === `whatsapp_${cleanNumber}` || 
-        c.id === `${cleanNumber}@s.whatsapp.net` || 
-        (c.leadId && c.leadId.includes(cleanNumber)) ||
-        (c.leadName && c.leadName.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+      const searchLower = searchQuery ? searchQuery.trim().toLowerCase() : '';
+      const targetLeadId = urlTargetLeadId.current;
+      const targetChatId = urlTargetChatId.current;
+
+      let existing = chats.find(c => {
+        if (targetChatId && c.id === targetChatId) return true;
+        if (targetLeadId && (c.leadId === targetLeadId || c.id.includes(targetLeadId))) return true;
+        if (cleanNumber && cleanNumber.length >= 3) {
+          if (c.id === `whatsapp_${cleanNumber}` || c.id === `${cleanNumber}@s.whatsapp.net` || (c.leadId && c.leadId.includes(cleanNumber))) {
+            return true;
+          }
+        }
+        if (searchLower) {
+          if (c.leadName && c.leadName.toLowerCase().includes(searchLower)) return true;
+          if (c.id && c.id.toLowerCase().includes(searchLower)) return true;
+          if (c.leadId && c.leadId.toLowerCase() === searchLower) return true;
+        }
+        return false;
+      });
 
       if (existing) {
         setSelectedChatId(existing.id);
-        hasAutoStarted.current = searchQuery;
+        hasAutoStarted.current = searchQuery || targetLeadId || targetChatId || '';
         isUrlInitiated.current = false;
-      } else if (cleanNumber && cleanNumber.length >= 8) {
-        // Se a conversa ainda não existir no estado chats (ex: consultor com filtro), busca o lead diretamente
-        fetch(`/api/chats?leadId=${encodeURIComponent(cleanNumber)}`)
+        urlTargetLeadId.current = null;
+        urlTargetChatId.current = null;
+      } else if (targetLeadId || (cleanNumber && cleanNumber.length >= 8)) {
+        const queryId = targetLeadId || cleanNumber;
+        fetch(`/api/chats?leadId=${encodeURIComponent(queryId)}`)
           .then(res => res.ok ? res.json() : null)
           .then(leadData => {
             if (leadData) {
@@ -363,10 +387,12 @@ function AtendimentoContent() {
           })
           .catch(() => {});
 
-        const newChatId = `whatsapp_${cleanNumber}`;
+        const newChatId = targetChatId || (targetLeadId ? `instagram_${targetLeadId}` : `whatsapp_${cleanNumber}`);
         setSelectedChatId(newChatId);
-        hasAutoStarted.current = searchQuery;
+        hasAutoStarted.current = searchQuery || targetLeadId || targetChatId || '';
         isUrlInitiated.current = false;
+        urlTargetLeadId.current = null;
+        urlTargetChatId.current = null;
       }
     }
   }, [chats, searchQuery, selectedChatId, connections]);
@@ -1148,12 +1174,16 @@ function AtendimentoContent() {
       cleanNumber = '55' + cleanNumber;
     }
     
+    const searchLower = searchQuery.trim().toLowerCase();
+
     // Tentar encontrar chat existente por ID, número ou nome
     const existing = chats.find(c => 
-      c.id === `whatsapp_${cleanNumber}` || 
-      c.id === `${cleanNumber}@s.whatsapp.net` || 
-      (c.leadId && c.leadId.includes(cleanNumber)) ||
-      (c.leadName && c.leadName.toLowerCase().includes(searchQuery.toLowerCase()))
+      (cleanNumber && cleanNumber.length >= 3 && c.id === `whatsapp_${cleanNumber}`) || 
+      (cleanNumber && cleanNumber.length >= 3 && c.id === `${cleanNumber}@s.whatsapp.net`) || 
+      (cleanNumber && cleanNumber.length >= 3 && c.leadId && c.leadId.includes(cleanNumber)) ||
+      (searchLower && c.leadName && c.leadName.toLowerCase().includes(searchLower)) ||
+      (searchLower && c.id && c.id.toLowerCase().includes(searchLower)) ||
+      (searchLower && c.leadId && c.leadId.toLowerCase() === searchLower)
     );
     
     if (existing) {
@@ -1164,7 +1194,7 @@ function AtendimentoContent() {
         await handleStartNewChat();
         setSearchQuery('');
       } else {
-        alert('Por favor, digite um número de WhatsApp válido para iniciar uma nova conversa.');
+        alert('Por favor, selecione um chat válido ou digite um número de WhatsApp para iniciar uma nova conversa.');
       }
     }
   };
