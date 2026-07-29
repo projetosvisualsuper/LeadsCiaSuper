@@ -53,6 +53,10 @@ export async function POST(
       tags.push('cupom pop-up');
     }
 
+    const utm_source = body.utm_source || body.utmSource || body.source || undefined;
+    const utm_medium = body.utm_medium || body.utmMedium || body.medium || undefined;
+    const utm_campaign = body.utm_campaign || body.utmCampaign || body.campaign || undefined;
+
     await api.saveLead({
       id: leadId,
       nome: nome || 'Lead de Pop-up',
@@ -64,7 +68,10 @@ export async function POST(
       consentimentoLGPD: true,
       dataCriacao: agora,
       dataUltimaAtividade: agora,
-      observacoes: `[POPUP CAPTURE] Convertido via pop-up "${popup.name}" (modelo: ${popup.templateId}).`
+      observacoes: `[POPUP CAPTURE] Convertido via pop-up "${popup.name}" (modelo: ${popup.templateId}).`,
+      utm_source,
+      utm_medium,
+      utm_campaign
     } as any);
 
     // 2. Se tiver configurado cupom e e-mail automático

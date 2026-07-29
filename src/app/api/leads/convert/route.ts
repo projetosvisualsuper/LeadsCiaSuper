@@ -149,6 +149,10 @@ export async function POST(request: Request) {
           observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${itensFormatados ? ` Produtos: ${itensFormatados}.` : ''}${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
         }
 
+        const utm_source = body.utm_source || body.utmSource || body.source || undefined;
+        const utm_medium = body.utm_medium || body.utmMedium || body.medium || undefined;
+        const utm_campaign = body.utm_campaign || body.utmCampaign || body.campaign || undefined;
+
         await d1Api.saveLead({
           id: finalLeadId,
           nome: nome || 'Cliente do Site',
@@ -162,7 +166,10 @@ export async function POST(request: Request) {
           dataUltimaConversao: agora,
           totalConversoes: 1,
           consentimentoLGPD: true,
-          observacoes: observacao
+          observacoes: observacao,
+          utm_source,
+          utm_medium,
+          utm_campaign
         } as any);
 
         actionMessage = `Novo lead criado como ${isCotacao ? 'Cotação' : 'Venda'}.`;

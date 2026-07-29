@@ -391,7 +391,25 @@ function WhatsappWidget({ config, pageSlug }: { config: any, pageSlug: string })
   const handleStartChat = async (e: React.FormEvent) => {
     e.preventDefault();
     const leadId = Math.random().toString(36).substr(2, 9);
-    await api.saveLead({ id: leadId, nome: formData.nome, email: formData.email, celular: formData.telefone, origem: `WhatsApp (${pageSlug})`, consentimentoLGPD: true, status: 'novo', tags: ['whatsapp'], dataCriacao: new Date().toISOString() } as Lead);
+    const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const utm_source = searchParams.get('utm_source') || searchParams.get('source') || undefined;
+    const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || undefined;
+    const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || undefined;
+
+    await api.saveLead({ 
+      id: leadId, 
+      nome: formData.nome, 
+      email: formData.email, 
+      celular: formData.telefone, 
+      origem: `WhatsApp (${pageSlug})`, 
+      consentimentoLGPD: true, 
+      status: 'novo', 
+      tags: ['whatsapp'], 
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      dataCriacao: new Date().toISOString() 
+    } as Lead);
     
     // GTM Event
     if (typeof window !== 'undefined' && (window as any).dataLayer) {
@@ -536,9 +554,24 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
       observacoes = `[INTERESSE] Inscrito na lista de ofertas exclusivas.`;
     }
 
+    const utm_source = searchParams.get('utm_source') || searchParams.get('source') || undefined;
+    const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || undefined;
+    const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || undefined;
+
     const newLead: Lead = {
-      id: Math.random().toString(36).substr(2, 9), nome: formData.nome, email: formData.email, celular: formData.telefone, empresa: formData.empresa,
-      origem: page.slug, dataCriacao: new Date().toISOString(), status: 'novo', tags: tags, consentimentoLGPD: true, utm_source: searchParams.get('utm_source') || undefined,
+      id: Math.random().toString(36).substr(2, 9), 
+      nome: formData.nome, 
+      email: formData.email, 
+      celular: formData.telefone, 
+      empresa: formData.empresa,
+      origem: page.slug, 
+      dataCriacao: new Date().toISOString(), 
+      status: 'novo', 
+      tags: tags, 
+      consentimentoLGPD: true, 
+      utm_source,
+      utm_medium,
+      utm_campaign,
       observacoes: observacoes
     };
     try {

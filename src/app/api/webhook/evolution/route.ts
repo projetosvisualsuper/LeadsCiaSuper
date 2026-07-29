@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
 import { ChatMessage, ChatSession, Lead, WhatsappConnection } from '@/types/crm';
 import { sendOmnichannelMessageAction } from '@/app/actions/chat';
+import { extractUtmsFromTextOrPayload } from '@/lib/utm-parser';
 
 export async function POST(req: NextRequest) {
   try {
@@ -458,12 +459,23 @@ export async function POST(req: NextRequest) {
       }
       const agora = new Date().toISOString();
 
+      const referralObj = messageObj?.extendedTextMessage?.contextInfo?.referral || messageObj?.contextInfo?.referral || data?.referral;
+      const extractedUtms = extractUtmsFromTextOrPayload(messageText, referralObj);
+
       let existingLeadAvatar = null;
 
       if (existingLeads && existingLeads.length > 0) {
         const lead = existingLeads[0];
         leadId = lead.id;
         existingLeadAvatar = lead.avatar || null;
+
+        // Se existirem UTMs novas e o lead não tinha UTMs, atualiza os campos
+        if (extractedUtms.utm_source || extractedUtms.utm_medium || extractedUtms.utm_campaign) {
+          await d1Api.executeRun(
+            `UPDATE leads SET utm_source = COALESCE(utm_source, ?), utm_medium = COALESCE(utm_medium, ?), utm_campaign = COALESCE(utm_campaign, ?) WHERE id = ?`,
+            [extractedUtms.utm_source || null, extractedUtms.utm_medium || null, extractedUtms.utm_campaign || null, leadId]
+          );
+        }
         
         // Se o nome do lead for genérico (como 'Contato WhatsApp' ou 'Desconhecido') e recebermos um nome real do cliente, atualizamos no CRM!
         const isGenericName = !lead.nome || lead.nome === 'Contato WhatsApp' || lead.nome === 'Desconhecido' || lead.nome.startsWith('Lead via');
@@ -512,7 +524,10 @@ export async function POST(req: NextRequest) {
           dataCriacao: agora,
           dataUltimaAtividade: agora,
           consentimentoLGPD: true,
-          tags: ['whatsapp', 'evolution']
+          tags: ['whatsapp', 'evolution'],
+          utm_source: extractedUtms.utm_source,
+          utm_medium: extractedUtms.utm_medium,
+          utm_campaign: extractedUtms.utm_campaign
         } as any);
       }
 

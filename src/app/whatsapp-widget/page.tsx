@@ -75,6 +75,11 @@ export default function WhatsappWidgetStandalone() {
     // Tentar salvar o lead, mas não impedir a abertura do WhatsApp em caso de erro
     try {
       const leadId = Math.random().toString(36).substr(2, 9);
+      const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+      const utm_source = searchParams.get('utm_source') || searchParams.get('source') || undefined;
+      const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || undefined;
+      const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || undefined;
+
       await api.saveLead({
         id: leadId,
         nome: formData.nome,
@@ -84,6 +89,9 @@ export default function WhatsappWidgetStandalone() {
         consentimentoLGPD: true,
         status: 'novo',
         tags: ['whatsapp-widget'],
+        utm_source,
+        utm_medium,
+        utm_campaign,
         dataCriacao: new Date().toISOString()
       } as Lead);
 

@@ -429,6 +429,10 @@ export async function POST(req: NextRequest) {
                     const leadData = await leadRes.json();
                     const fieldData = leadData.field_data || [];
                     let nome = '', email = '', telefone = '', observacoes: string[] = [];
+                    let utm_source: string | undefined = undefined;
+                    let utm_medium: string | undefined = undefined;
+                    let utm_campaign: string | undefined = undefined;
+
                     fieldData.forEach((field: any) => {
                       const name = (field.name || '').toLowerCase();
                       const val = Array.isArray(field.values) ? field.values[0] : field.values;
@@ -436,8 +440,12 @@ export async function POST(req: NextRequest) {
                       if (name.includes('full_name') || name.includes('nome')) nome = val;
                       else if (name.includes('email')) email = val;
                       else if (name.includes('phone') || name.includes('telefone')) telefone = val.replace(/\D/g, '');
+                      else if (name.includes('utm_source') || name === 'source') utm_source = val;
+                      else if (name.includes('utm_medium') || name === 'medium') utm_medium = val;
+                      else if (name.includes('utm_campaign') || name === 'campaign') utm_campaign = val;
                       else observacoes.push(`${field.name}: ${val}`);
                     });
+
                     const cleanPhone = telefone ? (telefone.length === 10 || telefone.length === 11 ? '55' + telefone : telefone) : '';
                     await d1Api.saveLead({
                       id: cleanPhone || `meta_lead_${leadgenId}`,
@@ -451,6 +459,9 @@ export async function POST(req: NextRequest) {
                       consentimentoLGPD: true,
                       observacoes: `[FORMULÁRIO META]\n${observacoes.join('\n')}`,
                       isMetaLead: true,
+                      utm_source,
+                      utm_medium,
+                      utm_campaign,
                       dataCriacao: new Date().toISOString()
                     });
                   }
