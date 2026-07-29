@@ -25,7 +25,9 @@ import {
   Zap,
   Trash2,
   Archive,
-  Download
+  Download,
+  Search,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import PipelineAutomationModal from '@/components/bots/PipelineAutomationModal';
@@ -110,6 +112,7 @@ export default function OportunidadesPage() {
   const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
 
   // Filtros de busca e atribuição
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterUser, setFilterUser] = useState<string>('todos');
   const [filterConnection, setFilterConnection] = useState<string>('todos');
   const [filterDate, setFilterDate] = useState<string>('');
@@ -332,17 +335,54 @@ export default function OportunidadesPage() {
   )) as string[];
 
   const baseFilteredOpps = opportunities.filter(opp => {
-    // Filtro por Vendedor
+    // 1. Filtro por Pesquisa Inteligente (Nome, Telefone normalizado apenas com números, E-mail, Origem, Observações)
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      const searchDigits = searchTerm.replace(/\D/g, '');
+
+      const leadName = (opp.leadNome || '').toLowerCase();
+      const leadEmail = (opp.leadEmail || '').toLowerCase();
+      const leadOrigem = (opp.leadOrigem || '').toLowerCase();
+      const leadObs = (opp.observacao || '').toLowerCase();
+      const leadPhoneRaw = (opp.leadCelular || '').toLowerCase();
+      const leadPhoneDigits = (opp.leadCelular || '').replace(/\D/g, '');
+
+      const matchText = 
+        leadName.includes(term) ||
+        leadEmail.includes(term) ||
+        leadOrigem.includes(term) ||
+        leadObs.includes(term) ||
+        leadPhoneRaw.includes(term);
+
+      let matchDigits = false;
+      if (searchDigits.length > 0) {
+        const searchNo55 = searchDigits.replace(/^55/, '');
+        const leadNo55 = leadPhoneDigits.replace(/^55/, '');
+
+        // Normalização flexível de telefones (comparando apenas os dígitos numéricos)
+        matchDigits = 
+          (leadPhoneDigits.length > 0 && leadPhoneDigits.includes(searchDigits)) ||
+          (searchDigits.length > 0 && searchDigits.includes(leadPhoneDigits)) ||
+          (searchNo55.length >= 3 && leadNo55.includes(searchNo55)) ||
+          (searchNo55.length >= 3 && searchNo55.includes(leadNo55));
+      }
+
+      if (!matchText && !matchDigits) {
+        return false;
+      }
+    }
+
+    // 2. Filtro por Vendedor
     if (filterUser !== 'todos' && opp.assignedTo !== filterUser) {
       return false;
     }
 
-    // Filtro por Conexão
+    // 3. Filtro por Conexão
     if (filterConnection !== 'todos' && opp.leadOrigem !== filterConnection) {
       return false;
     }
 
-    // Filtro por Data
+    // 4. Filtro por Data
     if (filterStartDate && filterEndDate) {
       const oppDate = opp.dataCriacao.substring(0, 10);
       if (oppDate < filterStartDate || oppDate > filterEndDate) {
@@ -432,6 +472,60 @@ export default function OportunidadesPage() {
         flexWrap: 'wrap',
         alignItems: 'flex-end'
       }}>
+        {/* CAIXA DE PESQUISA */}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Pesquisar Oportunidade ou Lead</label>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={18} style={{ position: 'absolute', left: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+            <input 
+              type="text"
+              placeholder="Pesquisar por nome, telefone (+55 48 9927-0242), e-mail ou origem..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.55rem 2.5rem 0.55rem 2.4rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                background: '#f8fafc',
+                outline: 'none',
+                height: '38px',
+                transition: 'all 0.2s ease'
+              }}
+              onFocus={(e) => {
+                e.target.style.background = 'white';
+                e.target.style.borderColor = 'var(--primary)';
+              }}
+              onBlur={(e) => {
+                if (!e.target.value) e.target.style.background = '#f8fafc';
+                e.target.style.borderColor = '#cbd5e1';
+              }}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px'
+                }}
+                title="Limpar busca"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {currentUser?.role !== 'basico' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '180px', flex: 1 }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Vendedor / Responsável</label>
