@@ -109,19 +109,20 @@ export async function PUT(request: Request) {
       await d1Api.updateOpportunityStatus(id, status);
 
       try {
-        const opps = await d1Api.getOpportunities();
-        const opp = opps.find(o => o.id === id);
-        if (opp && opp.leadId) {
+        const { results: oppRes } = await d1Api.runQuery(`SELECT leadId FROM opportunities WHERE id = ? LIMIT 1`, [id]);
+        const targetLeadId = oppRes?.[0]?.leadId;
+
+        if (targetLeadId) {
           const { automationEngine } = await import('@/services/automation-engine');
           try {
-            await automationEngine.processLeadAutomation(opp.leadId, status, 'quando_criado');
+            await automationEngine.processLeadAutomation(targetLeadId, status, 'quando_criado');
           } catch (autoErr) {
             console.error('Erro ao processar automação do lead:', autoErr);
           }
 
           // Disparar Evento para Meta Conversions API (CAPI)
           try {
-            const { results: leadRes } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [opp.leadId]);
+            const { results: leadRes } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [targetLeadId]);
             if (leadRes && leadRes.length > 0) {
               const lead = leadRes[0];
               const { sendMetaCapiEvent } = await import('@/lib/meta-capi');
@@ -133,7 +134,7 @@ export async function PUT(request: Request) {
                 eventName = 'Contact';
               }
 
-              sendMetaCapiEvent({
+              const capiRes = await sendMetaCapiEvent({
                 eventName: eventName,
                 userData: {
                   email: lead.email,
@@ -147,7 +148,8 @@ export async function PUT(request: Request) {
                   lead_name: lead.nome,
                   lead_origem: lead.origem
                 }
-              }).catch(capiErr => console.error('Erro ao enviar evento CAPI:', capiErr));
+              });
+              console.log(`[CAPI Meta] Evento '${eventName}' enviado para ${lead.nome}:`, capiRes);
             }
           } catch (capiErr) {
             console.error('Erro ao preparar CAPI Meta:', capiErr);
@@ -155,11 +157,13 @@ export async function PUT(request: Request) {
 
           // Sincronizar status da cotação com WooCommerce
           try {
-            const { results: leadRes } = await d1Api.runQuery(`SELECT origem FROM leads WHERE id = ? LIMIT 1`, [opp.leadId]);
+            const { results: leadRes } = await d1Api.runQuery(`SELECT origem FROM leads WHERE id = ? LIMIT 1`, [targetLeadId]);
             const leadOrigem = leadRes?.[0]?.origem;
+            const { results: oppResObs } = await d1Api.runQuery(`SELECT observacao FROM opportunities WHERE id = ? LIMIT 1`, [id]);
+            const oppObservacao = oppResObs?.[0]?.observacao;
             
-            if (leadOrigem === 'Cotação (WooCommerce)' && opp.observacao) {
-              const match = opp.observacao.match(/Pedido\/Cotação:\s*(\d+)/i);
+            if (leadOrigem === 'Cotação (WooCommerce)' && oppObservacao) {
+              const match = oppObservacao.match(/Pedido\/Cotação:\s*(\d+)/i);
               const quoteId = match ? match[1] : null;
               
               if (quoteId) {

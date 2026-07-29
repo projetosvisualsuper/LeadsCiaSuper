@@ -959,6 +959,48 @@ export default function ConfigPage() {
                       })}
                     />
                   </div>
+                  <div style={{ gridColumn: 'span 2', marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                      onClick={async () => {
+                        if (!settings.omnichannel?.metaCapiPixelId || !settings.omnichannel?.metaCapiAccessToken) {
+                          alert('Por favor, preencha o Pixel ID e o Access Token antes de testar.');
+                          return;
+                        }
+                        await api.saveSettings(settings);
+                        try {
+                          const res = await fetch('/api/meta/capi', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              eventName: 'Contact',
+                              userData: {
+                                email: 'teste@ciasuper.com.br',
+                                phone: '5548999999999',
+                                firstName: 'Lead Teste'
+                              },
+                              customData: {
+                                status: 'em_atendimento',
+                                source: 'Teste Manual no Painel'
+                              }
+                            })
+                          });
+                          const result = await res.json();
+                          if (res.ok && result.success) {
+                            alert('✅ Evento de teste enviado com SUCESSO para a Meta! Verifique no Gerenciador de Eventos.');
+                          } else {
+                            alert(`❌ Erro ao enviar para a Meta: ${result.error || JSON.stringify(result)}`);
+                          }
+                        } catch (err: any) {
+                          alert(`❌ Erro de conexão ao disparar teste: ${err.message}`);
+                        }
+                      }}
+                    >
+                      <Share2 size={14} /> 🧪 Testar Envio para Meta CAPI
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
