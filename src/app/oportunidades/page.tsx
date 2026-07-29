@@ -355,16 +355,16 @@ export default function OportunidadesPage() {
         leadPhoneRaw.includes(term);
 
       let matchDigits = false;
-      if (searchDigits.length > 0) {
+      if (searchDigits.length >= 3 && leadPhoneDigits.length >= 3) {
         const searchNo55 = searchDigits.replace(/^55/, '');
         const leadNo55 = leadPhoneDigits.replace(/^55/, '');
 
-        // Normalização flexível de telefones (comparando apenas os dígitos numéricos)
+        // Normalização flexível de telefones (garantindo que ambos tenham pelo menos 3 dígitos)
         matchDigits = 
-          (leadPhoneDigits.length > 0 && leadPhoneDigits.includes(searchDigits)) ||
-          (searchDigits.length > 0 && searchDigits.includes(leadPhoneDigits)) ||
-          (searchNo55.length >= 3 && leadNo55.includes(searchNo55)) ||
-          (searchNo55.length >= 3 && searchNo55.includes(leadNo55));
+          leadPhoneDigits.includes(searchDigits) ||
+          searchDigits.includes(leadPhoneDigits) ||
+          leadNo55.includes(searchNo55) ||
+          searchNo55.includes(leadNo55);
       }
 
       if (!matchText && !matchDigits) {
