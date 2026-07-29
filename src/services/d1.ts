@@ -940,8 +940,51 @@ export const d1Api = {
     return results as ChatSession[];
   },
 
-  getMessages: async (chatId: string): Promise<ChatMessage[]> => {
-    const { results } = await runQuery(`SELECT * FROM messages WHERE chatId = ? ORDER BY timestamp ASC`, [chatId]);
+  getMessages: async (chatId: string, leadId?: string, phone?: string): Promise<ChatMessage[]> => {
+    let cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+    if (!cleanPhone && chatId && chatId.startsWith('whatsapp_')) {
+      cleanPhone = chatId.substring('whatsapp_'.length).replace(/\D/g, '');
+    }
+
+    const candidateIds = new Set<string>();
+    if (chatId) {
+      candidateIds.add(chatId);
+      if (!chatId.includes('_')) {
+        candidateIds.add(`instagram_${chatId}`);
+        candidateIds.add(`facebook_${chatId}`);
+        candidateIds.add(`whatsapp_${chatId}`);
+        candidateIds.add(`omnichannel_${chatId}`);
+      }
+    }
+    if (leadId) {
+      candidateIds.add(leadId);
+      candidateIds.add(`instagram_${leadId}`);
+      candidateIds.add(`facebook_${leadId}`);
+      candidateIds.add(`whatsapp_${leadId}`);
+      candidateIds.add(`omnichannel_${leadId}`);
+    }
+    if (cleanPhone) {
+      candidateIds.add(`whatsapp_${cleanPhone}`);
+      const phoneNo55 = cleanPhone.replace(/^55/, '');
+      if (phoneNo55) candidateIds.add(`whatsapp_${phoneNo55}`);
+    }
+
+    const idsArray = Array.from(candidateIds);
+    const placeholders = idsArray.map(() => '?').join(', ');
+    const targetLead = leadId || chatId || '';
+
+    const sql = `
+      SELECT DISTINCT m.* 
+      FROM messages m
+      WHERE m.chatId IN (${placeholders})
+         OR m.chatId IN (SELECT c.id FROM chats c WHERE c.leadId = ? OR c.leadId = ?)
+         OR m.senderId = ?
+         OR m.senderId = ?
+      ORDER BY m.timestamp ASC
+    `;
+    const params = [...idsArray, targetLead, chatId, targetLead, chatId];
+
+    const { results } = await runQuery(sql, params);
     return (results || []).map((row: any) => ({
       ...row,
       isIncoming: row.isIncoming === 1

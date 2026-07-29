@@ -10,11 +10,24 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
     const leadId = searchParams.get('leadId');
+    const oppLeadId = searchParams.get('oppLeadId');
+    const phone = searchParams.get('phone');
     const type = searchParams.get('type');
+    const messagesForLead = searchParams.get('messagesForLead') === 'true';
 
     if (type === 'connections') {
       const connections = await d1Api.getWhatsappConnections();
       return NextResponse.json(connections);
+    }
+
+    if (messagesForLead || oppLeadId) {
+      const targetChatId = chatId || oppLeadId || leadId || '';
+      const targetLeadId = oppLeadId || leadId || undefined;
+      const messages = await d1Api.getMessages(targetChatId, targetLeadId, phone || undefined);
+      if (chatId) {
+        await d1Api.markChatAsRead(chatId).catch(() => {});
+      }
+      return NextResponse.json(messages);
     }
 
     if (leadId) {
@@ -52,9 +65,9 @@ export async function GET(req: NextRequest) {
     }
 
     if (chatId) {
-      const messages = await d1Api.getMessages(chatId);
+      const messages = await d1Api.getMessages(chatId, leadId || undefined, phone || undefined);
       // Automatically mark chat as read when messages are fetched
-      await d1Api.markChatAsRead(chatId);
+      await d1Api.markChatAsRead(chatId).catch(() => {});
       return NextResponse.json(messages);
     }
 

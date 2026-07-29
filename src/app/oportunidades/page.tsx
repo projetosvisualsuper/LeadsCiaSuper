@@ -210,24 +210,20 @@ export default function OportunidadesPage() {
       }
     }
 
-    // Buscar histórico do chat (IA/Conversa de entrada)
+    // Buscar histórico do chat (IA / Instagram / Facebook / WhatsApp / Omnichannel)
+    const targetLeadId = opp.leadId || opp.id;
     const phone = opp.leadCelular || '';
-    if (phone) {
-      const cleanPhone = phone.replace(/\D/g, '');
-      // Tentar encontrar o chat correspondente
-      const chatId = `whatsapp_${cleanPhone}`;
-      setLoadingChatId(opp.id);
-      try {
-        const res = await fetch(`/api/chats?chatId=${chatId}`);
-        if (res.ok) {
-          const messages = await res.json();
-          setChatHistories(prev => ({ ...prev, [opp.id]: messages }));
-        }
-      } catch (err) {
-        console.error('Erro ao buscar histórico do chat:', err);
-      } finally {
-        setLoadingChatId(null);
+    setLoadingChatId(opp.id);
+    try {
+      const res = await fetch(`/api/chats?chatId=${encodeURIComponent(targetLeadId)}&oppLeadId=${encodeURIComponent(targetLeadId)}&phone=${encodeURIComponent(phone)}`);
+      if (res.ok) {
+        const messages = await res.json();
+        setChatHistories(prev => ({ ...prev, [opp.id]: Array.isArray(messages) ? messages : [] }));
       }
+    } catch (err) {
+      console.error('Erro ao buscar histórico do chat:', err);
+    } finally {
+      setLoadingChatId(null);
     }
   };
 
@@ -1010,8 +1006,32 @@ export default function OportunidadesPage() {
                             </Link>
                           </div>
                         ) : (
-                          <div style={{ padding: '0.75rem', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#b91c1c', fontSize: '0.85rem' }}>
-                            Número de telefone não cadastrado para este lead.
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div style={{ padding: '0.75rem', backgroundColor: '#f1f5f9', borderRadius: '8px', color: '#475569', fontSize: '0.85rem' }}>
+                              Sem telefone celular (Origem: <strong>{opp.leadOrigem || 'Rede Social'}</strong>).
+                            </div>
+                            <Link 
+                              href={`/atendimento?search=${encodeURIComponent(opp.leadNome || opp.leadId || '')}&leadId=${opp.leadId || ''}&name=${encodeURIComponent(opp.leadNome || '')}`}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                background: 'var(--primary)', 
+                                color: '#ffffff',
+                                padding: '0.65rem 1rem', 
+                                borderRadius: '8px',
+                                textDecoration: 'none',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)',
+                                transition: 'transform 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                              <MessageSquare size={16} /> Atender no Chat ({opp.leadOrigem || 'Redes Sociais'})
+                            </Link>
                           </div>
                         )}
                       </div>
