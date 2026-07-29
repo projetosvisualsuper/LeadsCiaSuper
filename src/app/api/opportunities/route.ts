@@ -119,6 +119,40 @@ export async function PUT(request: Request) {
             console.error('Erro ao processar automação do lead:', autoErr);
           }
 
+          // Disparar Evento para Meta Conversions API (CAPI)
+          try {
+            const { results: leadRes } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [opp.leadId]);
+            if (leadRes && leadRes.length > 0) {
+              const lead = leadRes[0];
+              const { sendMetaCapiEvent } = await import('@/lib/meta-capi');
+              
+              let eventName: 'Purchase' | 'Contact' | 'Lead' | 'Schedule' = 'Lead';
+              if (status === 'ganha') {
+                eventName = 'Purchase';
+              } else if (status === 'em_atendimento' || status === 'cotacao') {
+                eventName = 'Contact';
+              }
+
+              sendMetaCapiEvent({
+                eventName: eventName,
+                userData: {
+                  email: lead.email,
+                  phone: lead.celular || lead.telefone,
+                  firstName: lead.nome,
+                  leadId: lead.id
+                },
+                customData: {
+                  status: status,
+                  opportunity_id: id,
+                  lead_name: lead.nome,
+                  lead_origem: lead.origem
+                }
+              }).catch(capiErr => console.error('Erro ao enviar evento CAPI:', capiErr));
+            }
+          } catch (capiErr) {
+            console.error('Erro ao preparar CAPI Meta:', capiErr);
+          }
+
           // Sincronizar status da cotação com WooCommerce
           try {
             const { results: leadRes } = await d1Api.runQuery(`SELECT origem FROM leads WHERE id = ? LIMIT 1`, [opp.leadId]);

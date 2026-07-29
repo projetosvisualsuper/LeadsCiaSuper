@@ -886,6 +886,85 @@ export default function ConfigPage() {
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1rem 0' }} />
 
+            {/* META CONVERSIONS API (CAPI) FOR CRM */}
+            <div style={{ padding: '1.25rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Share2 size={18} color="#2563eb" /> Meta Conversions API (CAPI) - Feedback Loop de CRM
+                  </h4>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#3b82f6', lineHeight: 1.4 }}>
+                    Envia eventos de qualificação e vendas (vendas ganhas, cotações e contatos) do CRM de volta para o Meta Ads para otimizar os seus anúncios.
+                  </p>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>
+                    {settings.omnichannel?.metaCapiEnabled ? 'Ativo' : 'Inativo'}
+                  </span>
+                  <input 
+                    type="checkbox"
+                    checked={settings.omnichannel?.metaCapiEnabled || false}
+                    onChange={e => setSettings({
+                      ...settings,
+                      omnichannel: { ...settings.omnichannel, metaCapiEnabled: e.target.checked }
+                    })}
+                    style={{ width: '38px', height: '20px', cursor: 'pointer' }}
+                  />
+                </label>
+              </div>
+
+              {settings.omnichannel?.metaCapiEnabled && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.8rem', fontWeight: 600 }}>Pixel ID / Dataset ID (Meta)</label>
+                    <input 
+                      type="text"
+                      className="btn-outline"
+                      style={{ width: '100%', height: '40px', padding: '0 0.85rem', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                      placeholder="Ex: 123456789012345"
+                      value={settings.omnichannel?.metaCapiPixelId || ''}
+                      onChange={e => setSettings({
+                        ...settings,
+                        omnichannel: { ...settings.omnichannel, metaCapiPixelId: e.target.value }
+                      })}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.8rem', fontWeight: 600 }}>Código de Teste (Opcional)</label>
+                    <input 
+                      type="text"
+                      className="btn-outline"
+                      style={{ width: '100%', height: '40px', padding: '0 0.85rem', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                      placeholder="Ex: TEST12345 (Gerenciador de Eventos)"
+                      value={settings.omnichannel?.metaCapiTestEventCode || ''}
+                      onChange={e => setSettings({
+                        ...settings,
+                        omnichannel: { ...settings.omnichannel, metaCapiTestEventCode: e.target.value }
+                      })}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.8rem', fontWeight: 600 }}>Token de Acesso da API de Conversões</label>
+                    <input 
+                      type="password"
+                      className="btn-outline"
+                      style={{ width: '100%', height: '40px', padding: '0 0.85rem', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                      placeholder="Token gerado no Meta Business Suite"
+                      value={settings.omnichannel?.metaCapiAccessToken || ''}
+                      onChange={e => setSettings({
+                        ...settings,
+                        omnichannel: { ...settings.omnichannel, metaCapiAccessToken: e.target.value }
+                      })}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1rem 0' }} />
+
             <div style={{ padding: '1rem', background: 'rgba(0, 0, 0, 0.05)', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.1)' }}>
                <p style={{ fontSize: '0.85rem', color: '#000', lineHeight: 1.5 }}>
                  <strong>TikTok Business API:</strong> Conecte sua conta Business para receber e responder mensagens diretas.

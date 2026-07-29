@@ -190,6 +190,10 @@ export interface Settings {
     youtubeRefreshToken?: string;
     youtubeAccessToken?: string;
     youtubeTokenExpiry?: string;
+    metaCapiEnabled?: boolean;
+    metaCapiPixelId?: string;
+    metaCapiAccessToken?: string;
+    metaCapiTestEventCode?: string;
   };
   appUrl?: string;
 
