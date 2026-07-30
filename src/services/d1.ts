@@ -471,14 +471,33 @@ export const d1Api = {
       }
     }
 
-    // 3. Buscar leads
-    const placeholders = leadIds.map(() => '?').join(',');
-    const { results: leadsRes } = await runQuery(`SELECT * FROM leads WHERE id IN (${placeholders})`, leadIds);
+    // 3. Buscar os leads cadastrados
+    if (!leadIds || leadIds.length === 0) return [];
+
+    let leadsRes: any[] = [];
+    if (leadIds.length > 500) {
+      const { results } = await runQuery(`SELECT * FROM leads`);
+      leadsRes = (results || []).filter((l: any) => leadIds.includes(l.id));
+    } else {
+      const placeholders = leadIds.map(() => '?').join(',');
+      const { results } = await runQuery(`SELECT * FROM leads WHERE id IN (${placeholders})`, leadIds);
+      leadsRes = results || [];
+    }
+
+    // 4. Filtrar leads por canal (somente leads que tenham e-mail se canal=email, ou telefone se canal=whatsapp)
+    const validLeads = leadsRes.filter((lead: any) => {
+      if (campaign.channel === 'email') {
+        return !!(lead.email && lead.email.trim());
+      } else if (campaign.channel === 'whatsapp') {
+        return !!((lead.celular || lead.telefone) && (lead.celular || lead.telefone).trim());
+      }
+      return true;
+    });
 
     const now = new Date().toISOString();
     const newItems: FilaEnvio[] = [];
 
-    for (const lead of leadsRes) {
+    for (const lead of validLeads) {
       const queueId = Math.random().toString(36).substr(2, 9);
       const sql = `
         INSERT INTO queue (

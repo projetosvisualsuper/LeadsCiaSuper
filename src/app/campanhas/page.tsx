@@ -451,8 +451,8 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     const updatedCampaign: Campaign = {
       ...campaign,
       status: 'em execução',
-      totalLeads: leads.length,
-      totalPendentes: leads.length
+      totalLeads: queue.length,
+      totalPendentes: queue.length
     };
     
     await api.saveCampaign(updatedCampaign);
