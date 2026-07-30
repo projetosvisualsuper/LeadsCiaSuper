@@ -451,6 +451,18 @@ export const d1Api = {
     }
   },
 
+  getQueueByCampaign: async (campanhaId: string): Promise<any[]> => {
+    const sql = `
+      SELECT q.*, l.nome as leadNome, l.email as leadEmail, l.telefone as leadTelefone, l.celular as leadCelular
+      FROM queue q
+      LEFT JOIN leads l ON l.id = q.leadId
+      WHERE q.campanhaId = ?
+      ORDER BY q.dataAgendada DESC
+    `;
+    const { results } = await runQuery(sql, [campanhaId]);
+    return results || [];
+  },
+
   getQueue: async (): Promise<FilaEnvio[]> => {
     const { results } = await runQuery(`SELECT * FROM queue`);
     return (results || []).map((row: any) => ({

@@ -64,7 +64,26 @@ export default function CampanhasPage() {
 
   // Modal de Relatório
   const [reportModal, setReportModal] = useState<Campaign | null>(null);
+  const [reportQueueItems, setReportQueueItems] = useState<any[]>([]);
+  const [isLoadingReportQueue, setIsLoadingReportQueue] = useState(false);
+  const [reportFilterStatus, setReportFilterStatus] = useState<'todos' | 'enviado' | 'pendente' | 'erro'>('todos');
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (reportModal && reportModal.id) {
+      setIsLoadingReportQueue(true);
+      api.getQueueByCampaign(reportModal.id)
+        .then((items) => {
+          setReportQueueItems(items || []);
+        })
+        .catch((err) => {
+          console.error('Erro ao buscar lista de envio da campanha:', err);
+        })
+        .finally(() => {
+          setIsLoadingReportQueue(false);
+        });
+    }
+  }, [reportModal]);
 
   // Form State
   const [newCampaign, setNewCampaign] = useState({
@@ -1053,8 +1072,8 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
       )}
       {/* MODAL DE RELATÓRIO DE CAMPANHA */}
       {reportModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
               <div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Relatório da Campanha</h3>
@@ -1063,49 +1082,156 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
               <button 
                 className="btn btn-outline" 
                 style={{ width: '36px', height: '36px', padding: 0 }}
-                onClick={() => setReportModal(null)}
+                onClick={() => { setReportModal(null); setReportQueueItems([]); }}
               >
                 <X size={18} />
               </button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', marginBottom: '0.5rem' }}>
-                  <MailOpen size={16} /> <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Aberturas Únicas</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', marginBottom: '0.25rem' }}>
+                  <MailOpen size={16} /> <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>Aberturas Únicas</span>
                 </div>
-                <p style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>{reportModal.totalAbertos || 0}</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>{reportModal.totalAbertos || 0}</p>
               </div>
               
-              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8b5cf6', marginBottom: '0.5rem' }}>
-                  <MousePointerClick size={16} /> <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Cliques no Link</span>
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8b5cf6', marginBottom: '0.25rem' }}>
+                  <MousePointerClick size={16} /> <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>Cliques no Link</span>
                 </div>
-                <p style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>{reportModal.totalCliques || 0}</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>{reportModal.totalCliques || 0}</p>
               </div>
 
-              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)', marginBottom: '0.5rem' }}>
-                  <BarChart3 size={16} /> <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Taxa de Clique (CTR)</span>
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)', marginBottom: '0.25rem' }}>
+                  <BarChart3 size={16} /> <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>Taxa de Clique (CTR)</span>
                 </div>
-                <p style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
                   {reportModal.totalAbertos && reportModal.totalAbertos > 0 
                     ? ((reportModal.totalCliques || 0) / reportModal.totalAbertos * 100).toFixed(1)
                     : '0.0'}%
                 </p>
               </div>
 
-              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-dark)', marginBottom: '0.5rem' }}>
-                  <Send size={16} /> <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Total Enviado</span>
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-dark)', marginBottom: '0.25rem' }}>
+                  <Send size={16} /> <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>Total Enviado</span>
                 </div>
-                <p style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>{reportModal.totalEnviados}</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>{reportModal.totalEnviados}</p>
               </div>
             </div>
 
+            {/* TABELA DE LEADS DESTINATÁRIOS */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, minHeight: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>
+                  Lista de Leads Destinatários ({reportQueueItems.length})
+                </h4>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    className={`btn ${reportFilterStatus === 'todos' ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
+                    onClick={() => setReportFilterStatus('todos')}
+                  >
+                    Todos
+                  </button>
+                  <button 
+                    className={`btn ${reportFilterStatus === 'enviado' ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
+                    onClick={() => setReportFilterStatus('enviado')}
+                  >
+                    Enviados
+                  </button>
+                  <button 
+                    className={`btn ${reportFilterStatus === 'pendente' ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
+                    onClick={() => setReportFilterStatus('pendente')}
+                  >
+                    Pendentes
+                  </button>
+                  <button 
+                    className={`btn ${reportFilterStatus === 'erro' ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
+                    onClick={() => setReportFilterStatus('erro')}
+                  >
+                    Erros
+                  </button>
+                </div>
+              </div>
+
+              {isLoadingReportQueue ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                  Carregando lista de destinatários...
+                </div>
+              ) : reportQueueItems.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px' }}>
+                  Nenhum registro de destinatário encontrado para esta campanha.
+                </div>
+              ) : (
+                <div style={{ overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '280px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)', textAlign: 'left', color: '#475569' }}>
+                        <th style={{ padding: '0.75rem 1rem' }}>Lead / Nome</th>
+                        <th style={{ padding: '0.75rem 1rem' }}>Contato</th>
+                        <th style={{ padding: '0.75rem 1rem' }}>Status Envio</th>
+                        <th style={{ padding: '0.75rem 1rem' }}>Data Agendada/Envio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportQueueItems
+                        .filter(item => reportFilterStatus === 'todos' || item.status === reportFilterStatus)
+                        .map((item, idx) => {
+                          const contactInfo = item.email || item.telefone || item.leadEmail || item.leadTelefone || item.leadCelular || '-';
+                          const leadName = item.leadNome || 'Lead Sem Nome';
+                          
+                          let statusBadge = (
+                            <span style={{ padding: '0.25rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem', background: '#e2e8f0', color: '#475569', fontWeight: 600 }}>
+                              {item.status}
+                            </span>
+                          );
+
+                          if (item.status === 'enviado') {
+                            statusBadge = (
+                              <span style={{ padding: '0.25rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', background: '#dcfce7', color: '#166534', fontWeight: 600 }}>
+                                ✓ Enviado
+                              </span>
+                            );
+                          } else if (item.status === 'erro') {
+                            statusBadge = (
+                              <span style={{ padding: '0.25rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', fontWeight: 600 }}>
+                                ✕ Erro
+                              </span>
+                            );
+                          } else if (item.status === 'pendente') {
+                            statusBadge = (
+                              <span style={{ padding: '0.25rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', background: '#fef3c7', color: '#92400e', fontWeight: 600 }}>
+                                ⏳ Pendente
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <tr key={item.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.6rem 1rem', fontWeight: 600, color: '#0f172a' }}>{leadName}</td>
+                              <td style={{ padding: '0.6rem 1rem', color: '#475569' }}>{contactInfo}</td>
+                              <td style={{ padding: '0.6rem 1rem' }}>{statusBadge}</td>
+                              <td style={{ padding: '0.6rem 1rem', color: '#64748b', fontSize: '0.75rem' }}>
+                                {item.dataAgendada ? new Date(item.dataAgendada).toLocaleString('pt-BR') : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
             {reportModal.totalErro > 0 && (
-              <div style={{ padding: '1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#991b1b', fontSize: '0.875rem' }}>
-                <strong>Atenção:</strong> Houveram {reportModal.totalErro} erros no envio desta campanha. Verifique os logs de erro ou seu limite de e-mails diário.
+              <div style={{ padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#991b1b', fontSize: '0.8rem' }}>
+                <strong>Atenção:</strong> Houveram {reportModal.totalErro} erros no envio desta campanha. Verifique os destinatários com erro na lista acima.
               </div>
             )}
           </div>
