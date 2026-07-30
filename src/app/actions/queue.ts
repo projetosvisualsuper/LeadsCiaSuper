@@ -40,15 +40,15 @@ export async function processQueueServerAction() {
     console.log(`Processando ${pendingItems.length} itens na fila...`);
 
     const campaigns = await d1Api.getCampaigns();
-    const leads = await d1Api.getLeads(10000);
-
     let processedCount = 0;
 
     for (const item of pendingItems) {
       const campaign = campaigns.find(c => c.id === item.campanhaId);
       if (!campaign) continue;
 
-      const lead = leads.find(l => l.id === item.leadId);
+      // Buscar o lead específico do banco D1 por ID para performance ultra rápida sem estourar memória do D1
+      const { results: leadRes } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [item.leadId]);
+      const lead = leadRes?.[0];
       if (!lead) continue;
 
       const tentativaAtual = (item.tentativa || 0) + 1;
