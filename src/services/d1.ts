@@ -481,7 +481,7 @@ export const d1Api = {
   },
 
   getQueue: async (): Promise<FilaEnvio[]> => {
-    const { results } = await runQuery(`SELECT * FROM queue`);
+    const { results } = await runQuery(`SELECT * FROM queue ORDER BY dataAgendada DESC`);
     return (results || []).map((row: any) => ({
       ...row,
       templateData: row.templateDataJson ? JSON.parse(row.templateDataJson) : undefined
