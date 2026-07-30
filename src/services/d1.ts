@@ -514,8 +514,8 @@ export const d1Api = {
     // Limpar fila antiga pendente da mesma campanha para evitar duplicatas
     await executeRun(`DELETE FROM queue WHERE campanhaId = ? AND status = 'pendente'`, [campanhaId]);
 
-    // Inserir em lotes de 10 registros por comando SQL (10 x 12 = 120 variáveis), permitindo gravar 11.000 leads em segundos sem sobrecarregar o D1
-    const chunkSize = 10;
+    // Inserir em lotes de 30 registros por comando SQL (30 x 12 = 360 variáveis), reduzindo drasticamente o número de chamadas ao D1
+    const chunkSize = 30;
     for (let i = 0; i < validLeads.length; i += chunkSize) {
       const chunk = validLeads.slice(i, i + chunkSize);
       const placeholders: string[] = [];
