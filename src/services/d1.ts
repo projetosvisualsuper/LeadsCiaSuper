@@ -514,8 +514,9 @@ export const d1Api = {
     // Limpar fila antiga pendente da mesma campanha para evitar duplicatas
     await executeRun(`DELETE FROM queue WHERE campanhaId = ? AND status = 'pendente'`, [campanhaId]);
 
-    // Inserir em lotes de 30 registros por comando SQL (30 x 12 = 360 variáveis), reduzindo drasticamente o número de chamadas ao D1
-    const chunkSize = 30;
+    // Inserir em lotes de 35 registros por comando SQL (35 x 12 = 420 variáveis, limite max no D1 é 500)
+    // Isso reduz de 11.400 requisições para apenas ~300 requisições, eliminando o estouro de limite
+    const chunkSize = 35;
     for (let i = 0; i < validLeads.length; i += chunkSize) {
       const chunk = validLeads.slice(i, i + chunkSize);
       const placeholders: string[] = [];
