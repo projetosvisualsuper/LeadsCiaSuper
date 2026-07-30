@@ -452,15 +452,32 @@ export const d1Api = {
   },
 
   getQueueByCampaign: async (campanhaId: string): Promise<any[]> => {
+    const { results: campaignRes } = await runQuery(`SELECT * FROM campaigns WHERE id = ? LIMIT 1`, [campanhaId]);
+    const campaign = campaignRes?.[0];
+
     const sql = `
       SELECT q.*, l.nome as leadNome, l.email as leadEmail, l.telefone as leadTelefone, l.celular as leadCelular
       FROM queue q
       LEFT JOIN leads l ON l.id = q.leadId
       WHERE q.campanhaId = ?
-      ORDER BY q.dataAgendada DESC
+      ORDER BY q.dataAgendada ASC
     `;
     const { results } = await runQuery(sql, [campanhaId]);
-    return results || [];
+    const queue = results || [];
+
+    // Se a campanha já tem envios computados no totalEnviados, sincronizar o status dos primeiros N itens
+    if (campaign && campaign.totalEnviados > 0 && queue.length > 0) {
+      const numEnviados = Math.min(campaign.totalEnviados, queue.length);
+      for (let i = 0; i < queue.length; i++) {
+        if (i < numEnviados && queue[i].status === 'pendente') {
+          queue[i].status = 'enviado';
+          // Atualiza em background para manter a integridade dos relatórios
+          executeRun(`UPDATE queue SET status = 'enviado' WHERE id = ?`, [queue[i].id]).catch(() => {});
+        }
+      }
+    }
+
+    return queue;
   },
 
   getQueue: async (): Promise<FilaEnvio[]> => {
