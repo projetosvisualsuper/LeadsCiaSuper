@@ -35,6 +35,7 @@ export const api = new Proxy({} as typeof d1ApiType, {
                            method.startsWith('mark') ||
                            method.startsWith('toggle') ||
                            method.startsWith('add') ||
+                           method.startsWith('generate') ||
                            method.startsWith('remove');
 
         if (isMutation) {

@@ -471,12 +471,26 @@ export const d1Api = {
       }
     }
 
-    // 3. Buscar todos os leads da base
+    // 3. Buscar os leads da base
     const { results: allLeadsRes } = await runQuery(`SELECT * FROM leads`);
     let leadsRes: any[] = allLeadsRes || [];
 
-    // Se houver filtro específico de leadIds, aplica a filtragem
-    if (leadIds && leadIds.length > 0) {
+    // Se a campanha tiver um segmento associado, filtrar os leads desse segmento
+    if (campaign.segmentId) {
+      const { results: segRes } = await runQuery(`SELECT * FROM segmentations WHERE id = ? LIMIT 1`, [campaign.segmentId]);
+      if (segRes && segRes.length > 0 && segRes[0].leadIdsJson) {
+        try {
+          const segLeadIds = JSON.parse(segRes[0].leadIdsJson);
+          if (Array.isArray(segLeadIds) && segLeadIds.length > 0) {
+            const segSet = new Set(segLeadIds);
+            leadsRes = leadsRes.filter((l: any) => segSet.has(l.id));
+          }
+        } catch (e) {
+          console.error('[Queue Generator] Erro ao parsear leadIds do segmento:', e);
+        }
+      }
+    } else if (leadIds && leadIds.length > 0) {
+      // Se houver filtro específico de leadIds via parâmetro
       const leadIdSet = new Set(leadIds);
       leadsRes = leadsRes.filter((l: any) => leadIdSet.has(l.id));
     }
