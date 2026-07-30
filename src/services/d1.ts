@@ -531,7 +531,8 @@ export const d1Api = {
     const now = new Date().toISOString();
     const newItems: FilaEnvio[] = [];
 
-    // Limpar fila antiga pendente da mesma campanha para evitar duplicatas
+    // Preservar itens já enviados/erros da mesma campanha
+    // DELETE apenas se for re-gerar itens pendentes não processados
     await executeRun(`DELETE FROM queue WHERE campanhaId = ? AND status = 'pendente'`, [campanhaId]);
 
     // Inserir em lotes de 8 registros por comando SQL (8 x 12 = 96 variáveis), mantendo a query bem pequena e 100% segura contra limite do D1
