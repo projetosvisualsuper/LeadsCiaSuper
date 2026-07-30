@@ -514,57 +514,47 @@ export const d1Api = {
     // Limpar fila antiga pendente da mesma campanha para evitar duplicatas
     await executeRun(`DELETE FROM queue WHERE campanhaId = ? AND status = 'pendente'`, [campanhaId]);
 
-    // Inserir em lotes de 15 registros por query no D1 (15 x 12 = 180 parâmetros) para evitar estouro de variáveis no Cloudflare D1 (limite em 500)
-    const batchSize = 15;
-    for (let i = 0; i < validLeads.length; i += batchSize) {
-      const batch = validLeads.slice(i, i + batchSize);
-      const valuePlaceholders: string[] = [];
-      const batchParams: any[] = [];
-
-      for (const lead of batch) {
-        const queueId = Math.random().toString(36).substr(2, 9);
-        const targetPhone = lead.celular || lead.telefone || null;
-        const targetEmail = lead.email || null;
-
-        valuePlaceholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        batchParams.push(
-          queueId,
-          campanhaId,
-          lead.id,
-          campaign.channel === 'email' ? targetEmail : null,
-          campaign.channel === 'whatsapp' ? targetPhone : null,
-          campaign.channel,
-          'pendente',
-          0,
-          now,
-          1,
-          campaign.whatsappConnectionId || null,
-          templateData ? JSON.stringify(templateData) : null
-        );
-
-        newItems.push({
-          id: queueId,
-          campanhaId,
-          leadId: lead.id,
-          email: campaign.channel === 'email' ? targetEmail : undefined,
-          telefone: campaign.channel === 'whatsapp' ? targetPhone : undefined,
-          channel: campaign.channel,
-          status: 'pendente',
-          tentativa: 0,
-          dataAgendada: now,
-          prioridade: 1,
-          whatsappConnectionId: campaign.whatsappConnectionId,
-          templateData: templateData || undefined
-        });
-      }
+    for (const lead of validLeads) {
+      const queueId = Math.random().toString(36).substr(2, 9);
+      const targetPhone = lead.celular || lead.telefone || null;
+      const targetEmail = lead.email || null;
 
       const sql = `
         INSERT INTO queue (
           id, campanhaId, leadId, email, telefone, channel, status, tentativa, dataAgendada, prioridade, whatsappConnectionId, templateDataJson
-        ) VALUES ${valuePlaceholders.join(', ')}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
+      const params = [
+        queueId,
+        campanhaId,
+        lead.id,
+        campaign.channel === 'email' ? targetEmail : null,
+        campaign.channel === 'whatsapp' ? targetPhone : null,
+        campaign.channel,
+        'pendente',
+        0,
+        now,
+        1,
+        campaign.whatsappConnectionId || null,
+        templateData ? JSON.stringify(templateData) : null
+      ];
 
-      await executeRun(sql, batchParams);
+      await executeRun(sql, params);
+
+      newItems.push({
+        id: queueId,
+        campanhaId,
+        leadId: lead.id,
+        email: campaign.channel === 'email' ? targetEmail : undefined,
+        telefone: campaign.channel === 'whatsapp' ? targetPhone : undefined,
+        channel: campaign.channel,
+        status: 'pendente',
+        tentativa: 0,
+        dataAgendada: now,
+        prioridade: 1,
+        whatsappConnectionId: campaign.whatsappConnectionId,
+        templateData: templateData || undefined
+      });
     }
     return newItems;
   },
