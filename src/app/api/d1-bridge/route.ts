@@ -53,6 +53,9 @@ export async function POST(req: NextRequest) {
     } else if (method === 'getLeads') {
       const limitVal = args[0] !== undefined ? args[0] : 100000;
       finalArgs = [limitVal, undefined];
+    } else if (method === 'generateQueueForCampaign') {
+      // Se for a geração de fila, ignora os leadIds enviados pelo cliente para forçar o carregamento de todos os leads diretamente no D1
+      finalArgs = [args[0], undefined];
     } else if (method === 'getChats') {
       finalArgs = [assignedToFilter, connectionIdFilter];
     }
