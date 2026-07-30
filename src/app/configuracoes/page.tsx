@@ -976,6 +976,7 @@ export default function ConfigPage() {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               eventName: 'Contact',
+                              testEventCode: settings.omnichannel?.metaCapiTestEventCode || undefined,
                               userData: {
                                 email: 'teste@ciasuper.com.br',
                                 phone: '5548999999999',

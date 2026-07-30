@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
 
     const response = await sendMetaCapiEvent({
       eventName: eventName || 'Lead',
+      testEventCode,
       userData: {
         email: userData.email,
         phone: userData.phone,

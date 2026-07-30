@@ -38,6 +38,7 @@ export interface MetaCapiEventPayload {
   };
   eventSourceUrl?: string;
   actionSource?: 'system_generated' | 'website' | 'email' | 'other';
+  testEventCode?: string;
 }
 
 /**
@@ -51,7 +52,7 @@ export async function sendMetaCapiEvent(event: MetaCapiEventPayload): Promise<{ 
     const capiEnabled = omni.metaCapiEnabled;
     const pixelId = omni.metaCapiPixelId?.trim();
     const accessToken = omni.metaCapiAccessToken?.trim();
-    const testEventCode = omni.metaCapiTestEventCode?.trim();
+    const testEventCode = event.testEventCode?.trim() || omni.metaCapiTestEventCode?.trim();
 
     if (!capiEnabled) {
       return { success: false, error: 'API de Conversões da Meta desativada nas Configurações.' };
