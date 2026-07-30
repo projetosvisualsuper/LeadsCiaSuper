@@ -500,8 +500,8 @@ export const d1Api = {
     // Limpar fila antiga pendente da mesma campanha para evitar duplicatas
     await executeRun(`DELETE FROM queue WHERE campanhaId = ? AND status = 'pendente'`, [campanhaId]);
 
-    // Inserir em lotes de 50 registros por query no D1 para máxima performance sem estourar tempo limite
-    const batchSize = 50;
+    // Inserir em lotes de 15 registros por query no D1 (15 x 12 = 180 parâmetros) para evitar estouro de variáveis no Cloudflare D1 (limite em 500)
+    const batchSize = 15;
     for (let i = 0; i < validLeads.length; i += batchSize) {
       const batch = validLeads.slice(i, i + batchSize);
       const valuePlaceholders: string[] = [];
