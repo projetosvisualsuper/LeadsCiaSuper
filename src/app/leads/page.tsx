@@ -197,7 +197,7 @@ function LeadsContent() {
 
   const refreshLeads = async () => {
     try {
-      const data = await api.getLeads(5000); // Carregamento otimizado
+      const data = await api.getLeads(100000); // Carregamento expandido para exibir todos os leads
       setLeads(data);
     } catch (error) {
       console.error("Erro ao recarregar leads:", error);

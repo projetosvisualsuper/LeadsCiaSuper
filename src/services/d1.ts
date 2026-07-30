@@ -114,7 +114,7 @@ const executeRun = async (sql: string, params: any[] = []): Promise<any> => {
 
 export const d1Api = {
   // Leads
-  getLeads: async (limitCount: number = 5000, connectionId?: string): Promise<Lead[]> => {
+  getLeads: async (limitCount: number = 100000, connectionId?: string): Promise<Lead[]> => {
     let sql = `SELECT * FROM leads`;
     let params: any[] = [];
     if (connectionId) {
