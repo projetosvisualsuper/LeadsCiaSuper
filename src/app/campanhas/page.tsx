@@ -362,6 +362,11 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     setCampaigns(await api.getCampaigns());
     setIsCreating(false);
     setEditingId(null);
+
+    // Se o tipo de envio for 'imediato', iniciar o disparo e a geração da fila automaticamente
+    if (newCampaign.tipoEnvio === 'imediato') {
+      await startCampaign(campaign);
+    }
     setNewCampaign({ 
       id: '',
       nome: '', 
@@ -951,7 +956,7 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
                   </div>
                 </div>
                 
-                {campaign.status === 'rascunho' ? (
+                {campaign.status === 'rascunho' || campaign.status === 'agendada' ? (
                   <button className="btn btn-primary" onClick={() => startCampaign(campaign)}>
                     <Play size={16} /> Iniciar Envio
                   </button>
