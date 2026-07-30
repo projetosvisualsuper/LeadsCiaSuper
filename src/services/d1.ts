@@ -451,7 +451,7 @@ export const d1Api = {
     })) as FilaEnvio[];
   },
 
-  generateQueueForCampaign: async (campanhaId: string, leadIds: string[]): Promise<FilaEnvio[]> => {
+  generateQueueForCampaign: async (campanhaId: string, leadIds?: string[]): Promise<FilaEnvio[]> => {
     // 1. Buscar campanha
     const { results: campaignRes } = await runQuery(`SELECT * FROM campaigns WHERE id = ? LIMIT 1`, [campanhaId]);
     if (!campaignRes || campaignRes.length === 0) throw new Error('Campanha não encontrada');
@@ -471,34 +471,40 @@ export const d1Api = {
       }
     }
 
-    // 3. Buscar os leads cadastrados
-    if (!leadIds || leadIds.length === 0) return [];
+    // 3. Buscar todos os leads da base
+    const { results: allLeadsRes } = await runQuery(`SELECT * FROM leads`);
+    let leadsRes: any[] = allLeadsRes || [];
 
-    let leadsRes: any[] = [];
-    if (leadIds.length > 500) {
-      const { results } = await runQuery(`SELECT * FROM leads`);
-      leadsRes = (results || []).filter((l: any) => leadIds.includes(l.id));
-    } else {
-      const placeholders = leadIds.map(() => '?').join(',');
-      const { results } = await runQuery(`SELECT * FROM leads WHERE id IN (${placeholders})`, leadIds);
-      leadsRes = results || [];
+    // Se houver filtro específico de leadIds, aplica a filtragem
+    if (leadIds && leadIds.length > 0) {
+      const leadIdSet = new Set(leadIds);
+      leadsRes = leadsRes.filter((l: any) => leadIdSet.has(l.id));
     }
 
-    // 4. Filtrar leads por canal (somente leads que tenham e-mail se canal=email, ou telefone se canal=whatsapp)
+    // 4. Filtrar leads válidos por canal (somente com e-mail se canal=email, ou telefone se canal=whatsapp)
     const validLeads = leadsRes.filter((lead: any) => {
       if (campaign.channel === 'email') {
         return !!(lead.email && lead.email.trim());
       } else if (campaign.channel === 'whatsapp') {
-        return !!((lead.celular || lead.telefone) && (lead.celular || lead.telefone).trim());
+        const phone = lead.celular || lead.telefone;
+        return !!(phone && phone.trim());
       }
       return true;
     });
 
+    console.log(`[Queue Generator] Gerando fila para campanha ${campanhaId}: ${validLeads.length} leads válidos encontrados de ${leadsRes.length} totais.`);
+
     const now = new Date().toISOString();
     const newItems: FilaEnvio[] = [];
 
+    // Limpar fila antiga pendente da mesma campanha para evitar duplicatas
+    await executeRun(`DELETE FROM queue WHERE campanhaId = ? AND status = 'pendente'`, [campanhaId]);
+
     for (const lead of validLeads) {
       const queueId = Math.random().toString(36).substr(2, 9);
+      const targetPhone = lead.celular || lead.telefone || null;
+      const targetEmail = lead.email || null;
+
       const sql = `
         INSERT INTO queue (
           id, campanhaId, leadId, email, telefone, channel, status, tentativa, dataAgendada, prioridade, whatsappConnectionId, templateDataJson
@@ -508,8 +514,8 @@ export const d1Api = {
         queueId,
         campanhaId,
         lead.id,
-        campaign.channel === 'email' ? lead.email : null,
-        campaign.channel === 'whatsapp' ? (lead.celular || lead.telefone) : null,
+        campaign.channel === 'email' ? targetEmail : null,
+        campaign.channel === 'whatsapp' ? targetPhone : null,
         campaign.channel,
         'pendente',
         0,
@@ -523,8 +529,8 @@ export const d1Api = {
         id: queueId,
         campanhaId,
         leadId: lead.id,
-        email: campaign.channel === 'email' ? lead.email : undefined,
-        telefone: campaign.channel === 'whatsapp' ? (lead.celular || lead.telefone) : undefined,
+        email: campaign.channel === 'email' ? targetEmail : undefined,
+        telefone: campaign.channel === 'whatsapp' ? targetPhone : undefined,
         channel: campaign.channel,
         status: 'pendente',
         tentativa: 0,
