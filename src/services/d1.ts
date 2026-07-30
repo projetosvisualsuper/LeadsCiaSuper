@@ -443,6 +443,14 @@ export const d1Api = {
   },
 
   // Queue
+  clearQueue: async (campanhaId?: string): Promise<void> => {
+    if (campanhaId) {
+      await executeRun(`DELETE FROM queue WHERE campanhaId = ?`, [campanhaId]);
+    } else {
+      await executeRun(`DELETE FROM queue`);
+    }
+  },
+
   getQueue: async (): Promise<FilaEnvio[]> => {
     const { results } = await runQuery(`SELECT * FROM queue`);
     return (results || []).map((row: any) => ({
