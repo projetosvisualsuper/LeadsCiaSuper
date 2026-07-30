@@ -80,11 +80,21 @@ export async function processQueueServerAction() {
         if (!targetPhone) {
           sendResult = { success: false, message: 'Lead sem telefone cadastrado.' };
         } else {
-          let message = (campaign.textoSimples || campaign.assunto || '').replace(/\{\{nome\}\}/g, lead.nome);
+          // Montar o link de rastreamento com parâmetros UTM limpos e legíveis
+          let message = (campaign.textoSimples || campaign.assunto || '').replace(/\{\{nome\}\}/g, lead.nome || 'Cliente');
           
           if (campaign.botaoTexto && campaign.botaoLink) {
-            let systemUrl = settings.appUrl || 'https://mkt.ciasuper.com.br';
-            const trackingLink = `${systemUrl}/api/track?type=click&campaignId=${campaign.id}&url=${encodeURIComponent(campaign.botaoLink)}`;
+            let systemUrl = typeof window !== 'undefined' ? window.location.origin : (settings.appUrl || 'https://leads.ciasuper.com.br');
+            
+            // Garantir UTMs claras e legíveis (utm_source=whatsapp, utm_medium=campanha, utm_campaign=nome_limpo)
+            const cleanCampName = (campaign.nome || 'campanha').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            let targetUrl = campaign.botaoLink;
+            if (!targetUrl.includes('utm_source')) {
+              const separator = targetUrl.includes('?') ? '&' : '?';
+              targetUrl += `${separator}utm_source=whatsapp&utm_medium=campanha&utm_campaign=${encodeURIComponent(cleanCampName)}`;
+            }
+
+            const trackingLink = `${systemUrl}/api/track?type=click&campaignId=${campaign.id}&url=${encodeURIComponent(targetUrl)}`;
             message += `\n\n👉 *${campaign.botaoTexto}*\n${trackingLink}`;
           }
 
@@ -94,9 +104,48 @@ export async function processQueueServerAction() {
             message,
             item.whatsappConnectionId || campaign.whatsappConnectionId,
             item.templateData,
-            undefined // Teste: removendo envio de mídia (campaign.bannerImg)
+            undefined
           );
           sendResult = { success: result.success, message: result.error };
+
+          // Se enviou com sucesso no WhatsApp, abre/atualiza a conversa no módulo de Atendimento
+          if (result.success) {
+            try {
+              let cleanPhone = targetPhone.replace(/\D/g, '');
+              if (cleanPhone.length === 10 || cleanPhone.length === 11) cleanPhone = '55' + cleanPhone;
+              const chatId = `whatsapp_${cleanPhone}`;
+
+              await d1Api.saveChatSession({
+                id: chatId,
+                leadId: lead.id,
+                leadName: lead.nome || 'Lead WhatsApp',
+                leadAvatar: null,
+                channel: 'whatsapp',
+                connectionId: item.whatsappConnectionId || campaign.whatsappConnectionId || null,
+                connectionName: 'WhatsApp Marketing',
+                lastMessage: `[Campanha: ${campaign.nome}] ${campaign.assunto || 'Mensagem enviada'}`,
+                lastTimestamp: new Date().toISOString(),
+                unreadCount: 0,
+                status: 'active',
+                dataCriacao: new Date().toISOString(),
+                isInternal: false
+              });
+
+              await d1Api.saveChatMessage({
+                id: `msg_camp_${Math.random().toString(36).substr(2, 9)}`,
+                chatId: chatId,
+                leadId: lead.id,
+                senderId: 'atendente_admin',
+                senderName: 'Sistema (Campanha)',
+                content: message,
+                timestamp: new Date().toISOString(),
+                isIncoming: false,
+                channel: 'whatsapp'
+              });
+            } catch (chatErr) {
+              console.error('Erro ao registrar conversa no Atendimento:', chatErr);
+            }
+          }
         }
       }
 

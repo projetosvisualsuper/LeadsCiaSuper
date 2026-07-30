@@ -1073,11 +1073,28 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
       {/* MODAL DE RELATÓRIO DE CAMPANHA */}
       {reportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflow: 'hidden' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '1100px', maxHeight: '95vh', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Relatório da Campanha</h3>
-                <p style={{ color: '#64748b', fontSize: '0.875rem' }}>{reportModal.nome}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a' }}>Relatório da Campanha</h3>
+                  <span style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '0.4rem', 
+                    padding: '0.25rem 0.75rem', 
+                    borderRadius: '20px', 
+                    fontSize: '0.8rem', 
+                    fontWeight: 700, 
+                    background: reportModal.channel === 'whatsapp' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)', 
+                    color: reportModal.channel === 'whatsapp' ? '#166534' : '#1e40af',
+                    border: reportModal.channel === 'whatsapp' ? '1px solid #86efac' : '1px solid #93c5fd'
+                  }}>
+                    {reportModal.channel === 'whatsapp' ? <MessageSquare size={14} /> : <Mail size={14} />}
+                    Canal: {reportModal.channel === 'whatsapp' ? 'WhatsApp' : 'E-mail'}
+                  </span>
+                </div>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.2rem' }}>{reportModal.nome}</p>
               </div>
               <button 
                 className="btn btn-outline" 
