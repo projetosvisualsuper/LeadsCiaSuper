@@ -23,7 +23,9 @@ import {
   MousePointerClick,
   BarChart3,
   Edit2,
-  Copy
+  Copy,
+  MessageSquare,
+  Mail
 } from 'lucide-react';
 
 export default function CampanhasPage() {
