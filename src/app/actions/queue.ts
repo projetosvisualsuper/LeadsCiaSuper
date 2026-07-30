@@ -58,14 +58,22 @@ export async function processQueueServerAction() {
         if (!settings.brevoApiKey) {
           sendResult = { success: false, message: 'API Key do Brevo não configurada.' };
         } else {
-          const result = await sendEmailBrevoAction({
-            apiKey: settings.brevoApiKey,
-            sender: { name: settings.remetenteNome || '', email: settings.remetenteEmail || '' },
-            to: [{ email: lead.email || item.email || '', name: lead.nome }],
-            subject: campaign.assunto,
-            htmlContent: campaign.conteudoHtml.replace(/\{\{nome\}\}/g, lead.nome)
-          });
-          sendResult = { success: result.success, message: result.message };
+          const senderName = settings.remetenteNome || settings.empresa?.nome || 'Visual Super';
+          const senderEmail = settings.remetenteEmail || 'contato@visualsuper.com.br';
+          const targetEmail = lead.email || item.email || '';
+
+          if (!targetEmail) {
+            sendResult = { success: false, message: 'Lead sem e-mail cadastrado.' };
+          } else {
+            const result = await sendEmailBrevoAction({
+              apiKey: settings.brevoApiKey,
+              sender: { name: senderName, email: senderEmail },
+              to: [{ email: targetEmail, name: lead.nome || 'Cliente' }],
+              subject: campaign.assunto,
+              htmlContent: campaign.conteudoHtml.replace(/\{\{nome\}\}/g, lead.nome || 'Cliente')
+            });
+            sendResult = { success: result.success, message: result.message };
+          }
         }
       } else if (item.channel === 'whatsapp') {
         const targetPhone = lead.celular || lead.telefone || item.telefone;
