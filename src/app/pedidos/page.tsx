@@ -5,7 +5,7 @@ export const runtime = 'edge';
 import { useState, useEffect, Suspense } from 'react';
 import { api } from '@/services/api';
 import { Pedido } from '@/types/crm';
-import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle, Trash2, Search } from 'lucide-react';
+import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle, Trash2, Search, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { isPhoneMatch } from '@/lib/phone-utils';
@@ -22,6 +22,11 @@ function PedidosContent() {
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingLeadOrder, setEditingLeadOrder] = useState<Pedido | null>(null);
+  const [leadSearchInput, setLeadSearchInput] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchingLeads, setSearchingLeads] = useState(false);
+  const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const leadIdParam = searchParams.get('leadId') || '';
@@ -557,9 +562,34 @@ function PedidosContent() {
                     </div>
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         <User size={14} opacity={0.6} />
-                        {pedido.leadNome || 'Lead Desconhecido'}
+                        <strong style={{ color: '#334155' }}>{pedido.leadNome || 'Lead Desconhecido'}</strong>
+                        <button
+                          title="Trocar ou editar cliente do pedido"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingLeadOrder(pedido);
+                            setLeadSearchInput(pedido.leadNome || '');
+                            setSearchResults([]);
+                          }}
+                          style={{
+                            background: '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            color: '#0284c7',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            marginLeft: '0.25rem'
+                          }}
+                        >
+                          <Edit size={12} />
+                          <span>Trocar Cliente</span>
+                        </button>
                       </span>
                       {pedido.valor ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: '600', color: '#059669' }}>
@@ -905,6 +935,206 @@ function PedidosContent() {
           }
         }
       `}} />
+      {/* MODAL PARA TROCAR/EDITAR CLIENTE DO PEDIDO */}
+      {editingLeadOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '1.75rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            position: 'relative'
+          }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <User size={20} color="#0284c7" />
+              Trocar Cliente do Pedido #{editingLeadOrder.numeroLojaVirtual || editingLeadOrder.pedidoReferencia}
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.25rem' }}>
+              Cliente atual: <strong style={{ color: '#1e293b' }}>{editingLeadOrder.leadNome || 'Sem Nome'}</strong>
+            </p>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                Pesquisar Cliente no CRM ou Editar Nome:
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  value={leadSearchInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLeadSearchInput(val);
+                    if (val.trim().length >= 2) {
+                      setSearchingLeads(true);
+                      fetch(`/api/pedidos/change-lead?q=${encodeURIComponent(val)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                          setSearchResults(data.leads || []);
+                        })
+                        .catch(console.error)
+                        .finally(() => setSearchingLeads(false));
+                    } else {
+                      setSearchResults([]);
+                    }
+                  }}
+                  placeholder="Digite o nome, telefone ou documento..."
+                  style={{
+                    flex: 1,
+                    padding: '0.6rem 0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem'
+                  }}
+                />
+                <button
+                  disabled={updatingLeadId === editingLeadOrder.id || !leadSearchInput.trim()}
+                  onClick={async () => {
+                    setUpdatingLeadId(editingLeadOrder.id);
+                    try {
+                      const res = await fetch('/api/pedidos/change-lead', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          pedidoId: editingLeadOrder.id,
+                          newLeadName: leadSearchInput.trim()
+                        })
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.success) {
+                        alert('Nome do cliente atualizado com sucesso!');
+                        setEditingLeadOrder(null);
+                        await fetchPedidos();
+                      } else {
+                        alert(data.error || 'Erro ao atualizar nome.');
+                      }
+                    } catch (err: any) {
+                      alert('Erro ao atualizar: ' + (err.message || err));
+                    } finally {
+                      setUpdatingLeadId(null);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: '#0284c7',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.6rem 1rem',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Salvar Novo Nome
+                </button>
+              </div>
+            </div>
+
+            {/* LISTA DE LEADS ENCONTRADOS */}
+            {searchingLeads && (
+              <div style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.5rem 0' }}>Pesquisando clientes...</div>
+            )}
+
+            {searchResults.length > 0 && (
+              <div style={{
+                maxHeight: '200px',
+                overflowY: 'auto',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                marginBottom: '1.25rem'
+              }}>
+                <div style={{ padding: '0.5rem', backgroundColor: '#f8fafc', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
+                  Ou selecione um cadastro de lead existente:
+                </div>
+                {searchResults.map((lead) => (
+                  <div
+                    key={lead.id}
+                    onClick={async () => {
+                      if (confirm(`Deseja vincular este pedido ao lead "${lead.nome}"?`)) {
+                        setUpdatingLeadId(editingLeadOrder.id);
+                        try {
+                          const res = await fetch('/api/pedidos/change-lead', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              pedidoId: editingLeadOrder.id,
+                              leadId: lead.id,
+                              newLeadName: lead.nome
+                            })
+                          });
+                          const data = await res.json();
+                          if (res.ok && data.success) {
+                            alert(`Pedido vinculado a "${lead.nome}" com sucesso!`);
+                            setEditingLeadOrder(null);
+                            await fetchPedidos();
+                          } else {
+                            alert(data.error || 'Erro ao re-vincular.');
+                          }
+                        } catch (err: any) {
+                          alert('Erro ao vincular: ' + (err.message || err));
+                        } finally {
+                          setUpdatingLeadId(null);
+                        }
+                      }
+                    }}
+                    style={{
+                      padding: '0.6rem 0.8rem',
+                      borderBottom: '1px solid #f1f5f9',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'background-color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f9ff')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#1e293b' }}>{lead.nome}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        {lead.celular ? `Tel: ${lead.celular}` : ''} {lead.documento ? `| Doc: ${lead.documento}` : ''}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 600 }}>Vincular Este</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button
+                onClick={() => setEditingLeadOrder(null)}
+                style={{
+                  backgroundColor: '#f1f5f9',
+                  color: '#475569',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '0.5rem 1.25rem',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
