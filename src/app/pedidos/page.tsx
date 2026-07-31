@@ -503,10 +503,10 @@ function PedidosContent() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
                       {getStatusBadge(pedido.status)}
                       <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1e293b' }}>
-                        Ref: {pedido.pedidoReferencia || 'N/A'}
-                        {pedido.numeroLojaVirtual && (
+                        Ref: {pedido.numeroLojaVirtual || pedido.pedidoReferencia || 'N/A'}
+                        {pedido.numeroLojaVirtual && pedido.pedidoReferencia && (
                           <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: '#64748b', marginLeft: '0.5rem' }}>
-                            (Loja: {pedido.numeroLojaVirtual})
+                            (Mercos: {pedido.pedidoReferencia})
                           </span>
                         )}
                       </span>

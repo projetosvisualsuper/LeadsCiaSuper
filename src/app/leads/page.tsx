@@ -1225,7 +1225,12 @@ function LeadsContent() {
                         >
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                             <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#1e293b' }}>
-                              Ref: {pedido.pedidoReferencia || pedido.id}
+                              Ref: {pedido.numeroLojaVirtual || pedido.pedidoReferencia || pedido.id}
+                              {pedido.numeroLojaVirtual && pedido.pedidoReferencia && (
+                                <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#64748b', marginLeft: '0.4rem' }}>
+                                  (Mercos: {pedido.pedidoReferencia})
+                                </span>
+                              )}
                             </span>
                             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                               {new Date(pedido.dataCriacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
