@@ -80,10 +80,13 @@ export async function sendMetaCapiEvent(event: MetaCapiEventPayload): Promise<{ 
     }
 
     if (event.userData.firstName) {
-      processedUserData.fn = [await sha256(event.userData.firstName)];
-    }
-
-    if (event.userData.lastName) {
+      const nameParts = event.userData.firstName.trim().split(/\s+/);
+      const fn = nameParts[0];
+      const ln = event.userData.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined);
+      
+      if (fn) processedUserData.fn = [await sha256(fn)];
+      if (ln) processedUserData.ln = [await sha256(ln)];
+    } else if (event.userData.lastName) {
       processedUserData.ln = [await sha256(event.userData.lastName)];
     }
 
@@ -106,8 +109,8 @@ export async function sendMetaCapiEvent(event: MetaCapiEventPayload): Promise<{ 
       event_name: event.eventName === 'Custom' && event.customEventName ? event.customEventName : event.eventName,
       event_time: eventTime,
       event_id: eventId,
-      action_source: event.actionSource || 'system_generated',
-      event_source_url: event.eventSourceUrl || 'https://leads.ciasuper.com.br/oportunidades',
+      action_source: event.actionSource || 'website',
+      event_source_url: event.eventSourceUrl || 'https://leads.ciasuper.com.br',
       user_data: processedUserData,
       custom_data: {
         currency: event.customData?.currency || 'BRL',
@@ -125,9 +128,12 @@ export async function sendMetaCapiEvent(event: MetaCapiEventPayload): Promise<{ 
       requestBody.test_event_code = testEventCode;
     }
 
-    const url = `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${accessToken}`;
+    let url = `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${accessToken}`;
+    if (testEventCode) {
+      url += `&test_event_code=${encodeURIComponent(testEventCode)}`;
+    }
 
-    console.log(`[Meta CAPI] Enviando evento '${eventDataPayload.event_name}' para Pixel ${pixelId}...`);
+    console.log(`[Meta CAPI] Enviando evento '${eventDataPayload.event_name}' para Pixel ${pixelId} (Test Code: ${testEventCode || 'Nenhum'})...`);
 
     const response = await fetch(url, {
       method: 'POST',

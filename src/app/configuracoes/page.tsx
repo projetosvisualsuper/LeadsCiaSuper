@@ -976,7 +976,9 @@ export default function ConfigPage() {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               eventName: 'Contact',
-                              testEventCode: settings.omnichannel?.metaCapiTestEventCode || undefined,
+                              actionSource: 'website',
+                              eventSourceUrl: 'https://leads.ciasuper.com.br',
+                              testEventCode: settings.omnichannel?.metaCapiTestEventCode?.trim() || undefined,
                               userData: {
                                 email: 'teste@ciasuper.com.br',
                                 phone: '5548999999999',
@@ -990,7 +992,9 @@ export default function ConfigPage() {
                           });
                           const result = await res.json();
                           if (res.ok && result.success) {
-                            alert('✅ Evento de teste enviado com SUCESSO para a Meta! Verifique no Gerenciador de Eventos.');
+                            const eventsReceived = result.result?.events_received ?? 1;
+                            const traceId = result.result?.fbtrace_id ? ` (Trace ID: ${result.result.fbtrace_id})` : '';
+                            alert(`✅ Evento de teste enviado com SUCESSO para a Meta!\n• Eventos Recebidos: ${eventsReceived}${traceId}\n• Código de Teste: ${settings.omnichannel?.metaCapiTestEventCode || 'Nenhum'}\n\nVerifique na guia "Eventos de teste" no Gerenciador de Eventos da Meta.`);
                           } else {
                             alert(`❌ Erro ao enviar para a Meta: ${result.error || JSON.stringify(result)}`);
                           }

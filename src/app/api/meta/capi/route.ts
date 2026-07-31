@@ -7,7 +7,7 @@ import { sendMetaCapiEvent } from '@/lib/meta-capi';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { eventName, userData, customData, testEventCode } = body;
+    const { eventName, userData, customData, testEventCode, actionSource, eventSourceUrl } = body;
 
     if (!userData) {
       return NextResponse.json({ error: 'Dados do usuário (userData) são obrigatórios' }, { status: 400 });
@@ -16,10 +16,13 @@ export async function POST(req: NextRequest) {
     const response = await sendMetaCapiEvent({
       eventName: eventName || 'Lead',
       testEventCode,
+      actionSource: actionSource || 'website',
+      eventSourceUrl: eventSourceUrl || 'https://leads.ciasuper.com.br',
       userData: {
         email: userData.email,
         phone: userData.phone,
         firstName: userData.firstName || userData.name,
+        lastName: userData.lastName,
         leadId: userData.leadId
       },
       customData: customData || {}
