@@ -8,6 +8,7 @@ import { Pedido } from '@/types/crm';
 import { ShoppingBag, ChevronDown, ChevronUp, RefreshCw, CheckCircle2, User, Phone, Package, DollarSign, Clock, Check, XCircle, Trash2, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { isPhoneMatch } from '@/lib/phone-utils';
 
 function PedidosContent() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -270,7 +271,7 @@ function PedidosContent() {
       const term = searchTerm.toLowerCase();
       const refMatch = p.pedidoReferencia?.toLowerCase().includes(term);
       const nameMatch = p.leadNome?.toLowerCase().includes(term);
-      const phoneMatch = p.leadCelular?.toLowerCase().includes(term);
+      const phoneMatch = p.leadCelular?.toLowerCase().includes(term) || isPhoneMatch(searchTerm, [p.leadCelular]);
       const storeNumMatch = p.numeroLojaVirtual?.toLowerCase().includes(term);
       const itemsMatch = p.itens?.toLowerCase().includes(term);
       

@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, Suspense, Fragment } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { api } from '@/services/api';
+import { isPhoneMatch, normalizePhoneDigits } from '@/lib/phone-utils';
 import { 
   Search, 
   Filter, 
@@ -1176,11 +1177,12 @@ function AtendimentoContent() {
     
     const searchLower = searchQuery.trim().toLowerCase();
 
-    // Tentar encontrar chat existente por ID, número ou nome
+    // Tentar encontrar chat existente por ID, número ou nome (qualquer formato)
     const existing = chats.find(c => 
       (cleanNumber && cleanNumber.length >= 3 && c.id === `whatsapp_${cleanNumber}`) || 
       (cleanNumber && cleanNumber.length >= 3 && c.id === `${cleanNumber}@s.whatsapp.net`) || 
       (cleanNumber && cleanNumber.length >= 3 && c.leadId && c.leadId.includes(cleanNumber)) ||
+      isPhoneMatch(searchQuery, [c.leadId, c.id]) ||
       (searchLower && c.leadName && c.leadName.toLowerCase().includes(searchLower)) ||
       (searchLower && c.id && c.id.toLowerCase().includes(searchLower)) ||
       (searchLower && c.leadId && c.leadId.toLowerCase() === searchLower)
@@ -1268,11 +1270,12 @@ function AtendimentoContent() {
   };
 
   const filteredChats = chats.filter(chat => {
-    // 1. Filtro por Busca (Nome, Última Mensagem ou ID)
+    // 1. Filtro por Busca (Nome, Última Mensagem ou Telefone/ID)
     const matchesSearch = 
       (chat.leadName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (chat.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (chat.leadId || '').includes(searchQuery);
+      (chat.leadId || '').includes(searchQuery) ||
+      isPhoneMatch(searchQuery, [chat.leadId, chat.id]);
 
     // 2. Filtro por Canal
     const matchesChannel = filterChannel === 'all' || chat.channel === filterChannel;

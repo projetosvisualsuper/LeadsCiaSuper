@@ -28,6 +28,7 @@ import {
   ShoppingBag
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { isPhoneMatch } from '@/lib/phone-utils';
 import Link from 'next/link';
 
 const WhatsAppIcon = ({ size = 18, color = 'currentColor' }) => (
@@ -586,13 +587,14 @@ function LeadsContent() {
   };
 
   const filteredLeads = leads.filter(lead => {
-    // Busca inteligente (Nome, Empresa, E-mail ou Contato)
+    // Busca inteligente (Nome, Empresa, E-mail ou Contato em qualquer formato)
     const matchesSearch = 
       (lead.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.empresa || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.telefone || '').includes(searchTerm) ||
-      (lead.celular || '').includes(searchTerm);
+      (lead.celular || '').includes(searchTerm) ||
+      isPhoneMatch(searchTerm, [lead.telefone, lead.celular]);
 
     // Filtros
     const matchesStatus = !filters.status || String(lead.status || '').toLowerCase() === filters.status.toLowerCase();
