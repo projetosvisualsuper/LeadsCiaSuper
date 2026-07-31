@@ -75,8 +75,8 @@ async function handleSync(req: NextRequest) {
         logs.push(`[ERRO] Pedido ${ref}: ${err.message || err}`);
       }
 
-      // Delay de 350ms para respeitar a taxa limite da API do Bling (máximo 3 reqs/seg)
-      await delay(350);
+      // Delay de 500ms para respeitar a taxa limite da API do Bling (máximo 3 reqs/seg)
+      await delay(500);
     }
 
     const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(2);

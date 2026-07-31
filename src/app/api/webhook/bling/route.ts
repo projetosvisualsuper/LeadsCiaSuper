@@ -244,35 +244,33 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
   
   let data: any = null;
 
-  // Primeiro tentar buscar por ID direto
-  let getRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}`, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`
+  // Função auxiliar para chamar fetch com retry em caso de 429 (Too Many Requests)
+  const fetchWithRetry = async (url: string, attempts = 3, delayMs = 1000): Promise<Response> => {
+    let res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+    if (res.status === 429 && attempts > 1) {
+      console.error(`[Rate Limit 429] Aguardando ${delayMs}ms antes de tentar novamente: ${url}`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      return fetchWithRetry(url, attempts - 1, delayMs * 2);
     }
-  });
+    return res;
+  };
+
+  // 1º Tentar buscar por ID direto no Bling
+  let getRes = await fetchWithRetry(`https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}`);
 
   if (getRes.ok) {
     const orderPayload = await getRes.json();
     data = orderPayload.data;
   } else {
-    // Se não encontrou por ID (ex: 404), tentar buscar pela listagem filtrando por numero=orderId
-    console.error(`Busca direta por ID ${orderId} retornou status ${getRes.status}. Tentando buscar por numero=${orderId}...`);
-    const listRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas?numero=${encodeURIComponent(orderId)}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    });
+    // 2º Se não encontrou por ID (ex: 404), tentar buscar filtrando por numero=orderId
+    console.error(`Busca direta por ID ${orderId} retornou status ${getRes.status}. Tentando por numero=${orderId}...`);
+    const listRes = await fetchWithRetry(`https://api.bling.com.br/Api/v3/pedidos/vendas?numero=${encodeURIComponent(orderId)}`);
 
     if (listRes.ok) {
       const listPayload = await listRes.json();
       const firstItem = listPayload.data?.[0];
       if (firstItem?.id) {
-        // Se encontrou o pedido na listagem, buscar os detalhes completos pelo ID real
-        const detailRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas/${firstItem.id}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        });
+        const detailRes = await fetchWithRetry(`https://api.bling.com.br/Api/v3/pedidos/vendas/${firstItem.id}`);
         if (detailRes.ok) {
           const detailPayload = await detailRes.json();
           data = detailPayload.data;
@@ -280,9 +278,26 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
       }
     }
 
+    // 3º Se ainda não encontrou e o orderId for número de loja virtual (Mercos), tentar buscar por numeroLoja
+    if (!data) {
+      console.error(`Tentando buscar por numeroLoja=${orderId}...`);
+      const storeRes = await fetchWithRetry(`https://api.bling.com.br/Api/v3/pedidos/vendas?numeroLoja=${encodeURIComponent(orderId)}`);
+      if (storeRes.ok) {
+        const storePayload = await storeRes.json();
+        const firstItem = storePayload.data?.[0];
+        if (firstItem?.id) {
+          const detailRes = await fetchWithRetry(`https://api.bling.com.br/Api/v3/pedidos/vendas/${firstItem.id}`);
+          if (detailRes.ok) {
+            const detailPayload = await detailRes.json();
+            data = detailPayload.data;
+          }
+        }
+      }
+    }
+
     if (!data) {
       const errText = await getRes.text();
-      throw new Error(`Pedido não localizado no Bling por ID ou Número ${orderId}: ${errText}`);
+      throw new Error(`Pedido não localizado no Bling por ID, Número ou Loja (${orderId}): ${errText}`);
     }
   }
 
