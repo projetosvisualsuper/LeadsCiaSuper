@@ -424,7 +424,34 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
   );
 
   if (pedidoLocal) {
-    // Garantir que o nome do lead seja atualizado com os dados do Bling
+    let correctLeadId = pedidoLocal.leadId;
+
+    // Buscar se existe um lead cadastrado exatamente com este CNPJ/CPF ou telefone
+    if (cleanDocumento) {
+      const { results: docResults } = await d1Api.runQuery(
+        `SELECT id FROM leads WHERE documento = ? OR REPLACE(REPLACE(REPLACE(documento, '.', ''), '-', ''), '/', '') = ? LIMIT 1`,
+        [cleanDocumento, cleanDocumento]
+      );
+      if (docResults && docResults.length > 0) {
+        correctLeadId = docResults[0].id;
+      }
+    } else if (cleanPhone) {
+      const { results: phoneResults } = await d1Api.runQuery(
+        `SELECT id FROM leads WHERE celular = ? OR telefone = ? LIMIT 1`,
+        [cleanPhone, cleanPhone]
+      );
+      if (phoneResults && phoneResults.length > 0) {
+        correctLeadId = phoneResults[0].id;
+      }
+    }
+
+    // Se o pedido estava associado ao lead errado, re-vincula ao lead correto
+    if (correctLeadId && correctLeadId !== pedidoLocal.leadId) {
+      await d1Api.executeRun(`UPDATE pedidos SET leadId = ? WHERE id = ?`, [correctLeadId, pedidoLocal.id]);
+      pedidoLocal.leadId = correctLeadId;
+    }
+
+    // Atualizar os dados do lead correto com a Razão Social/Nome do Bling
     if (pedidoLocal.leadId && clientName && clientName !== 'Cliente') {
       await d1Api.executeRun(`UPDATE leads SET nome = ? WHERE id = ?`, [clientName, pedidoLocal.leadId]);
       if (cleanDocumento) {
