@@ -62,8 +62,6 @@ async function appendPedidoObservacao(pedidoId: string, text: string) {
   }
 }
 
-}
-
 // Função auxiliar para disparar ou agendar a notificação de WhatsApp se configurado
 async function sendBlingWhatsappNotification(pedidoId: string, leadId: string, orderNumber: string, settings: any) {
   const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
