@@ -419,10 +419,21 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
   const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
 
   if (pedidoLocal) {
+    // Garantir que o nome do lead seja atualizado com os dados do Bling
+    if (pedidoLocal.leadId && clientName && clientName !== 'Cliente') {
+      await d1Api.executeRun(`UPDATE leads SET nome = ? WHERE id = ?`, [clientName, pedidoLocal.leadId]);
+      if (cleanDocumento) {
+        await d1Api.executeRun(`UPDATE leads SET documento = ? WHERE id = ? AND (documento IS NULL OR documento = '')`, [cleanDocumento, pedidoLocal.leadId]);
+      }
+      if (cleanPhone) {
+        await d1Api.executeRun(`UPDATE leads SET celular = ? WHERE id = ? AND (celular IS NULL OR celular = '')`, [cleanPhone, pedidoLocal.leadId]);
+      }
+    }
+
     if (pedidoLocal.status === crmStatus) {
       return { 
         success: true, 
-        message: `Pedido já está com o status ${crmStatus} no CRM. Nenhuma atualização necessária.`,
+        message: `Pedido já está com o status ${crmStatus} no CRM. Dados do lead atualizados.`,
         pedido: pedidoLocal
       };
     }
@@ -479,8 +490,11 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
       }
     }
 
-    // Se encontrou lead existente, atualizar dados que estiverem em falta (incluindo CNPJ/CPF)
+    // Se encontrou lead existente, atualizar dados que estiverem em falta e garantir nome do Bling se fornecido
     if (targetLeadId) {
+      if (clientName && clientName !== 'Cliente') {
+        await d1Api.executeRun(`UPDATE leads SET nome = ? WHERE id = ?`, [clientName, targetLeadId]);
+      }
       if (cleanDocumento) {
         await d1Api.executeRun(`UPDATE leads SET documento = ? WHERE id = ? AND (documento IS NULL OR documento = '')`, [cleanDocumento, targetLeadId]);
       }

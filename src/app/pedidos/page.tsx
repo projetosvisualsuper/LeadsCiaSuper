@@ -336,6 +336,46 @@ function PedidosContent() {
               Marcar todos como lidos ({unreadCount})
             </button>
           )}
+          <button
+            onClick={async () => {
+              if (loading) return;
+              const confirmSync = confirm('Deseja re-sincronizar os pedidos com o Bling para atualizar os nomes dos leads no CRM?');
+              if (!confirmSync) return;
+
+              setLoading(true);
+              try {
+                const res = await fetch('/api/pedidos/sync-bling?limit=100', { method: 'POST' });
+                const json = await res.json();
+                if (res.ok && json.success) {
+                  alert(`Sincronização concluída!\n${json.estatisticas?.atualizadosComSucesso || 0} pedidos verificados e sincronizados.`);
+                } else {
+                  alert(json.error || 'Erro ao sincronizar com o Bling.');
+                }
+              } catch (err: any) {
+                alert('Erro ao executar sincronização: ' + (err.message || err));
+              } finally {
+                await fetchPedidos();
+              }
+            }}
+            disabled={loading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              backgroundColor: '#0284c7',
+              color: '#ffffff',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              opacity: loading ? 0.7 : 1
+            }}
+          >
+            <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            {loading ? 'Sincronizando...' : 'Sincronizar com Bling'}
+          </button>
           <button 
             onClick={fetchPedidos} 
             disabled={loading}
