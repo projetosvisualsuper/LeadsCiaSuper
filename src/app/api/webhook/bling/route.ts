@@ -331,6 +331,13 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
   let clientPhone = '';
   let clientEmail = '';
   let rawBlingTelefone = '';
+  let clientDocumento = 
+    data.contato?.numeroDocumento || 
+    data.contato?.cnpj || 
+    data.contato?.cpf || 
+    data.contato?.cnpjCpf || 
+    data.contato?.documento || 
+    '';
 
   if (data.contato?.id) {
     try {
@@ -347,6 +354,15 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
           clientPhone = contactData.celular || '';
           rawBlingTelefone = contactData.telefone || '';
           clientEmail = contactData.email || '';
+          if (!clientDocumento) {
+            clientDocumento = 
+              contactData.numeroDocumento || 
+              contactData.cnpj || 
+              contactData.cpf || 
+              contactData.cnpjCpf || 
+              contactData.documento || 
+              '';
+          }
         }
       }
     } catch (contactErr) {
@@ -364,6 +380,7 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
   const parsedPhones = parseBlingPhones(clientPhone, rawBlingTelefone);
   const cleanPhone = parsedPhones.celular;
   const cleanTelefone = parsedPhones.telefone;
+  const cleanDocumento = clientDocumento ? clientDocumento.toString().replace(/\D/g, '') : '';
 
   const statusNameNormalized = situationNome ? situationNome.toLowerCase().trim() : statusName.toLowerCase().trim();
   const statusId = (data.situacao?.id || '').toString();
@@ -451,9 +468,21 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
     // Pedido não existe, vamos criar o lead se necessário, e salvar o pedido
     let targetLeadId = '';
 
-    if (cleanPhone) {
+    // 1. Tentar localizar lead por CNPJ/CPF (documento)
+    if (cleanDocumento) {
+      const { results: docResults } = await d1Api.runQuery(
+        `SELECT id, celular, telefone, email, documento FROM leads WHERE documento = ? OR REPLACE(REPLACE(REPLACE(documento, '.', ''), '-', ''), '/', '') = ? LIMIT 1`,
+        [cleanDocumento, cleanDocumento]
+      );
+      if (docResults && docResults.length > 0) {
+        targetLeadId = docResults[0].id;
+      }
+    }
+
+    // 2. Tentar localizar por telefone se não encontrou por documento
+    if (!targetLeadId && cleanPhone) {
       const { results } = await d1Api.runQuery(
-        `SELECT id FROM leads WHERE celular = ? OR telefone = ? OR celular = ? OR telefone = ? LIMIT 1`,
+        `SELECT id, documento FROM leads WHERE celular = ? OR telefone = ? OR celular = ? OR telefone = ? LIMIT 1`,
         [cleanPhone, cleanPhone, cleanTelefone, cleanTelefone]
       );
       if (results && results.length > 0) {
@@ -461,36 +490,44 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
       }
     }
 
+    // 3. Tentar localizar por nome se ainda não encontrou
     if (!targetLeadId) {
       const { results: nameResults } = await d1Api.runQuery(
-        `SELECT id, celular, telefone, email FROM leads WHERE nome = ? LIMIT 1`,
+        `SELECT id, celular, telefone, email, documento FROM leads WHERE nome = ? LIMIT 1`,
         [clientName]
       );
       if (nameResults && nameResults.length > 0) {
         targetLeadId = nameResults[0].id;
-        if (cleanPhone && !nameResults[0].celular) {
-          await d1Api.executeRun(`UPDATE leads SET celular = ? WHERE id = ?`, [cleanPhone, targetLeadId]);
-        }
-        if (cleanTelefone && !nameResults[0].telefone) {
-          await d1Api.executeRun(`UPDATE leads SET telefone = ? WHERE id = ?`, [cleanTelefone, targetLeadId]);
-        }
-        if (clientEmail && !nameResults[0].email) {
-          await d1Api.executeRun(`UPDATE leads SET email = ? WHERE id = ?`, [clientEmail, targetLeadId]);
-        }
       }
     }
 
-    if (!targetLeadId) {
+    // Se encontrou lead existente, atualizar dados que estiverem em falta (incluindo CNPJ/CPF)
+    if (targetLeadId) {
+      if (cleanDocumento) {
+        await d1Api.executeRun(`UPDATE leads SET documento = ? WHERE id = ? AND (documento IS NULL OR documento = '')`, [cleanDocumento, targetLeadId]);
+      }
+      if (cleanPhone) {
+        await d1Api.executeRun(`UPDATE leads SET celular = ? WHERE id = ? AND (celular IS NULL OR celular = '')`, [cleanPhone, targetLeadId]);
+      }
+      if (cleanTelefone) {
+        await d1Api.executeRun(`UPDATE leads SET telefone = ? WHERE id = ? AND (telefone IS NULL OR telefone = '')`, [cleanTelefone, targetLeadId]);
+      }
+      if (clientEmail) {
+        await d1Api.executeRun(`UPDATE leads SET email = ? WHERE id = ? AND (email IS NULL OR email = '')`, [clientEmail, targetLeadId]);
+      }
+    } else {
+      // Criar novo lead com CNPJ/CPF
       targetLeadId = Math.random().toString(36).substr(2, 9);
       const agora = new Date().toISOString();
       await d1Api.runQuery(
-        `INSERT INTO leads (id, nome, celular, telefone, email, origem, dataCriacao, status) VALUES (?, ?, ?, ?, ?, 'Bling Mercos', ?, 'novo')`,
-        [targetLeadId, clientName, cleanPhone || null, cleanTelefone || null, clientEmail || null, agora]
+        `INSERT INTO leads (id, nome, celular, telefone, email, documento, origem, dataCriacao, status) VALUES (?, ?, ?, ?, ?, ?, 'Bling Mercos', ?, 'novo')`,
+        [targetLeadId, clientName, cleanPhone || null, cleanTelefone || null, clientEmail || null, cleanDocumento || null, agora]
       );
     }
 
     const itensBling = data.itens ? (Array.isArray(data.itens) ? data.itens.map((i: any) => i.descricao || i.codigo).join(', ') : data.itens.toString()) : 'Produtos Mercos';
     const valorBling = parseFloat(data.total || '0');
+    const docInfoStr = cleanDocumento ? ` (CNPJ/CPF: ${cleanDocumento})` : '';
 
     await d1Api.savePedido({
       leadId: targetLeadId,
@@ -499,7 +536,7 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
       valor: valorBling,
       origem: 'mercos',
       numeroLojaVirtual: numeroLojaVirtual,
-      observacao: `[BLING CRIAÇÃO] Pedido criado com status "${prettyStatus}" no Bling em ${formattedDate}.`
+      observacao: `[BLING CRIAÇÃO] Pedido criado com status "${prettyStatus}" no Bling em ${formattedDate}${docInfoStr}.`
     } as any);
 
     const todosPedidos = await d1Api.getPedidos();
