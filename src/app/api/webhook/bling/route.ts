@@ -240,23 +240,50 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
   }
 
   // 3. Consultar dados completos do pedido via API REST do Bling
-  console.error(`Buscando dados completos do pedido ID ${orderId} no Bling...`);
-  const getRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}`, {
+  console.error(`Buscando dados completos do pedido ID/Número ${orderId} no Bling...`);
+  
+  let data: any = null;
+
+  // Primeiro tentar buscar por ID direto
+  let getRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`
     }
   });
 
-  if (!getRes.ok) {
-    const errText = await getRes.text();
-    throw new Error(`Erro na API do Bling: ${errText}`);
-  }
+  if (getRes.ok) {
+    const orderPayload = await getRes.json();
+    data = orderPayload.data;
+  } else {
+    // Se não encontrou por ID (ex: 404), tentar buscar pela listagem filtrando por numero=orderId
+    console.error(`Busca direta por ID ${orderId} retornou status ${getRes.status}. Tentando buscar por numero=${orderId}...`);
+    const listRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas?numero=${encodeURIComponent(orderId)}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
 
-  const orderPayload = await getRes.json();
-  const data = orderPayload.data;
+    if (listRes.ok) {
+      const listPayload = await listRes.json();
+      const firstItem = listPayload.data?.[0];
+      if (firstItem?.id) {
+        // Se encontrou o pedido na listagem, buscar os detalhes completos pelo ID real
+        const detailRes = await fetch(`https://api.bling.com.br/Api/v3/pedidos/vendas/${firstItem.id}`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        if (detailRes.ok) {
+          const detailPayload = await detailRes.json();
+          data = detailPayload.data;
+        }
+      }
+    }
 
-  if (!data) {
-    throw new Error('Nenhum dado retornado da API do Bling');
+    if (!data) {
+      const errText = await getRes.text();
+      throw new Error(`Pedido não localizado no Bling por ID ou Número ${orderId}: ${errText}`);
+    }
   }
 
   // Obter dados do pedido de venda

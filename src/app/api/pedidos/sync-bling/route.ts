@@ -51,9 +51,11 @@ async function handleSync(req: NextRequest) {
     const protocol = req.headers.get('x-forwarded-proto') || 'https';
     const blingWebhookUrl = `${protocol}://${host}/api/webhook/bling`;
 
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     for (const p of pedidosBling) {
-      // Usar a referência do Bling (pedidoReferencia) ou o ID do pedido
-      const ref = p.pedidoReferencia || p.id;
+      // Usar o número do Bling (pedidoReferencia), número da loja virtual ou ID
+      const ref = p.pedidoReferencia || p.numeroLojaVirtual || p.id;
       if (!ref) {
         puladosCount++;
         continue;
@@ -72,6 +74,9 @@ async function handleSync(req: NextRequest) {
         falhasCount++;
         logs.push(`[ERRO] Pedido ${ref}: ${err.message || err}`);
       }
+
+      // Delay de 350ms para respeitar a taxa limite da API do Bling (máximo 3 reqs/seg)
+      await delay(350);
     }
 
     const durationSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
