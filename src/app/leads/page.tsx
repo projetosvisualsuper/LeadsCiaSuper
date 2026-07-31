@@ -1228,7 +1228,7 @@ function LeadsContent() {
                               Ref: {pedido.numeroLojaVirtual || pedido.pedidoReferencia || pedido.id}
                               {pedido.numeroLojaVirtual && pedido.pedidoReferencia && (
                                 <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#64748b', marginLeft: '0.4rem' }}>
-                                  (Mercos: {pedido.pedidoReferencia})
+                                  (Bling: {pedido.pedidoReferencia})
                                 </span>
                               )}
                             </span>

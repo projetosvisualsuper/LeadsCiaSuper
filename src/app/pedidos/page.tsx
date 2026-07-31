@@ -506,7 +506,7 @@ function PedidosContent() {
                         Ref: {pedido.numeroLojaVirtual || pedido.pedidoReferencia || 'N/A'}
                         {pedido.numeroLojaVirtual && pedido.pedidoReferencia && (
                           <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: '#64748b', marginLeft: '0.5rem' }}>
-                            (Mercos: {pedido.pedidoReferencia})
+                            (Bling: {pedido.pedidoReferencia})
                           </span>
                         )}
                       </span>
