@@ -4,6 +4,7 @@ import { FilaEnvio, Campaign, Settings, Lead } from '@/types/crm';
 import { sendEmailBrevoAction } from './brevo';
 import { sendOmnichannelMessageAction } from './chat';
 import { d1Api } from '@/services/d1';
+import { isBusinessHours } from '@/lib/business-hours';
 
 /**
  * Processa a fila de e-mails e whatsapp no servidor.
@@ -18,13 +19,6 @@ export async function processQueueServerAction() {
     if (!settings || Object.keys(settings).length === 0) {
       return { success: false, message: 'Configurações não encontradas.' };
     }
-
-    // 2. O processamento das campanhas agendadas pode ser feito
-    // mas o getQueue e updateQueue não existem detalhadamente no d1Api,
-    // então vamos fazer consultas diretas usando uma função raw se necessário.
-    // Mas para manter simples, vamos assumir que apenas a UI gera a fila ao clicar em "Iniciar Envio".
-    // Se quisermos agendamento automático, devemos usar runQuery via d1Api (não exportado).
-    // Como d1Api é a interface, vamos precisar acessar os métodos existentes.
 
     const allQueue = await d1Api.getQueue();
     let pendingItems = allQueue.filter(q => q.status === 'pendente' || (q.status === 'erro' && (q.tentativa || 0) < 3));
@@ -41,8 +35,82 @@ export async function processQueueServerAction() {
 
     const campaigns = await d1Api.getCampaigns();
     let processedCount = 0;
+    const nowIso = new Date().toISOString();
 
     for (const item of pendingItems) {
+      // Pular se tiver dataAgendada no futuro
+      if (item.dataAgendada && item.dataAgendada > nowIso) {
+        continue;
+      }
+
+      // Tratar Notificações Automáticas de Pedido (Bling)
+      if (item.campanhaId === 'bling_notification') {
+        if (!isBusinessHours()) {
+          console.log('[Queue] Notificação do Bling ignorada neste ciclo: fora do horário comercial.');
+          continue;
+        }
+
+        const { results: leadRes } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [item.leadId]);
+        const lead = leadRes?.[0];
+        const targetPhone = lead?.celular || lead?.telefone || item.telefone;
+
+        if (!targetPhone) {
+          await d1Api.updateQueueItem(item.id, { status: 'erro', erro: 'Lead sem telefone cadastrado' });
+          continue;
+        }
+
+        let customData: any = {};
+        try {
+          if (item.templateDataJson) customData = JSON.parse(item.templateDataJson);
+        } catch (e) {}
+
+        const msgText = customData.customMessage || `Olá, *${lead?.nome || 'Cliente'}*! Seu pedido *#${customData.orderNumber || ''}* foi enviado com sucesso! 🚀\n\nVocê pode acompanhar a entrega e rastrear seu pedido através do nosso portal:\n🔗 https://portal.visualsuper.com.br\n\nObrigado pela confiança! 😊`;
+
+        const cleanPhone = targetPhone.replace(/\D/g, '');
+        let result: any;
+
+        if (settings.bling?.templateName) {
+          result = await sendOmnichannelMessageAction(
+            cleanPhone,
+            'whatsapp',
+            msgText,
+            item.whatsappConnectionId,
+            {
+              name: settings.bling.templateName,
+              language: settings.bling.templateLanguage || 'pt_BR',
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: lead?.nome || 'Cliente' },
+                    { type: "text", text: customData.orderNumber || '' }
+                  ]
+                }
+              ]
+            }
+          );
+        } else {
+          result = await sendOmnichannelMessageAction(cleanPhone, 'whatsapp', msgText, item.whatsappConnectionId);
+        }
+
+        if (result && result.success) {
+          await d1Api.updateQueueItem(item.id, { status: 'enviado', dataEnvio: new Date().toISOString() });
+          processedCount++;
+          if (customData.pedidoId) {
+            const formattedNow = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+            await d1Api.executeRun(
+              `UPDATE pedidos SET observacao = COALESCE(observacao, '') || ? WHERE id = ?`,
+              [`\n[WHATSAPP NOTIFICAÇÃO AGENDADA ENVIADA] Mensagem de envio enviada com SUCESSO no horário comercial para +${cleanPhone} em ${formattedNow}.`, customData.pedidoId]
+            );
+          }
+        } else {
+          const tentativaAtual = (item.tentativa || 0) + 1;
+          const status = tentativaAtual >= 3 ? 'erro' : 'pendente';
+          await d1Api.updateQueueItem(item.id, { status, tentativa: tentativaAtual, erro: result?.error || 'Erro no envio' });
+        }
+        continue;
+      }
+
       const campaign = campaigns.find(c => c.id === item.campanhaId);
       if (!campaign) continue;
 

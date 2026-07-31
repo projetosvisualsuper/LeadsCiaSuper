@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
+import { isBusinessHours, getNextBusinessHoursStart } from '@/lib/business-hours';
 
 function parseBlingPhones(rawPhone: string, rawTelefone?: string): { celular: string; telefone: string } {
   const united = `${rawPhone || ''} / ${rawTelefone || ''}`;
@@ -61,56 +62,11 @@ async function appendPedidoObservacao(pedidoId: string, text: string) {
   }
 }
 
-function isBusinessHours(): boolean {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Sao_Paulo',
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      second: 'numeric',
-      hour12: false
-    });
-    
-    const parts = formatter.formatToParts(new Date());
-    const getValue = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10);
-    
-    const hour = getValue('hour');
-    const minute = getValue('minute');
-    
-    const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Sao_Paulo',
-      weekday: 'long'
-    });
-    const weekdayStr = weekdayFormatter.format(new Date());
-    
-    const workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    if (!workingDays.includes(weekdayStr)) {
-      return false;
-    }
-    
-    const timeVal = hour * 60 + minute;
-    const startVal = 7 * 60 + 30; // 07:30
-    const endVal = 17 * 60 + 30;  // 17:30
-    
-    return timeVal >= startVal && timeVal <= endVal;
-  } catch (err) {
-    console.error('Erro ao verificar horário comercial:', err);
-    return false;
-  }
 }
 
-// Função auxiliar para disparar a notificação de WhatsApp se configurado
+// Função auxiliar para disparar ou agendar a notificação de WhatsApp se configurado
 async function sendBlingWhatsappNotification(pedidoId: string, leadId: string, orderNumber: string, settings: any) {
   const formattedDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  
-  if (!isBusinessHours()) {
-    const logText = `\n[WHATSAPP NOTIFICAÇÃO IGNORADA] Envio automático bloqueado fora do horário comercial (segunda a sexta, das 07:30 às 17:30) em ${formattedDate}.`;
-    await appendPedidoObservacao(pedidoId, logText);
-    return;
-  }
 
   try {
     const leadResult = await d1Api.runQuery(`SELECT nome, celular FROM leads WHERE id = ? LIMIT 1`, [leadId]);
@@ -130,6 +86,30 @@ async function sendBlingWhatsappNotification(pedidoId: string, leadId: string, o
     }
 
     const msgText = `Olá, *${targetLead.nome}*! Seu pedido *#${orderNumber}* foi enviado com sucesso! 🚀\n\nVocê pode acompanhar a entrega e rastrear seu pedido através do nosso portal:\n🔗 https://portal.visualsuper.com.br\n\nObrigado pela confiança! 😊`;
+
+    // Se estiver fora do horário comercial, agendamos para o próximo horário comercial!
+    if (!isBusinessHours()) {
+      const nextStart = getNextBusinessHoursStart();
+      const formattedNext = nextStart.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      const queueId = `bling_noti_${pedidoId}_${Date.now()}`;
+      
+      const templateDataJson = JSON.stringify({
+        pedidoId,
+        leadId,
+        orderNumber,
+        customMessage: msgText
+      });
+
+      await d1Api.executeRun(
+        `INSERT INTO queue (id, campanhaId, leadId, email, telefone, channel, status, tentativa, dataAgendada, prioridade, templateDataJson)
+         VALUES (?, 'bling_notification', ?, null, ?, 'whatsapp', 'pendente', 0, ?, 1, ?)`,
+        [queueId, leadId, cleanPhone, nextStart.toISOString(), templateDataJson]
+      );
+
+      const logText = `\n[WHATSAPP NOTIFICAÇÃO AGENDADA] Fora do horário comercial em ${formattedDate}. Disparo automático agendado para ${formattedNext}.`;
+      await appendPedidoObservacao(pedidoId, logText);
+      return;
+    }
     
     const { sendOmnichannelMessageAction } = await import('@/app/actions/chat');
     
