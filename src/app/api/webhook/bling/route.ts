@@ -416,7 +416,12 @@ async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
 
   // 4. Localizar o pedido correspondente no banco D1
   const pedidos = await d1Api.getPedidos();
-  const pedidoLocal = pedidos.find(p => p.pedidoReferencia === orderNumber || p.id === orderNumber);
+  const pedidoLocal = pedidos.find(p => 
+    p.pedidoReferencia === orderNumber || 
+    p.id === orderNumber || 
+    (numeroLojaVirtual && p.numeroLojaVirtual === numeroLojaVirtual) ||
+    (numeroLojaVirtual && p.pedidoReferencia === numeroLojaVirtual)
+  );
 
   if (pedidoLocal) {
     // Garantir que o nome do lead seja atualizado com os dados do Bling

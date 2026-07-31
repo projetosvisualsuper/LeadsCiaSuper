@@ -51,27 +51,45 @@ async function handleSync(req: NextRequest) {
     const blingWebhookUrl = `${protocol}://${host}/api/webhook/bling`;
 
     for (const p of pedidosBling) {
-      const ref = p.pedidoReferencia || p.id;
+      // Priorizar pedidoReferencia (ID/Número do Bling), numeroLojaVirtual ou id do pedido
+      const ref = p.pedidoReferencia || p.numeroLojaVirtual || p.id;
       if (!ref) {
         puladosCount++;
         continue;
       }
 
       try {
-        // Chamar o processBlingOrder via GET interno do webhook
-        const res = await fetch(`${blingWebhookUrl}?id=${encodeURIComponent(ref)}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        });
+        // Tentar consultar via fetch relativo com fallback para chamada interna
+        let res: Response | null = null;
+        try {
+          res = await fetch(`${blingWebhookUrl}?id=${encodeURIComponent(ref)}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+        } catch (fetchErr) {
+          // Se falhar o fetch com URL absoluta, tentar relativo /api/webhook/bling
+          const origin = req.nextUrl.origin;
+          res = await fetch(`${origin}/api/webhook/bling?id=${encodeURIComponent(ref)}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          });
+        }
 
-        if (res.ok) {
+        if (res && res.ok) {
           const resData = await res.json();
-          atualizadosCount++;
-          logs.push(`[SUCESSO] Pedido ${ref}: Lead ${resData.pedido?.leadNome || 'atualizado'}`);
+          if (resData.error) {
+            falhasCount++;
+            logs.push(`[FALHA] Pedido ${ref}: ${resData.error}`);
+          } else {
+            atualizadosCount++;
+            logs.push(`[SUCESSO] Pedido ${ref}: Lead ${resData.pedido?.leadNome || 'atualizado'}`);
+          }
         } else {
           falhasCount++;
-          logs.push(`[AVISO] Pedido ${ref}: Resposta status ${res.status}`);
+          const errBody = res ? await res.text() : 'Sem resposta';
+          logs.push(`[AVISO] Pedido ${ref}: Resposta status ${res?.status} - ${errBody.substring(0, 100)}`);
         }
       } catch (err: any) {
         falhasCount++;
