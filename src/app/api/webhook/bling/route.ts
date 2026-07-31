@@ -179,7 +179,7 @@ async function getBlingSituationName(situationId: string, accessToken: string): 
 }
 
 // Função compartilhada para importar/atualizar o pedido a partir do ID do Bling
-async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
+export async function processBlingOrder(orderId: string, webhookTimestamp?: number) {
   // 1. Carregar credenciais e tokens do Bling nas configurações do CRM
   const settings = await d1Api.getSettings();
   let accessToken = settings?.bling?.accessToken || '';

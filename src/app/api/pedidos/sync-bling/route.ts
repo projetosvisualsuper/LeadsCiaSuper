@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { d1Api } from '@/services/d1';
+import { processBlingOrder } from '@/app/api/webhook/bling/route';
 
 /**
  * Endpoint de Sincronização em Massa (Bulk Resync)
@@ -51,49 +52,25 @@ async function handleSync(req: NextRequest) {
     const blingWebhookUrl = `${protocol}://${host}/api/webhook/bling`;
 
     for (const p of pedidosBling) {
-      // Priorizar pedidoReferencia (ID/Número do Bling), numeroLojaVirtual ou id do pedido
-      const ref = p.pedidoReferencia || p.numeroLojaVirtual || p.id;
+      // Usar a referência do Bling (pedidoReferencia) ou o ID do pedido
+      const ref = p.pedidoReferencia || p.id;
       if (!ref) {
         puladosCount++;
         continue;
       }
 
       try {
-        // Tentar consultar via fetch relativo com fallback para chamada interna
-        let res: Response | null = null;
-        try {
-          res = await fetch(`${blingWebhookUrl}?id=${encodeURIComponent(ref)}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          });
-        } catch (fetchErr) {
-          // Se falhar o fetch com URL absoluta, tentar relativo /api/webhook/bling
-          const origin = req.nextUrl.origin;
-          res = await fetch(`${origin}/api/webhook/bling?id=${encodeURIComponent(ref)}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          });
-        }
-
-        if (res && res.ok) {
-          const resData = await res.json();
-          if (resData.error) {
-            falhasCount++;
-            logs.push(`[FALHA] Pedido ${ref}: ${resData.error}`);
-          } else {
-            atualizadosCount++;
-            logs.push(`[SUCESSO] Pedido ${ref}: Lead ${resData.pedido?.leadNome || 'atualizado'}`);
-          }
+        const resData = await processBlingOrder(ref);
+        if (resData && resData.success) {
+          atualizadosCount++;
+          logs.push(`[SUCESSO] Pedido ${ref}: Sincronizado com sucesso`);
         } else {
           falhasCount++;
-          const errBody = res ? await res.text() : 'Sem resposta';
-          logs.push(`[AVISO] Pedido ${ref}: Resposta status ${res?.status} - ${errBody.substring(0, 100)}`);
+          logs.push(`[FALHA] Pedido ${ref}`);
         }
       } catch (err: any) {
         falhasCount++;
-        logs.push(`[ERRO] Pedido ${ref}: ${err.message}`);
+        logs.push(`[ERRO] Pedido ${ref}: ${err.message || err}`);
       }
     }
 
