@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const db = (globalThis as any).DB || process.env.DB;
     if (!db) return NextResponse.json({ error: 'DB binding not found' });
@@ -80,6 +80,32 @@ export async function GET() {
         readByJson TEXT DEFAULT '[]'
       );
     `).run();
+
+    // Criar índices essenciais para evitar Full Table Scans e consumo excessivo no Cloudflare D1
+    const indexes = [
+      `CREATE INDEX IF NOT EXISTS idx_messages_chatId_timestamp ON messages(chatId, timestamp DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_messages_chatId ON messages(chatId)`,
+      `CREATE INDEX IF NOT EXISTS idx_messages_senderId ON messages(senderId)`,
+      `CREATE INDEX IF NOT EXISTS idx_chats_leadId ON chats(leadId)`,
+      `CREATE INDEX IF NOT EXISTS idx_chats_assignedTo ON chats(assignedTo)`,
+      `CREATE INDEX IF NOT EXISTS idx_chats_connectionId ON chats(connectionId)`,
+      `CREATE INDEX IF NOT EXISTS idx_chats_lastTimestamp ON chats(lastTimestamp DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_pedidos_leadId ON pedidos(leadId)`,
+      `CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_opportunities_leadId ON opportunities(leadId)`,
+      `CREATE INDEX IF NOT EXISTS idx_opportunities_assignedTo ON opportunities(assignedTo)`,
+      `CREATE INDEX IF NOT EXISTS idx_queue_status_dataAgendada ON queue(status, dataAgendada)`,
+      `CREATE INDEX IF NOT EXISTS idx_leads_dataCriacao ON leads(dataCriacao DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_system_logs_isRead ON system_logs(isRead)`
+    ];
+
+    for (const sqlIdx of indexes) {
+      try {
+        await db.prepare(sqlIdx).run();
+      } catch (e) {
+        console.log('Erro ou índice já existente:', e);
+      }
+    }
 
     // Adicionar colunas da Mercos (se não existirem, o try-catch evita erro)
     try {
@@ -283,70 +309,65 @@ export async function GET() {
         console.error('Erro ao sincronizar nomes de leads nas sessões de chat:', err);
       }
 
-      // Tentar restaurar avatares ausentes chamando a API do Evolution para todos os chats ativos
-      try {
-        console.log('Iniciando restauração de avatares ausentes via Evolution API...');
-        const settingsQuery = await db.prepare(`SELECT valueJson FROM settings WHERE key = 'global'`).first();
-        const globalSettings = settingsQuery ? JSON.parse(settingsQuery.valueJson) : {};
-        const settings = globalSettings?.omnichannel || {};
-        const apiUrl = settings?.evolutionApiUrl || '';
-        const apiKey = settings?.evolutionApiKey || '';
-        
-        if (apiUrl && apiKey) {
-          const connectionsQuery = await db.prepare(`SELECT id, name, evolutionInstanceName FROM whatsapp_connections`).all();
-          const connections = connectionsQuery.results || [];
+      // Tentar restaurar avatares ausentes chamando a API do Evolution (apenas se parâmetro ?syncAvatars=true for passado)
+      const urlObj = new URL(request.url);
+      const syncAvatars = urlObj.searchParams.get('syncAvatars') === 'true';
+
+      if (syncAvatars) {
+        try {
+          console.log('Iniciando restauração de avatares ausentes via Evolution API...');
+          const settingsQuery = await db.prepare(`SELECT valueJson FROM settings WHERE key = 'global'`).first();
+          const globalSettings = settingsQuery ? JSON.parse(settingsQuery.valueJson) : {};
+          const settings = globalSettings?.omnichannel || {};
+          const apiUrl = settings?.evolutionApiUrl || '';
+          const apiKey = settings?.evolutionApiKey || '';
           
-          const chatsQuery = await db.prepare(`SELECT id, leadId, connectionId, connectionName FROM chats WHERE id LIKE 'whatsapp_%' AND (leadAvatar IS NULL OR leadAvatar = '')`).all();
-          const chatsToRestore = chatsQuery.results || [];
-          
-          console.log(`Restaurando fotos de perfil para ${chatsToRestore.length} chats...`);
-          
-          for (const chat of chatsToRestore) {
-            const rawPhone = chat.id.substring('whatsapp_'.length);
-            const defaultConn = connections.find((c: any) => c.isDefault === 1 || c.isDefault === true) || connections[0];
-            const conn = connections.find((c: any) => c.id === chat.connectionId || c.name === chat.connectionName) || defaultConn;
-            const instanceName = conn ? conn.evolutionInstanceName : '';
+          if (apiUrl && apiKey) {
+            const connectionsQuery = await db.prepare(`SELECT id, name, evolutionInstanceName FROM whatsapp_connections`).all();
+            const connections = connectionsQuery.results || [];
             
-            if (instanceName) {
-              try {
-                const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-                  body: JSON.stringify({ number: `${rawPhone}@s.whatsapp.net` })
-                });
-                if (picRes.ok) {
-                  const picData = await picRes.json();
-                  if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
-                    const avatarUrl = picData.profilePictureUrl;
-                    await db.prepare(`UPDATE chats SET leadAvatar = ? WHERE id = ?`).bind(avatarUrl, chat.id).run();
-                    await db.prepare(`UPDATE leads SET avatar = ? WHERE id = ?`).bind(avatarUrl, chat.leadId).run();
-                    console.log(`Foto de perfil restaurada para ${chat.id}: ${avatarUrl}`);
+            const chatsQuery = await db.prepare(`SELECT id, leadId, connectionId, connectionName FROM chats WHERE id LIKE 'whatsapp_%' AND (leadAvatar IS NULL OR leadAvatar = '') LIMIT 20`).all();
+            const chatsToRestore = chatsQuery.results || [];
+            
+            console.log(`Restaurando fotos de perfil para ${chatsToRestore.length} chats...`);
+            
+            for (const chat of chatsToRestore) {
+              const rawPhone = chat.id.substring('whatsapp_'.length);
+              const defaultConn = connections.find((c: any) => c.isDefault === 1 || c.isDefault === true) || connections[0];
+              const conn = connections.find((c: any) => c.id === chat.connectionId || c.name === chat.connectionName) || defaultConn;
+              const instanceName = conn ? conn.evolutionInstanceName : '';
+              
+              if (instanceName) {
+                try {
+                  const picRes = await fetch(`${apiUrl.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${instanceName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
+                    body: JSON.stringify({ number: `${rawPhone}@s.whatsapp.net` })
+                  });
+                  if (picRes.ok) {
+                    const picData = await picRes.json();
+                    if (picData && picData.profilePictureUrl && !picData.profilePictureUrl.includes('placeholder')) {
+                      const avatarUrl = picData.profilePictureUrl;
+                      await db.prepare(`UPDATE chats SET leadAvatar = ? WHERE id = ?`).bind(avatarUrl, chat.id).run();
+                      await db.prepare(`UPDATE leads SET avatar = ? WHERE id = ?`).bind(avatarUrl, chat.leadId).run();
+                    }
                   }
+                } catch (e) {
+                  console.log(`Erro ao restaurar avatar para o chat ${chat.id}:`, e);
                 }
-              } catch (e) {
-                console.log(`Erro ao restaurar avatar para o chat ${chat.id}:`, e);
               }
             }
           }
+        } catch (err) {
+          console.error('Erro ao restaurar avatares ausentes:', err);
         }
-      } catch (err) {
-        console.error('Erro ao restaurar avatares ausentes:', err);
       }
 
     } catch (e: any) {
       console.error('Erro na normalização/mesclagem de leads/chats:', e);
     }
 
-    // Limpeza de chats de teste anteriores a hoje (30 de Junho de 2026)
-    try {
-      await db.prepare(`UPDATE messages SET isIncoming = 0 WHERE timestamp < '2026-06-30T00:00:00'`).run();
-    } catch (e) { console.log('Erro ao atualizar messages antigas:', e); }
-
-    try {
-      await db.prepare(`UPDATE chats SET unreadCount = 0 WHERE lastTimestamp < '2026-06-30T00:00:00'`).run();
-    } catch (e) { console.log('Erro ao resetar unreadCount antigo:', e); }
-
-    return NextResponse.json({ success: true, message: 'Tabelas e colunas adicionadas e histórico antigo limpo com sucesso no D1!' });
+    return NextResponse.json({ success: true, message: 'Tabelas, colunas e índices essenciais criados com sucesso no D1!' });
   } catch (err: any) {
     return NextResponse.json({ error: err.message, success: false });
   }

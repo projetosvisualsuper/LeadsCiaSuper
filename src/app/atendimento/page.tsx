@@ -419,7 +419,7 @@ function AtendimentoContent() {
     fetchChats();
     const interval = setInterval(() => {
       if (!document.hidden) fetchChats();
-    }, 10000);
+    }, 25000);
 
     const handleVisibilityChange = () => {
       if (!document.hidden) fetchChats();
@@ -533,7 +533,7 @@ function AtendimentoContent() {
     fetchMessagesAndLead();
     const interval = setInterval(() => {
       if (!document.hidden) fetchMessagesAndLead();
-    }, 5000);
+    }, 12000);
 
     const handleVisibilityChange = () => {
       if (!document.hidden) fetchMessagesAndLead();

@@ -283,3 +283,20 @@ CREATE TABLE IF NOT EXISTS bots (
   dataCriacao TEXT NOT NULL,
   dataAtualizacao TEXT NOT NULL
 );
+
+-- Indexes for performance optimization on D1
+CREATE INDEX IF NOT EXISTS idx_messages_chatId_timestamp ON messages(chatId, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_chatId ON messages(chatId);
+CREATE INDEX IF NOT EXISTS idx_messages_senderId ON messages(senderId);
+CREATE INDEX IF NOT EXISTS idx_chats_leadId ON chats(leadId);
+CREATE INDEX IF NOT EXISTS idx_chats_assignedTo ON chats(assignedTo);
+CREATE INDEX IF NOT EXISTS idx_chats_connectionId ON chats(connectionId);
+CREATE INDEX IF NOT EXISTS idx_chats_lastTimestamp ON chats(lastTimestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_pedidos_leadId ON pedidos(leadId);
+CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status);
+CREATE INDEX IF NOT EXISTS idx_opportunities_leadId ON opportunities(leadId);
+CREATE INDEX IF NOT EXISTS idx_opportunities_assignedTo ON opportunities(assignedTo);
+CREATE INDEX IF NOT EXISTS idx_queue_status_dataAgendada ON queue(status, dataAgendada);
+CREATE INDEX IF NOT EXISTS idx_leads_dataCriacao ON leads(dataCriacao DESC);
+CREATE INDEX IF NOT EXISTS idx_system_logs_isRead ON system_logs(isRead);
+

@@ -911,12 +911,14 @@ export default function ClientLayout({
     
     handleOportunidadesRead();
     
-    // Poll a cada 30 segundos
+    // Poll a cada 60 segundos (somente se a aba estiver visível)
     const interval = setInterval(() => {
-      handleLogsRead();
-      handlePedidosRead();
-      handleOportunidadesRead();
-    }, 30000);
+      if (!document.hidden) {
+        handleLogsRead();
+        handlePedidosRead();
+        handleOportunidadesRead();
+      }
+    }, 60000);
 
     window.addEventListener('logs-read', handleLogsRead);
     window.addEventListener('pedidos-read', handlePedidosRead);
