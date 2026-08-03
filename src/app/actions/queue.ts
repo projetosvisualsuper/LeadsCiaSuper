@@ -259,8 +259,8 @@ export async function processQueueServerAction() {
         });
       }
 
-      // Intervalo entre envios (150ms para e-mail via Brevo API, 3s para WhatsApp)
-      const delay = item.channel === 'whatsapp' ? 3000 : 150;
+      // Intervalo entre envios seguro para entregabilidade e prevenção de bloqueios (1.2s para e-mail Brevo, 3.5s para WhatsApp)
+      const delay = item.channel === 'whatsapp' ? 3500 : 1200;
       if (processedCount < pendingItems.length) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
