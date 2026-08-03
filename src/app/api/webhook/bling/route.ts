@@ -493,9 +493,8 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
       pedidoLocal.leadId = correctLeadId;
     }
 
-    // Atualizar os dados do lead correto com a Razão Social/Nome do Bling
-    if (pedidoLocal.leadId && clientName && clientName !== 'Cliente') {
-      await d1Api.executeRun(`UPDATE leads SET nome = ? WHERE id = ?`, [clientName, pedidoLocal.leadId]);
+    // Atualizar apenas documentos/telefones do lead se estiverem vazios (NÃO alterar o nome do lead existente para evitar contaminar clientes de pedidos anteriores)
+    if (pedidoLocal.leadId) {
       if (cleanDocumento) {
         await d1Api.executeRun(`UPDATE leads SET documento = ? WHERE id = ? AND (documento IS NULL OR documento = '')`, [cleanDocumento, pedidoLocal.leadId]);
       }
@@ -518,9 +517,10 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
     const novaObs = (pedidoLocal.observacao || '') + updateText;
     await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
-    if (crmStatus === 'enviado' && settings.bling?.enabled) {
-      await sendBlingWhatsappNotification(pedidoLocal.id, pedidoLocal.leadId, orderNumber, settings);
-    }
+    // NOTIFICAÇÃO AUTOMÁTICA DESATIVADA TEMPORARIAMENTE CONFORME SOLICITADO
+    // if (crmStatus === 'enviado' && settings.bling?.enabled) {
+    //   await sendBlingWhatsappNotification(pedidoLocal.id, pedidoLocal.leadId, orderNumber, settings);
+    // }
 
     return { 
       success: true, 
@@ -564,11 +564,8 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
       }
     }
 
-    // Se encontrou lead existente, atualizar dados que estiverem em falta e garantir nome do Bling se fornecido
+    // Se encontrou lead existente, apenas preencher dados que estiverem faltando sem sobrescrever o nome existente
     if (targetLeadId) {
-      if (clientName && clientName !== 'Cliente') {
-        await d1Api.executeRun(`UPDATE leads SET nome = ? WHERE id = ?`, [clientName, targetLeadId]);
-      }
       if (cleanDocumento) {
         await d1Api.executeRun(`UPDATE leads SET documento = ? WHERE id = ? AND (documento IS NULL OR documento = '')`, [cleanDocumento, targetLeadId]);
       }
@@ -611,9 +608,10 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
       await d1Api.updatePedidoStatus(recemCriado.id, crmStatus);
     }
 
-    if (crmStatus === 'enviado' && settings.bling?.enabled && recemCriado) {
-      await sendBlingWhatsappNotification(recemCriado.id, targetLeadId, orderNumber, settings);
-    }
+    // NOTIFICAÇÃO AUTOMÁTICA DESATIVADA TEMPORARIAMENTE CONFORME SOLICITADO
+    // if (crmStatus === 'enviado' && settings.bling?.enabled && recemCriado) {
+    //   await sendBlingWhatsappNotification(recemCriado.id, targetLeadId, orderNumber, settings);
+    // }
 
     return { 
       success: true, 
