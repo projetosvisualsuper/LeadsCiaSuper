@@ -508,25 +508,24 @@ ${campaignId ? `<img src="${systemUrl}/api/track?type=open&campaignId=${campaign
     setIsProcessingQueue(true);
     setProcessMessage('Iniciando processamento...');
     try {
-      const response = await fetch('/api/queue/process', { method: 'POST' });
-      const result = await response.json();
-      setProcessMessage(result.message);
-      
-      // Atualizar a lista de campanhas para refletir envios
-      setCampaigns(await api.getCampaigns());
-      
-      // Esconder a mensagem após alguns segundos se foi sucesso
-      if (result.success) {
-        setTimeout(() => {
-          setIsProcessingQueue(false);
-          setProcessMessage('');
-        }, 5000);
-      } else {
-        setTimeout(() => {
-          setIsProcessingQueue(false);
-          setProcessMessage('');
-        }, 5000);
+      let hasMore = true;
+      let totalProcessed = 0;
+      while (hasMore) {
+        const response = await fetch('/api/queue/process', { method: 'POST' });
+        const result = await response.json();
+        if (!result.success) {
+          setProcessMessage(result.message || 'Erro ao processar');
+          break;
+        }
+        totalProcessed += (result.processedCount || 0);
+        hasMore = !!result.hasMore;
+        setProcessMessage(hasMore ? `Processando lote... (${totalProcessed} enviados)` : `Finalizado! ${totalProcessed} envios processados.`);
+        setCampaigns(await api.getCampaigns());
       }
+      setTimeout(() => {
+        setIsProcessingQueue(false);
+        setProcessMessage('');
+      }, 4000);
     } catch (error: any) {
       alert('Erro ao processar fila: ' + error.message);
       setIsProcessingQueue(false);

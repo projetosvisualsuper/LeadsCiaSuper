@@ -87,10 +87,15 @@ export default function RelatoriosPage() {
     setLog(['Iniciando processamento...']);
     
     try {
-      const response = await fetch('/api/queue/process', { method: 'POST' });
-      const result = await response.json();
-      setLog(prev => [result.message, ...prev.slice(0, 9)]);
-      refreshData();
+      let hasMore = true;
+      while (hasMore) {
+        const response = await fetch('/api/queue/process', { method: 'POST' });
+        const result = await response.json();
+        setLog(prev => [result.message, ...prev.slice(0, 9)]);
+        hasMore = !!result.hasMore;
+        refreshData();
+        if (!result.success) break;
+      }
     } catch (e: any) {
       setLog(prev => [`Erro: ${e.message}`, ...prev.slice(0, 9)]);
     }

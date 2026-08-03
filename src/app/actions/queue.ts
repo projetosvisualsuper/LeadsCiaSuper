@@ -35,9 +35,21 @@ export async function processQueueServerAction() {
 
     const campaigns = await d1Api.getCampaigns();
     let processedCount = 0;
-    const nowIso = new Date().toISOString();
+    const startTime = Date.now();
+    const MAX_RUN_TIME_MS = 22000; // 22 segundos (evita timeout de 30s do Cloudflare Workers)
 
     for (const item of pendingItems) {
+      // Interromper de forma segura se estiver próximo do tempo limite de execução do servidor
+      if (Date.now() - startTime > MAX_RUN_TIME_MS) {
+        console.log(`[Queue] Tempo limite atingido (${Math.round((Date.now() - startTime)/1000)}s). Finalizando este lote com ${processedCount} itens processados.`);
+        return {
+          success: true,
+          hasMore: true,
+          processedCount,
+          message: `Lote de ${processedCount} envios processado. Restam itens pendentes.`
+        };
+      }
+
       // Pular se tiver dataAgendada no futuro
       if (item.dataAgendada && item.dataAgendada > nowIso) {
         continue;
@@ -247,8 +259,8 @@ export async function processQueueServerAction() {
         });
       }
 
-      // Intervalo entre envios (5s para e-mail, talvez 10s para WhatsApp para evitar ban)
-      const delay = item.channel === 'whatsapp' ? 10000 : 5000;
+      // Intervalo entre envios (150ms para e-mail via Brevo API, 3s para WhatsApp)
+      const delay = item.channel === 'whatsapp' ? 3000 : 150;
       if (processedCount < pendingItems.length) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -256,7 +268,9 @@ export async function processQueueServerAction() {
 
     return { 
       success: true, 
-      message: `Processamento concluído. Verifique os relatórios.` 
+      hasMore: false,
+      processedCount,
+      message: `Processamento de ${processedCount} itens concluído com sucesso.` 
     };
 
   } catch (error: any) {
