@@ -544,10 +544,14 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
 
     // 2. Tentar localizar por telefone se não encontrou por documento
     if (!targetLeadId && cleanPhone) {
-      const { results } = await d1Api.runQuery(
-        `SELECT id, documento FROM leads WHERE celular = ? OR telefone = ? OR celular = ? OR telefone = ? LIMIT 1`,
-        [cleanPhone, cleanPhone, cleanTelefone, cleanTelefone]
-      );
+      let queryStr = `SELECT id, documento FROM leads WHERE celular = ? OR telefone = ?`;
+      let queryParams = [cleanPhone, cleanPhone];
+      if (cleanTelefone) {
+        queryStr += ` OR celular = ? OR telefone = ?`;
+        queryParams.push(cleanTelefone, cleanTelefone);
+      }
+      queryStr += ` LIMIT 1`;
+      const { results } = await d1Api.runQuery(queryStr, queryParams);
       if (results && results.length > 0) {
         targetLeadId = results[0].id;
       }
