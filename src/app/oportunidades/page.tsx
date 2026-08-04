@@ -322,7 +322,7 @@ export default function OportunidadesPage() {
       bg = '#f1f5f9'; color = '#475569'; icon = <Archive size={12}/>;
       label = 'Arquivada';
     } else if (safeStatus === 'carteira') {
-      bg = '#e0f2fe'; color = '#0284c7'; icon = <FolderUser size={12}/>;
+      bg = '#e0f2fe'; color = '#0284c7'; icon = <Briefcase size={12}/>;
       label = 'Carteira de Cliente';
     } else if (safeStatus === 'finalizado') {
       bg = '#d1fae5'; color = '#047857'; icon = <Check size={12}/>;
