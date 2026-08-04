@@ -27,7 +27,6 @@ import {
   Archive,
   Download,
   Search,
-  FolderUser,
   Tag,
   X
 } from 'lucide-react';
@@ -1436,7 +1435,7 @@ export default function OportunidadesPage() {
             ) : (
               <>
                 <h3 style={{ fontWeight: 700, fontSize: '1.2rem', color: '#0369a1', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                  <FolderUser size={22} /> Carteira de Cliente
+                  <Briefcase size={22} /> Carteira de Cliente
                 </h3>
                 <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
                   Selecione o consultor ou confirme a Tag que indicará a quem este cliente pertence:
