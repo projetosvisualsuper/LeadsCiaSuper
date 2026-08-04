@@ -31,11 +31,35 @@ export async function POST(request: Request) {
       // Se não passou leadId mas alterou o nome, descobre o leadId do pedido e atualiza
       const { results } = await d1Api.runQuery(`SELECT leadId FROM pedidos WHERE id = ? LIMIT 1`, [pedidoId]);
       if (results && results.length > 0 && results[0].leadId) {
-        await d1Api.executeRun(`UPDATE leads SET nome = ? WHERE id = ?`, [newLeadName.trim(), results[0].leadId]);
-        return NextResponse.json({
-          success: true,
-          message: 'Nome do cliente atualizado com sucesso!'
-        });
+        const currentLeadId = results[0].leadId;
+        
+        // Verifica quantos pedidos esse lead possui
+        const { results: countRes } = await d1Api.runQuery(`SELECT COUNT(id) as total FROM pedidos WHERE leadId = ?`, [currentLeadId]);
+        const totalPedidos = countRes && countRes.length > 0 ? countRes[0].total : 1;
+
+        if (totalPedidos > 1) {
+          // Se o lead tem mais de 1 pedido, criamos um novo lead para não afetar os outros pedidos
+          const newLeadId = Math.random().toString(36).substr(2, 9);
+          const agora = new Date().toISOString();
+          await d1Api.executeRun(
+            `INSERT INTO leads (id, nome, dataCriacao, status, origem) VALUES (?, ?, ?, 'novo', 'Manual CRM')`,
+            [newLeadId, newLeadName.trim(), agora]
+          );
+          // Vincular apenas este pedido ao novo lead
+          await d1Api.updatePedidoLeadId(pedidoId, newLeadId);
+          
+          return NextResponse.json({
+            success: true,
+            message: 'Novo cliente criado e vinculado apenas a este pedido!'
+          });
+        } else {
+          // Se só tem 1 pedido, podemos apenas atualizar o nome do lead atual com segurança
+          await d1Api.executeRun(`UPDATE leads SET nome = ? WHERE id = ?`, [newLeadName.trim(), currentLeadId]);
+          return NextResponse.json({
+            success: true,
+            message: 'Nome do cliente atualizado com sucesso!'
+          });
+        }
       }
     }
 
