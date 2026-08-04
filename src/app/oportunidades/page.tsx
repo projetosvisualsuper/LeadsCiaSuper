@@ -676,12 +676,13 @@ export default function OportunidadesPage() {
       </div>
 
       {/* TABS */}
-      <div className="tabs-responsive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <div className="tabs-responsive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', flexWrap: 'nowrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button 
             onClick={() => setActiveTab('novas')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.55rem',
+              fontSize: '0.825rem',
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'novas' ? '3px solid var(--primary)' : '3px solid transparent',
@@ -695,7 +696,8 @@ export default function OportunidadesPage() {
           <button 
             onClick={() => setActiveTab('cotacoes')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.55rem',
+              fontSize: '0.825rem',
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'cotacoes' ? '3px solid #eab308' : '3px solid transparent',
@@ -709,7 +711,8 @@ export default function OportunidadesPage() {
           <button 
             onClick={() => setActiveTab('atendidas')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.55rem',
+              fontSize: '0.825rem',
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'atendidas' ? '3px solid #3b82f6' : '3px solid transparent',
@@ -723,7 +726,8 @@ export default function OportunidadesPage() {
           <button 
             onClick={() => setActiveTab('ganhas')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.55rem',
+              fontSize: '0.825rem',
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'ganhas' ? '3px solid #10b981' : '3px solid transparent',
@@ -737,7 +741,8 @@ export default function OportunidadesPage() {
           <button 
             onClick={() => setActiveTab('perdidas')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.55rem',
+              fontSize: '0.825rem',
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'perdidas' ? '3px solid #ef4444' : '3px solid transparent',
@@ -751,7 +756,8 @@ export default function OportunidadesPage() {
           <button 
             onClick={() => setActiveTab('arquivadas')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.55rem',
+              fontSize: '0.825rem',
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'arquivadas' ? '3px solid #64748b' : '3px solid transparent',
@@ -765,7 +771,8 @@ export default function OportunidadesPage() {
           <button 
             onClick={() => setActiveTab('carteira')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.55rem',
+              fontSize: '0.825rem',
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'carteira' ? '3px solid #0284c7' : '3px solid transparent',
