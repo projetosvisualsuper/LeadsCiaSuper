@@ -2095,7 +2095,7 @@ export const d1Api = {
 
   getOpportunities: async (assignedTo?: string, connectionId?: string): Promise<Opportunity[]> => {
     let query = `
-      SELECT o.*, l.nome as leadNome, l.celular as leadCelular, l.email as leadEmail, l.origem as leadOrigem
+      SELECT o.*, l.nome as leadNome, l.celular as leadCelular, l.email as leadEmail, l.origem as leadOrigem, l.tags as leadTags
       FROM opportunities o
       LEFT JOIN leads l ON o.leadId = l.id
     `;

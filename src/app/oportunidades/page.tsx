@@ -27,6 +27,8 @@ import {
   Archive,
   Download,
   Search,
+  FolderUser,
+  Tag,
   X
 } from 'lucide-react';
 import Link from 'next/link';
@@ -106,8 +108,10 @@ export default function OportunidadesPage() {
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [connections, setConnections] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas' | 'cotacoes' | 'arquivadas'>('novas');
+  const [activeTab, setActiveTab] = useState<'novas' | 'atendidas' | 'ganhas' | 'perdidas' | 'cotacoes' | 'arquivadas' | 'carteira'>('novas');
   const [showFinalizeModal, setShowFinalizeModal] = useState<string | null>(null);
+  const [isCarteiraStep, setIsCarteiraStep] = useState<boolean>(false);
+  const [selectedConsultantTag, setSelectedConsultantTag] = useState<string>('');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
 
@@ -257,15 +261,32 @@ export default function OportunidadesPage() {
     }
   };
 
-  const handleStatusChange = async (oppId: string, newStatus: string) => {
+  const handleStatusChange = async (oppId: string, newStatus: string, addTag?: string) => {
     try {
       const res = await fetch('/api/opportunities', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: oppId, status: newStatus })
+        body: JSON.stringify({ id: oppId, status: newStatus, addTag })
       });
       if (res.ok) {
-        setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: newStatus as any } : o));
+        setOpportunities(prev => prev.map(o => {
+          if (o.id === oppId) {
+            let updatedTags = o.leadTags;
+            if (addTag) {
+              try {
+                const parsed = o.leadTags ? JSON.parse(o.leadTags) : [];
+                if (!parsed.includes(addTag)) {
+                  parsed.push(addTag);
+                  updatedTags = JSON.stringify(parsed);
+                }
+              } catch (e) {
+                updatedTags = JSON.stringify([addTag]);
+              }
+            }
+            return { ...o, status: newStatus as any, leadTags: updatedTags };
+          }
+          return o;
+        }));
       } else {
         alert('Erro ao atualizar status.');
       }
@@ -295,6 +316,9 @@ export default function OportunidadesPage() {
     } else if (safeStatus === 'arquivada') {
       bg = '#f1f5f9'; color = '#475569'; icon = <Archive size={12}/>;
       label = 'Arquivada';
+    } else if (safeStatus === 'carteira') {
+      bg = '#e0f2fe'; color = '#0284c7'; icon = <FolderUser size={12}/>;
+      label = 'Carteira de Cliente';
     } else if (safeStatus === 'finalizado') {
       bg = '#d1fae5'; color = '#047857'; icon = <Check size={12}/>;
       label = 'Finalizado';
@@ -414,6 +438,8 @@ export default function OportunidadesPage() {
       tabMatch = status === 'arquivada';
     } else if (activeTab === 'cotacoes') {
       tabMatch = status === 'cotacao';
+    } else if (activeTab === 'carteira') {
+      tabMatch = status === 'carteira';
     }
 
     return tabMatch;
@@ -736,6 +762,20 @@ export default function OportunidadesPage() {
           >
             Arquivadas ({baseFilteredOpps.filter(o => o.status === 'arquivada').length})
           </button>
+          <button 
+            onClick={() => setActiveTab('carteira')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'carteira' ? '3px solid #0284c7' : '3px solid transparent',
+              color: activeTab === 'carteira' ? '#0284c7' : '#64748b',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Clientes de Carteira ({baseFilteredOpps.filter(o => o.status === 'carteira').length})
+          </button>
         </div>
 
         {/* Taxa de Conversão */}
@@ -919,7 +959,7 @@ export default function OportunidadesPage() {
                       )}
                     </div>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                         <User size={14} opacity={0.6} />
                         Origem: {opp.leadOrigem || 'Web/API'}
@@ -928,6 +968,35 @@ export default function OportunidadesPage() {
                         <Phone size={14} opacity={0.6} />
                         {opp.leadCelular || 'Sem celular'}
                       </span>
+                      {opp.leadTags && (() => {
+                        try {
+                          const tagsArr: string[] = JSON.parse(opp.leadTags);
+                          if (Array.isArray(tagsArr) && tagsArr.length > 0) {
+                            return (
+                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                {tagsArr.map((t, idx) => (
+                                  <span key={idx} style={{
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    backgroundColor: t.toLowerCase().includes('carteira') ? '#e0f2fe' : '#f1f5f9',
+                                    color: t.toLowerCase().includes('carteira') ? '#0369a1' : '#475569',
+                                    border: t.toLowerCase().includes('carteira') ? '1px solid #bae6fd' : '1px solid #e2e8f0',
+                                    padding: '1px 6px',
+                                    borderRadius: '6px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}>
+                                    <Tag size={10} />
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+                        } catch (e) {}
+                        return null;
+                      })()}
                     </div>
                   </div>
                   
@@ -1279,51 +1348,138 @@ export default function OportunidadesPage() {
         )}
       </div>
       {showFinalizeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="card" style={{ maxWidth: '400px', width: '90%', padding: '2rem', textAlign: 'center', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}>
-            <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1e293b', marginBottom: '1rem' }}>Finalizar Oportunidade</h3>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>
-              Como foi a conclusão do atendimento para esta oportunidade? Escolha uma opção para direcioná-la para a aba correspondente.
-            </p>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <button 
-                className="btn" 
-                style={{ flex: '1 1 100px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-                onClick={async () => {
-                  await handleStatusChange(showFinalizeModal, 'ganha');
-                  setShowFinalizeModal(null);
-                }}
-              >
-                🏆 Ganha
-              </button>
-              <button 
-                className="btn" 
-                style={{ flex: '1 1 100px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-                onClick={async () => {
-                  await handleStatusChange(showFinalizeModal, 'perdida');
-                  setShowFinalizeModal(null);
-                }}
-              >
-                ❌ Perdida
-              </button>
-              <button 
-                className="btn" 
-                style={{ flex: '1 1 100px', backgroundColor: '#64748b', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-                onClick={async () => {
-                  await handleStatusChange(showFinalizeModal, 'arquivada');
-                  setShowFinalizeModal(null);
-                }}
-              >
-                📦 Arquivada
-              </button>
-            </div>
-            <button 
-              className="btn btn-outline" 
-              style={{ width: '100%', padding: '0.65rem', borderRadius: '8px', cursor: 'pointer' }}
-              onClick={() => setShowFinalizeModal(null)}
-            >
-              Cancelar
-            </button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '2rem', textAlign: 'center', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', backgroundColor: '#ffffff' }}>
+            
+            {!isCarteiraStep ? (
+              <>
+                <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1e293b', marginBottom: '0.75rem' }}>Finalizar Oportunidade</h3>
+                <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>
+                  Como foi a conclusão do atendimento para esta oportunidade? Escolha uma opção para direcioná-la para a aba correspondente.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <button 
+                    className="btn" 
+                    style={{ backgroundColor: '#10b981', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                    onClick={async () => {
+                      await handleStatusChange(showFinalizeModal, 'ganha');
+                      setShowFinalizeModal(null);
+                    }}
+                  >
+                    🏆 Ganha
+                  </button>
+                  <button 
+                    className="btn" 
+                    style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                    onClick={async () => {
+                      await handleStatusChange(showFinalizeModal, 'perdida');
+                      setShowFinalizeModal(null);
+                    }}
+                  >
+                    ❌ Perdida
+                  </button>
+                  <button 
+                    className="btn" 
+                    style={{ backgroundColor: '#64748b', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                    onClick={async () => {
+                      await handleStatusChange(showFinalizeModal, 'arquivada');
+                      setShowFinalizeModal(null);
+                    }}
+                  >
+                    📦 Arquivada
+                  </button>
+                  <button 
+                    className="btn" 
+                    style={{ backgroundColor: '#0284c7', color: '#ffffff', border: 'none', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                    onClick={() => {
+                      const opp = opportunities.find(o => o.id === showFinalizeModal);
+                      let defaultName = '';
+                      if (opp?.assignedTo) {
+                        const u = systemUsers.find(user => user.uid === opp.assignedTo);
+                        if (u) defaultName = u.displayName || u.email;
+                      }
+                      if (!defaultName && currentUser) {
+                        defaultName = currentUser.displayName || currentUser.email || '';
+                      }
+                      setSelectedConsultantTag(defaultName ? `Carteira - ${defaultName}` : 'Carteira de Cliente');
+                      setIsCarteiraStep(true);
+                    }}
+                  >
+                    💼 Carteira de Cliente
+                  </button>
+                </div>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ width: '100%', padding: '0.65rem', borderRadius: '8px', cursor: 'pointer' }}
+                  onClick={() => setShowFinalizeModal(null)}
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 style={{ fontWeight: 700, fontSize: '1.2rem', color: '#0369a1', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  <FolderUser size={22} /> Carteira de Cliente
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
+                  Selecione o consultor ou confirme a Tag que indicará a quem este cliente pertence:
+                </p>
+
+                <div style={{ textAlign: 'left', marginBottom: '1rem' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '0.35rem' }}>
+                    Consultor Responsável:
+                  </label>
+                  <select
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', marginBottom: '0.75rem' }}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setSelectedConsultantTag(`Carteira - ${e.target.value}`);
+                      }
+                    }}
+                  >
+                    <option value="">Selecione um vendedor/consultor...</option>
+                    {systemUsers.map(u => (
+                      <option key={u.uid} value={u.displayName || u.email}>
+                        {u.displayName || u.email}
+                      </option>
+                    ))}
+                  </select>
+
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '0.35rem' }}>
+                    Nome da Tag a ser adicionada ao Lead:
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedConsultantTag}
+                    onChange={(e) => setSelectedConsultantTag(e.target.value)}
+                    placeholder="Ex: Carteira - João Silva"
+                    style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ flex: 1, padding: '0.65rem', borderRadius: '8px', cursor: 'pointer' }}
+                    onClick={() => setIsCarteiraStep(false)}
+                  >
+                    Voltar
+                  </button>
+                  <button 
+                    className="btn" 
+                    style={{ flex: 1, backgroundColor: '#0284c7', color: '#ffffff', border: 'none', padding: '0.65rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                    onClick={async () => {
+                      await handleStatusChange(showFinalizeModal, 'carteira', selectedConsultantTag.trim());
+                      setShowFinalizeModal(null);
+                      setIsCarteiraStep(false);
+                    }}
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </>
+            )}
+
           </div>
         </div>
       )}

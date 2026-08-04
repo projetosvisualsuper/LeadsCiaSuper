@@ -473,7 +473,7 @@ export interface Opportunity {
   id: string;
   leadId: string;
   assignedTo: string;
-  status: 'pendente' | 'em_atendimento' | 'finalizado' | 'cancelado';
+  status: 'pendente' | 'em_atendimento' | 'finalizado' | 'cancelado' | 'ganha' | 'perdida' | 'arquivada' | 'cotacao' | 'carteira';
   isRead: boolean;
   dataCriacao: string;
   observacao?: string;
@@ -481,4 +481,5 @@ export interface Opportunity {
   leadCelular?: string;
   leadEmail?: string;
   leadOrigem?: string;
+  leadTags?: string;
 }

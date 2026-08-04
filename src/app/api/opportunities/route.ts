@@ -100,9 +100,33 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id, status, observacao, markRead, assignedTo } = await request.json();
+    const { id, status, observacao, markRead, assignedTo, addTag } = await request.json();
     if (!id) {
       return NextResponse.json({ error: 'ID da oportunidade é obrigatório' }, { status: 400 });
+    }
+
+    if (addTag) {
+      try {
+        const { results: oppRes } = await d1Api.runQuery(`SELECT leadId FROM opportunities WHERE id = ? LIMIT 1`, [id]);
+        const targetLeadId = oppRes?.[0]?.leadId;
+        if (targetLeadId) {
+          const { results: leadRes } = await d1Api.runQuery(`SELECT tags FROM leads WHERE id = ? LIMIT 1`, [targetLeadId]);
+          if (leadRes && leadRes.length > 0) {
+            let currentTags: string[] = [];
+            try {
+              currentTags = leadRes[0].tags ? JSON.parse(leadRes[0].tags) : [];
+            } catch (e) {
+              currentTags = [];
+            }
+            if (!currentTags.includes(addTag)) {
+              currentTags.push(addTag);
+              await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(currentTags), targetLeadId]);
+            }
+          }
+        }
+      } catch (tagErr) {
+        console.error('Erro ao adicionar tag ao lead:', tagErr);
+      }
     }
 
     if (status) {
