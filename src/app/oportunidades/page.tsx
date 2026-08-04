@@ -119,6 +119,13 @@ export default function OportunidadesPage() {
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
 
+  // Seleção e Disparo em Massa
+  const [selectedOppIds, setSelectedOppIds] = useState<string[]>([]);
+  const [isBulkMsgModalOpen, setIsBulkMsgModalOpen] = useState<boolean>(false);
+  const [bulkMsgText, setBulkMsgText] = useState<string>('');
+  const [sendingBulk, setSendingBulk] = useState<boolean>(false);
+  const [bulkResults, setBulkResults] = useState<any>(null);
+
   const fetchOpportunities = async () => {
     setLoading(true);
     try {
@@ -748,6 +755,96 @@ export default function OportunidadesPage() {
         </div>
       </div>
 
+      {/* BARRA DE AÇÕES EM MASSA */}
+      {filteredOpportunities.length > 0 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0.75rem 1.25rem',
+          backgroundColor: selectedOppIds.length > 0 ? '#f0f9ff' : '#ffffff',
+          border: selectedOppIds.length > 0 ? '1px solid #7dd3fc' : '1px solid #e2e8f0',
+          borderRadius: '12px',
+          marginBottom: '1rem',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          transition: 'all 0.2s ease'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', color: '#334155' }}>
+              <input 
+                type="checkbox"
+                checked={
+                  filteredOpportunities.length > 0 && 
+                  filteredOpportunities.every(o => selectedOppIds.includes(o.id))
+                }
+                onChange={() => {
+                  const allIds = filteredOpportunities.map(o => o.id);
+                  const allSelected = allIds.every(id => selectedOppIds.includes(id));
+                  if (allSelected) {
+                    setSelectedOppIds(prev => prev.filter(id => !allIds.includes(id)));
+                  } else {
+                    setSelectedOppIds(prev => Array.from(new Set([...prev, ...allIds])));
+                  }
+                }}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+              />
+              <span>Selecionar Todos os Leads ({filteredOpportunities.length})</span>
+            </label>
+            {selectedOppIds.length > 0 && (
+              <span style={{ fontSize: '0.8rem', color: '#0369a1', fontWeight: 600, backgroundColor: '#e0f2fe', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
+                {selectedOppIds.length} selecionado(s)
+              </span>
+            )}
+          </div>
+
+          {selectedOppIds.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkMsgText('');
+                  setBulkResults(null);
+                  setIsBulkMsgModalOpen(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  backgroundColor: '#0284c7',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Send size={16} />
+                Enviar Mensagem ({selectedOppIds.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedOppIds([])}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                Limpar Seleção
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* LISTAGEM */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '12px' }}>
         {filteredOpportunities.length === 0 && !loading ? (
@@ -763,7 +860,7 @@ export default function OportunidadesPage() {
                 key={opp.id} 
                 style={{
                   borderBottom: index < opportunities.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  backgroundColor: !opp.isRead ? '#f5f3ff' : '#ffffff',
+                  backgroundColor: selectedOppIds.includes(opp.id) ? '#f0f9ff' : (!opp.isRead ? '#f5f3ff' : '#ffffff'),
                   transition: 'background-color 0.2s ease'
                 }}
               >
@@ -773,12 +870,30 @@ export default function OportunidadesPage() {
                   style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
                   onClick={() => handleToggleOpportunity(opp)}
                   onMouseEnter={(e) => {
-                    if (opp.isRead) (e.currentTarget as HTMLElement).style.backgroundColor = '#f8fafc';
+                    if (opp.isRead && !selectedOppIds.includes(opp.id)) (e.currentTarget as HTMLElement).style.backgroundColor = '#f8fafc';
                   }}
                   onMouseLeave={(e) => {
-                    if (opp.isRead) (e.currentTarget as HTMLElement).style.backgroundColor = '#ffffff';
+                    if (opp.isRead && !selectedOppIds.includes(opp.id)) (e.currentTarget as HTMLElement).style.backgroundColor = '#ffffff';
                   }}
                 >
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedOppIds(prev => 
+                        prev.includes(opp.id) ? prev.filter(id => id !== opp.id) : [...prev, opp.id]
+                      );
+                    }}
+                    style={{ padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    title={selectedOppIds.includes(opp.id) ? "Desmarcar" : "Selecionar"}
+                  >
+                    <input 
+                      type="checkbox"
+                      checked={selectedOppIds.includes(opp.id)}
+                      onChange={() => {}}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                    />
+                  </div>
+
                   <div style={{
                     flexShrink: 0,
                     width: '40px',
@@ -1212,6 +1327,200 @@ export default function OportunidadesPage() {
           </div>
         </div>
       )}
+      {/* MODAL DE ENVIAR MENSAGEM EM MASSA */}
+      {isBulkMsgModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '550px', width: '100%', padding: '1.75rem', borderRadius: '16px', border: '1px solid #cbd5e1', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', background: '#ffffff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Send size={20} color="#0284c7" />
+                Enviar Mensagem em Massa
+              </h3>
+              <button 
+                onClick={() => {
+                  if (!sendingBulk) {
+                    setIsBulkMsgModalOpen(false);
+                    setBulkResults(null);
+                  }
+                }}
+                disabled={sendingBulk}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.25rem' }}>
+              Esta mensagem será enviada via WhatsApp/Omnichannel para os <strong>{selectedOppIds.length} leads selecionados</strong>.
+            </p>
+
+            {bulkResults ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ 
+                  padding: '1rem', 
+                  borderRadius: '10px', 
+                  backgroundColor: bulkResults.falhas === 0 ? '#f0fdf4' : '#fff1f2',
+                  border: bulkResults.falhas === 0 ? '1px solid #bbf7d0' : '1px solid #fecdd3',
+                  color: bulkResults.falhas === 0 ? '#166534' : '#9f1239'
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                    {bulkResults.falhas === 0 ? '🎉 Mensagens enviadas com sucesso!' : 'Envio concluído com alertas'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                    ✅ <strong>{bulkResults.enviadosComSucesso}</strong> enviada(s) com sucesso.
+                    {bulkResults.falhas > 0 && <span> | ❌ <strong>{bulkResults.falhas}</strong> falha(s).</span>}
+                  </p>
+                </div>
+
+                {bulkResults.logs && bulkResults.logs.length > 0 && (
+                  <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem', fontSize: '0.8rem' }}>
+                    <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: '#475569' }}>Relatório de envio:</div>
+                    {bulkResults.logs.map((log: any, i: number) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <span>{log.leadNome}</span>
+                        <span style={{ color: log.status === 'sucesso' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                          {log.status === 'sucesso' ? 'Enviado' : (log.details || 'Falha')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsBulkMsgModalOpen(false);
+                    setBulkResults(null);
+                    setSelectedOppIds([]);
+                  }}
+                  style={{
+                    backgroundColor: '#0284c7',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    width: '100%',
+                    marginTop: '0.5rem'
+                  }}
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!bulkMsgText.trim()) {
+                  alert('Por favor, digite a mensagem a ser enviada.');
+                  return;
+                }
+
+                setSendingBulk(true);
+                setBulkResults(null);
+
+                try {
+                  const res = await fetch('/api/opportunities/send-bulk-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      opportunityIds: selectedOppIds,
+                      messageText: bulkMsgText.trim()
+                    })
+                  });
+
+                  const data = await res.json();
+                  if (res.ok && data.success) {
+                    setBulkResults(data);
+                  } else {
+                    alert(data.error || 'Erro ao realizar o disparo em massa.');
+                  }
+                } catch (err: any) {
+                  alert('Erro de comunicação com o servidor: ' + (err.message || err));
+                } finally {
+                  setSendingBulk(false);
+                }
+              }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '0.4rem' }}>
+                    Mensagem a ser enviada:
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={bulkMsgText}
+                    onChange={(e) => setBulkMsgText(e.target.value)}
+                    placeholder="Digite a mensagem desejada... Ex: Olá, {nome}! Tudo bem? Como posso te ajudar hoje?"
+                    disabled={sendingBulk}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                  <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '0.35rem', fontWeight: 500 }}>
+                    💡 Dica: Use <strong>{'{nome}'}</strong> para personalizar com o nome do cliente.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkMsgModalOpen(false)}
+                    disabled={sendingBulk}
+                    style={{
+                      backgroundColor: '#f1f5f9',
+                      color: '#475569',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      padding: '0.65rem 1.25rem',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sendingBulk || !bulkMsgText.trim()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      backgroundColor: '#0284c7',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.65rem 1.25rem',
+                      fontWeight: 700,
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      opacity: (sendingBulk || !bulkMsgText.trim()) ? 0.6 : 1
+                    }}
+                  >
+                    {sendingBulk ? (
+                      <>
+                        <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Disparar Mensagem
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       <PipelineAutomationModal 
         isOpen={isAutomationModalOpen}
         onClose={() => setIsAutomationModalOpen(false)}
