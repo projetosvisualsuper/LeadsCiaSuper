@@ -175,8 +175,14 @@ export default function OportunidadesPage() {
 
     fetchOpportunities();
     api.getAllUserProfiles()
-      .then(setSystemUsers)
-      .catch(err => console.error('Erro ao carregar usuários:', err));
+      .then(res => {
+        if (Array.isArray(res)) setSystemUsers(res);
+        else setSystemUsers([]);
+      })
+      .catch(err => {
+        console.error('Erro ao carregar usuários:', err);
+        setSystemUsers([]);
+      });
 
     fetch('/api/chats?type=connections')
       .then(res => {
@@ -1401,12 +1407,13 @@ export default function OportunidadesPage() {
                     onClick={() => {
                       const opp = opportunities.find(o => o.id === showFinalizeModal);
                       let defaultName = '';
+                      const usersList = Array.isArray(systemUsers) ? systemUsers : [];
                       if (opp?.assignedTo) {
-                        const u = systemUsers.find(user => user.uid === opp.assignedTo);
-                        if (u) defaultName = u.displayName || u.email;
+                        const u = usersList.find(user => user && user.uid === opp.assignedTo);
+                        if (u) defaultName = u.displayName || u.name || u.email || '';
                       }
                       if (!defaultName && currentUser) {
-                        defaultName = currentUser.displayName || currentUser.email || '';
+                        defaultName = currentUser.displayName || currentUser.name || currentUser.email || '';
                       }
                       setSelectedConsultantTag(defaultName ? `Carteira - ${defaultName}` : 'Carteira de Cliente');
                       setIsCarteiraStep(true);
@@ -1418,7 +1425,10 @@ export default function OportunidadesPage() {
                 <button 
                   className="btn btn-outline" 
                   style={{ width: '100%', padding: '0.65rem', borderRadius: '8px', cursor: 'pointer' }}
-                  onClick={() => setShowFinalizeModal(null)}
+                  onClick={() => {
+                    setShowFinalizeModal(null);
+                    setIsCarteiraStep(false);
+                  }}
                 >
                   Cancelar
                 </button>
@@ -1445,11 +1455,14 @@ export default function OportunidadesPage() {
                     }}
                   >
                     <option value="">Selecione um vendedor/consultor...</option>
-                    {systemUsers.map(u => (
-                      <option key={u.uid} value={u.displayName || u.email}>
-                        {u.displayName || u.email}
-                      </option>
-                    ))}
+                    {(Array.isArray(systemUsers) ? systemUsers : []).map((u, i) => {
+                      const uname = u?.displayName || u?.name || u?.email || 'Consultor';
+                      return (
+                        <option key={u?.uid || i} value={uname}>
+                          {uname}
+                        </option>
+                      );
+                    })}
                   </select>
 
                   <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '0.35rem' }}>
