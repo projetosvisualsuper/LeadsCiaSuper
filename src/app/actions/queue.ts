@@ -36,6 +36,7 @@ export async function processQueueServerAction() {
     const campaigns = await d1Api.getCampaigns();
     let processedCount = 0;
     const startTime = Date.now();
+    const nowIso = new Date().toISOString();
     const MAX_RUN_TIME_MS = 22000; // 22 segundos (evita timeout de 30s do Cloudflare Workers)
 
     for (const item of pendingItems) {
@@ -244,19 +245,30 @@ export async function processQueueServerAction() {
         });
       }
 
-      // Atualizar estatísticas da campanha
-      const campData = await d1Api.getCampaigns().then(cs => cs.find(c => c.id === campaign.id));
-      if (campData) {
-        const totalEnviados = sendResult.success ? (campData.totalEnviados + 1) : campData.totalEnviados;
-        const totalPendentes = Math.max(0, campData.totalPendentes - 1);
-        const totalErro = (!sendResult.success && tentativaAtual >= 3) ? (campData.totalErro + 1) : campData.totalErro;
-        
-        await d1Api.updateCampaignStats(campaign.id, {
-          totalEnviados,
-          totalPendentes,
-          totalErro,
-          status: totalPendentes === 0 ? 'concluída' : 'em execução'
-        });
+      // Atualizar estatísticas da campanha com contagem real do banco
+      try {
+        const { results: qStats } = await d1Api.runQuery(
+          `SELECT 
+            SUM(CASE WHEN status = 'enviado' THEN 1 ELSE 0 END) as enviados,
+            SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
+            SUM(CASE WHEN status = 'erro' AND tentativa >= 3 THEN 1 ELSE 0 END) as erros
+           FROM queue WHERE campanhaId = ?`,
+          [campaign.id]
+        );
+        if (qStats && qStats.length > 0) {
+          const enviados = Number(qStats[0].enviados || 0);
+          const pendentes = Number(qStats[0].pendentes || 0);
+          const erros = Number(qStats[0].erros || 0);
+          
+          await d1Api.updateCampaignStats(campaign.id, {
+            totalEnviados: enviados,
+            totalPendentes: pendentes,
+            totalErro: erros,
+            status: pendentes === 0 ? 'concluída' : 'em execução'
+          });
+        }
+      } catch (statsErr) {
+        console.error('Erro ao atualizar estatísticas da campanha:', statsErr);
       }
 
       // Intervalo entre envios seguro para entregabilidade e prevenção de bloqueios (1.2s para e-mail Brevo, 3.5s para WhatsApp)
