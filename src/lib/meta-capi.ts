@@ -22,6 +22,9 @@ export interface MetaUserData {
   leadId?: string;
   clientIp?: string;
   clientUserAgent?: string;
+  fbc?: string;
+  fbp?: string;
+  fbclid?: string;
 }
 
 export interface MetaCapiEventPayload {
@@ -100,6 +103,22 @@ export async function sendMetaCapiEvent(event: MetaCapiEventPayload): Promise<{ 
 
     if (event.userData.clientUserAgent) {
       processedUserData.client_user_agent = event.userData.clientUserAgent;
+    }
+
+    // Processar Identificação de Clique Meta Ads (fbc) e Navegador (fbp)
+    let fbcVal = event.userData.fbc;
+    if (!fbcVal && event.userData.fbclid) {
+      const cleanFbclid = event.userData.fbclid.trim();
+      if (cleanFbclid) {
+        fbcVal = cleanFbclid.startsWith('fb.') ? cleanFbclid : `fb.1.${Date.now()}.${cleanFbclid}`;
+      }
+    }
+    if (fbcVal) {
+      processedUserData.fbc = fbcVal;
+    }
+
+    if (event.userData.fbp) {
+      processedUserData.fbp = event.userData.fbp;
     }
 
     const eventTime = Math.floor(Date.now() / 1000);

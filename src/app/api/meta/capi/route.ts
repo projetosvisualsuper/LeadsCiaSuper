@@ -23,7 +23,12 @@ export async function POST(req: NextRequest) {
         phone: userData.phone,
         firstName: userData.firstName || userData.name,
         lastName: userData.lastName,
-        leadId: userData.leadId
+        leadId: userData.leadId,
+        fbc: userData.fbc,
+        fbp: userData.fbp,
+        fbclid: userData.fbclid,
+        clientIp: userData.clientIp,
+        clientUserAgent: userData.clientUserAgent
       },
       customData: customData || {}
     });
