@@ -517,10 +517,10 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
     const novaObs = (pedidoLocal.observacao || '') + updateText;
     await d1Api.updatePedidoObservacao(pedidoLocal.id, novaObs);
 
-    // NOTIFICAÇÃO AUTOMÁTICA DESATIVADA TEMPORARIAMENTE CONFORME SOLICITADO
-    // if (crmStatus === 'enviado' && settings.bling?.enabled) {
-    //   await sendBlingWhatsappNotification(pedidoLocal.id, pedidoLocal.leadId, orderNumber, settings);
-    // }
+    // NOTIFICAÇÃO AUTOMÁTICA DE PEDIDO DESPACHADO VIA WHATSAPP
+    if (crmStatus === 'enviado' && settings.bling?.enabled) {
+      await sendBlingWhatsappNotification(pedidoLocal.id, pedidoLocal.leadId, orderNumber, settings);
+    }
 
     return { 
       success: true, 
@@ -612,10 +612,10 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
       await d1Api.updatePedidoStatus(recemCriado.id, crmStatus);
     }
 
-    // NOTIFICAÇÃO AUTOMÁTICA DESATIVADA TEMPORARIAMENTE CONFORME SOLICITADO
-    // if (crmStatus === 'enviado' && settings.bling?.enabled && recemCriado) {
-    //   await sendBlingWhatsappNotification(recemCriado.id, targetLeadId, orderNumber, settings);
-    // }
+    // NOTIFICAÇÃO AUTOMÁTICA DE PEDIDO DESPACHADO VIA WHATSAPP
+    if (crmStatus === 'enviado' && settings.bling?.enabled && recemCriado) {
+      await sendBlingWhatsappNotification(recemCriado.id, targetLeadId, orderNumber, settings);
+    }
 
     return { 
       success: true, 
@@ -627,8 +627,8 @@ export async function processBlingOrder(orderId: string, webhookTimestamp?: numb
 
 // Rota POST (Webhook padrão do Bling)
 export async function POST(req: NextRequest) {
+  let body: any = {};
   try {
-    let body: any = {};
     const contentType = req.headers.get('content-type') || '';
 
     if (contentType.includes('application/json')) {

@@ -5,6 +5,7 @@ import { d1Api } from '@/services/d1';
 import { ChatSession } from '@/types/crm';
 import { sendOmnichannelMessageAction } from '@/app/actions/chat';
 import { automationEngine } from '@/services/automation-engine';
+import { extractUtmsFromTextOrPayload } from '@/lib/utm-parser';
 
 // O Meta envia um desafio GET para verificar o webhook na configuração inicial
 export async function GET(req: NextRequest) {
@@ -83,12 +84,15 @@ async function processMetaMessage(
   messageType: 'text' | 'image' | 'video' | 'file',
   isEcho: boolean,
   tempLeadName: string,
-  mediaUrl: string | null
+  mediaUrl: string | null,
+  referralObj?: any
 ) {
-  if (!leadId || !messageText) return;
+  if (!leadId) return;
   
   const channel = objectType === 'instagram' ? 'instagram' : 'facebook';
   const chatId = `${channel}_${leadId}`;
+
+  const extractedUtms = extractUtmsFromTextOrPayload(messageText, referralObj);
 
   let leadName = tempLeadName || ('Lead via ' + (channel === 'instagram' ? 'Instagram' : 'Facebook'));
   let leadAvatar = null;
@@ -123,7 +127,10 @@ async function processMetaMessage(
       avatar: leadAvatar,
       isMetaLead: true,
       email: '',
-      consentimentoLGPD: true
+      consentimentoLGPD: true,
+      utm_source: extractedUtms.utm_source,
+      utm_medium: extractedUtms.utm_medium,
+      utm_campaign: extractedUtms.utm_campaign
     } as any);
   } else {
     const leadData = existingLeads[0];
@@ -138,9 +145,30 @@ async function processMetaMessage(
         updatedAvatar = profile.avatar || leadData.avatar;
       }
     }
-    await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ?, nome = ?, avatar = ? WHERE id = ?`, [
-      agora, updatedName, updatedAvatar, leadId
-    ]);
+
+    if (extractedUtms.utm_source || extractedUtms.utm_medium || extractedUtms.utm_campaign) {
+      await d1Api.executeRun(
+        `UPDATE leads SET 
+          dataUltimaAtividade = ?, 
+          nome = ?, 
+          avatar = ?,
+          utm_source = COALESCE(utm_source, ?),
+          utm_medium = COALESCE(utm_medium, ?),
+          utm_campaign = COALESCE(utm_campaign, ?)
+         WHERE id = ?`,
+        [
+          agora, updatedName, updatedAvatar,
+          extractedUtms.utm_source || null,
+          extractedUtms.utm_medium || null,
+          extractedUtms.utm_campaign || null,
+          leadId
+        ]
+      );
+    } else {
+      await d1Api.executeRun(`UPDATE leads SET dataUltimaAtividade = ?, nome = ?, avatar = ? WHERE id = ?`, [
+        agora, updatedName, updatedAvatar, leadId
+      ]);
+    }
   }
 
   const { results: chatResults } = await d1Api.runQuery(`SELECT * FROM chats WHERE id = ? LIMIT 1`, [chatId]);
@@ -254,15 +282,15 @@ export async function POST(req: NextRequest) {
         // 1. Processar Direct Messages (DMs)
         const messagings = entry.messaging || [];
         for (const messaging of messagings) {
-          if (!messaging.message) continue;
+          const isEcho = !!messaging.message?.is_echo;
+          const leadId = isEcho ? messaging.recipient?.id : messaging.sender?.id;
+          if (!leadId) continue;
           
-          const isEcho = !!messaging.message.is_echo;
-          const leadId = isEcho ? messaging.recipient.id : messaging.sender.id;
-          let messageText = messaging.message.text || '';
+          let messageText = messaging.message?.text || messaging.postback?.title || messaging.postback?.payload || messaging.referral?.ref || '';
           let messageType: 'text' | 'image' | 'video' | 'file' = 'text';
           let mediaUrl = null;
           
-          const attachments = messaging.message.attachments;
+          const attachments = messaging.message?.attachments;
           if (attachments && attachments.length > 0) {
             const attachment = attachments[0];
             if (attachment.type === 'image') {
@@ -277,7 +305,9 @@ export async function POST(req: NextRequest) {
             }
           }
           
-          await processMetaMessage(body.object, entry.id, leadId, messageText, messageType, isEcho, '', mediaUrl);
+          const referralObj = messaging.referral || messaging.message?.referral || messaging.postback?.referral || null;
+          
+          await processMetaMessage(body.object, entry.id, leadId, messageText, messageType, isEcho, '', mediaUrl, referralObj);
         }
         
         // 2. Processar Comentários e Formulários (Leadgen)
@@ -364,6 +394,9 @@ export async function POST(req: NextRequest) {
                     let email = '';
                     let telefone = '';
                     let observacoes: string[] = [];
+                    let utm_source: string | undefined = undefined;
+                    let utm_medium: string | undefined = undefined;
+                    let utm_campaign: string | undefined = undefined;
 
                     fieldData.forEach((field: any) => {
                       const name = (field.name || '').toLowerCase();
@@ -376,10 +409,24 @@ export async function POST(req: NextRequest) {
                         email = val;
                       } else if (name.includes('phone') || name.includes('telefone') || name.includes('celular')) {
                         telefone = val.replace(/\D/g, '');
+                      } else if (name.includes('utm_source') || name === 'source') {
+                        utm_source = val;
+                      } else if (name.includes('utm_medium') || name === 'medium') {
+                        utm_medium = val;
+                      } else if (name.includes('utm_campaign') || name === 'campaign') {
+                        utm_campaign = val;
                       } else {
                         observacoes.push(`${field.name}: ${val}`);
                       }
                     });
+
+                    if (!utm_source) utm_source = 'meta_lead_ads';
+                    if (!utm_campaign && (leadData.campaign_name || leadData.campaign_id)) {
+                      utm_campaign = leadData.campaign_name || `campaign_${leadData.campaign_id}`;
+                    }
+                    if (!utm_medium && (leadData.ad_name || leadData.ad_id || leadData.form_name)) {
+                      utm_medium = leadData.ad_name || leadData.form_name || `ad_${leadData.ad_id}`;
+                    }
 
                     const cleanPhone = telefone ? (telefone.length === 10 || telefone.length === 11 ? '55' + telefone : telefone) : '';
                     const leadId = cleanPhone || `meta_lead_${leadgenId}`;
@@ -397,7 +444,10 @@ export async function POST(req: NextRequest) {
                       consentimentoLGPD: true,
                       observacoes: `[FORMULÁRIO INSTAGRAM]\n${observacoes.join('\n')}`,
                       isMetaLead: true,
-                      dataCriacao: new Date().toISOString()
+                      dataCriacao: new Date().toISOString(),
+                      utm_source,
+                      utm_medium,
+                      utm_campaign
                     });
 
                     console.log(`✅ Lead salvo via Instagram Leadgen API: ${nome} (${cleanPhone})`);

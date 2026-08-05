@@ -42,20 +42,29 @@ export function extractUtmsFromTextOrPayload(text?: string, referralPayload?: an
 
   // 1. Tentar extrair do objeto 'referral' do Meta Ads (Click to WhatsApp / Instagram / Messenger)
   if (referralPayload) {
-    const sourceUrl = referralPayload.source_url || referralPayload.sourceUrl || referralPayload.url;
+    const sourceUrl = referralPayload.source_url || referralPayload.sourceUrl || referralPayload.url || referralPayload.ref || referralPayload.referral_link;
     if (sourceUrl) {
       const fromUrl = extractUtmsFromUrl(sourceUrl);
       if (fromUrl.utm_source) result.utm_source = fromUrl.utm_source;
       if (fromUrl.utm_medium) result.utm_medium = fromUrl.utm_medium;
       if (fromUrl.utm_campaign) result.utm_campaign = fromUrl.utm_campaign;
+
+      if (!result.utm_source && typeof referralPayload.ref === 'string' && referralPayload.ref.trim() && !referralPayload.ref.includes('=')) {
+        result.utm_campaign = referralPayload.ref.trim();
+      }
     }
 
-    if (!result.utm_source && (referralPayload.source_type || referralPayload.sourceType)) {
-      result.utm_source = `meta_ad_${referralPayload.source_type || 'ad'}`;
+    if (!result.utm_source && (referralPayload.source_type || referralPayload.sourceType || referralPayload.source)) {
+      const srcType = (referralPayload.source_type || referralPayload.sourceType || referralPayload.source || 'ad').toString().toLowerCase();
+      result.utm_source = srcType === 'ad' || srcType === 'ads' ? 'meta_ads' : `meta_${srcType}`;
     }
 
-    if (!result.utm_campaign && (referralPayload.headline || referralPayload.title || referralPayload.source_id || referralPayload.sourceId)) {
-      result.utm_campaign = referralPayload.headline || referralPayload.title || `ad_${referralPayload.source_id || referralPayload.sourceId}`;
+    if (!result.utm_medium && (referralPayload.ad_id || referralPayload.adId || referralPayload.ad_name)) {
+      result.utm_medium = referralPayload.ad_name || `ad_${referralPayload.ad_id || referralPayload.adId}`;
+    }
+
+    if (!result.utm_campaign && (referralPayload.headline || referralPayload.title || referralPayload.campaign_name || referralPayload.campaign_id || referralPayload.source_id || referralPayload.sourceId)) {
+      result.utm_campaign = referralPayload.headline || referralPayload.title || referralPayload.campaign_name || `campaign_${referralPayload.campaign_id || referralPayload.source_id || referralPayload.sourceId}`;
     }
   }
 
@@ -69,15 +78,15 @@ export function extractUtmsFromTextOrPayload(text?: string, referralPayload?: an
     // Regex simples para identificar utm_source=xxx no meio do texto
     if (!result.utm_source) {
       const matchSource = text.match(/utm_source=([^\s&"'#]+)/i);
-      if (matchSource) result.utm_source = matchSource[1];
+      if (matchSource) result.utm_source = decodeURIComponent(matchSource[1]);
     }
     if (!result.utm_medium) {
       const matchMedium = text.match(/utm_medium=([^\s&"'#]+)/i);
-      if (matchMedium) result.utm_medium = matchMedium[1];
+      if (matchMedium) result.utm_medium = decodeURIComponent(matchMedium[1]);
     }
     if (!result.utm_campaign) {
       const matchCampaign = text.match(/utm_campaign=([^\s&"'#]+)/i);
-      if (matchCampaign) result.utm_campaign = matchCampaign[1];
+      if (matchCampaign) result.utm_campaign = decodeURIComponent(matchCampaign[1]);
     }
   }
 
