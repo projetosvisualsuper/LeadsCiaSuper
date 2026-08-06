@@ -118,9 +118,71 @@ export default function OportunidadesPage() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterUser, setFilterUser] = useState<string>('todos');
   const [filterConnection, setFilterConnection] = useState<string>('todos');
+  const [filterTag, setFilterTag] = useState<string>('todos');
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
+
+  // Estado para input de novas tags por oportunidade
+  const [newTagInput, setNewTagInput] = useState<Record<string, string>>({});
+
+  const handleAddTagToLead = async (oppId: string, tagToAdd: string) => {
+    const cleanTag = tagToAdd.trim();
+    if (!cleanTag) return;
+    try {
+      const res = await fetch('/api/opportunities', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: oppId, addTag: cleanTag })
+      });
+      if (res.ok) {
+        setOpportunities(prev => prev.map(o => {
+          if (o.id === oppId) {
+            let parsed: string[] = [];
+            try { parsed = o.leadTags ? JSON.parse(o.leadTags) : []; } catch (e) { parsed = []; }
+            if (!Array.isArray(parsed)) parsed = [];
+            if (!parsed.includes(cleanTag)) {
+              parsed.push(cleanTag);
+            }
+            return { ...o, leadTags: JSON.stringify(parsed) };
+          }
+          return o;
+        }));
+      } else {
+        alert('Erro ao adicionar tag.');
+      }
+    } catch (err) {
+      console.error('Erro ao adicionar tag:', err);
+      alert('Erro ao adicionar tag.');
+    }
+  };
+
+  const handleRemoveTagFromLead = async (oppId: string, tagToRemove: string) => {
+    try {
+      const res = await fetch('/api/opportunities', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: oppId, removeTag: tagToRemove })
+      });
+      if (res.ok) {
+        setOpportunities(prev => prev.map(o => {
+          if (o.id === oppId) {
+            let parsed: string[] = [];
+            try { parsed = o.leadTags ? JSON.parse(o.leadTags) : []; } catch (e) { parsed = []; }
+            if (!Array.isArray(parsed)) parsed = [];
+            const updated = parsed.filter(t => t !== tagToRemove);
+            return { ...o, leadTags: JSON.stringify(updated) };
+          }
+          return o;
+        }));
+      } else {
+        alert('Erro ao remover tag.');
+      }
+    } catch (err) {
+      console.error('Erro ao remover tag:', err);
+      alert('Erro ao remover tag.');
+    }
+  };
 
 
 
@@ -361,8 +423,20 @@ export default function OportunidadesPage() {
       .filter(Boolean)
   )) as string[];
 
+  // Coletar tags únicas dos leads para usar no filtro
+  const uniqueTags = Array.from(new Set(
+    opportunities.flatMap(o => {
+      try {
+        const parsed = o.leadTags ? JSON.parse(o.leadTags) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    })
+  )).sort();
+
   const baseFilteredOpps = opportunities.filter(opp => {
-    // 1. Filtro por Pesquisa Inteligente (Nome, Telefone normalizado apenas com números, E-mail, Origem, Observações)
+    // 1. Filtro por Pesquisa Inteligente (Nome, Telefone, E-mail, Origem, Observações, Tags)
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase();
       const searchDigits = searchTerm.replace(/\D/g, '');
@@ -371,6 +445,7 @@ export default function OportunidadesPage() {
       const leadEmail = (opp.leadEmail || '').toLowerCase();
       const leadOrigem = (opp.leadOrigem || '').toLowerCase();
       const leadObs = (opp.observacao || '').toLowerCase();
+      const leadTagsStr = (opp.leadTags || '').toLowerCase();
       const leadPhoneRaw = (opp.leadCelular || '').toLowerCase();
       const leadPhoneDigits = (opp.leadCelular || '').replace(/\D/g, '');
 
@@ -379,6 +454,7 @@ export default function OportunidadesPage() {
         leadEmail.includes(term) ||
         leadOrigem.includes(term) ||
         leadObs.includes(term) ||
+        leadTagsStr.includes(term) ||
         leadPhoneRaw.includes(term);
 
       let matchDigits = false;
@@ -386,7 +462,6 @@ export default function OportunidadesPage() {
         const searchNo55 = searchDigits.replace(/^55/, '');
         const leadNo55 = leadPhoneDigits.replace(/^55/, '');
 
-        // Normalização flexível de telefones (garantindo que ambos tenham pelo menos 3 dígitos)
         matchDigits = 
           leadPhoneDigits.includes(searchDigits) ||
           searchDigits.includes(leadPhoneDigits) ||
@@ -409,7 +484,19 @@ export default function OportunidadesPage() {
       return false;
     }
 
-    // 4. Filtro por Data
+    // 4. Filtro por Tag do Lead
+    if (filterTag !== 'todos') {
+      try {
+        const tagsArr = opp.leadTags ? JSON.parse(opp.leadTags) : [];
+        if (!Array.isArray(tagsArr) || !tagsArr.includes(filterTag)) {
+          return false;
+        }
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // 5. Filtro por Data
     if (filterStartDate && filterEndDate) {
       const oppDate = opp.dataCriacao.substring(0, 10);
       if (oppDate < filterStartDate || oppDate > filterEndDate) {
@@ -603,6 +690,28 @@ export default function OportunidadesPage() {
           </div>
         )}
 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: '160px', flex: 1 }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Tag do Lead</label>
+          <select 
+            value={filterTag}
+            onChange={(e) => setFilterTag(e.target.value)}
+            style={{ 
+              padding: '0.45rem 0.75rem', 
+              borderRadius: '8px', 
+              border: '1px solid #cbd5e1', 
+              fontSize: '0.8rem', 
+              background: 'white',
+              outline: 'none',
+              height: '36px'
+            }}
+          >
+            <option value="todos">Todas as Tags</option>
+            {uniqueTags.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flex: 1, minWidth: '250px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '120px' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>De (Data Início)</label>
@@ -648,11 +757,12 @@ export default function OportunidadesPage() {
           </div>
         </div>
 
-        {(filterUser !== 'todos' || filterConnection !== 'todos' || filterDate || filterStartDate || filterEndDate) && (
+        {(filterUser !== 'todos' || filterConnection !== 'todos' || filterTag !== 'todos' || filterDate || filterStartDate || filterEndDate) && (
           <button 
             onClick={() => {
               setFilterUser('todos');
               setFilterConnection('todos');
+              setFilterTag('todos');
               setFilterDate('');
               setFilterStartDate('');
               setFilterEndDate('');
@@ -1236,6 +1346,119 @@ export default function OportunidadesPage() {
                           >
                             {savingObs === opp.id ? 'Salvando...' : 'Salvar Observação'}
                           </button>
+                        </div>
+                      </div>
+
+                      {/* Tags do Lead */}
+                      <div>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          <Tag size={16} /> Tags do Lead
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', background: '#ffffff', padding: '0.85rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', minHeight: '28px', alignItems: 'center' }}>
+                            {(() => {
+                              let tagsList: string[] = [];
+                              try { tagsList = opp.leadTags ? JSON.parse(opp.leadTags) : []; } catch(e){}
+                              if (!Array.isArray(tagsList)) tagsList = [];
+                              
+                              if (tagsList.length === 0) {
+                                return <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>Nenhuma tag atribuída ao lead.</span>;
+                              }
+                              
+                              return tagsList.map((tagItem, idx) => (
+                                <span key={idx} style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  backgroundColor: tagItem.toLowerCase().includes('carteira') ? '#e0f2fe' : '#f1f5f9',
+                                  color: tagItem.toLowerCase().includes('carteira') ? '#0369a1' : '#334155',
+                                  border: tagItem.toLowerCase().includes('carteira') ? '1px solid #bae6fd' : '1px solid #cbd5e1',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px'
+                                }}>
+                                  <Tag size={10} />
+                                  {tagItem}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveTagFromLead(opp.id, tagItem);
+                                    }}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#94a3b8',
+                                      cursor: 'pointer',
+                                      padding: '0 2px',
+                                      fontSize: '0.9rem',
+                                      fontWeight: 'bold',
+                                      lineHeight: 1,
+                                      display: 'flex',
+                                      alignItems: 'center'
+                                    }}
+                                    title={`Remover tag "${tagItem}"`}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ));
+                            })()}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.25rem' }}>
+                            <input
+                              type="text"
+                              placeholder="Nova tag..."
+                              value={newTagInput[opp.id] || ''}
+                              onChange={(e) => setNewTagInput(prev => ({ ...prev, [opp.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const val = (newTagInput[opp.id] || '').trim();
+                                  if (val) {
+                                    handleAddTagToLead(opp.id, val);
+                                    setNewTagInput(prev => ({ ...prev, [opp.id]: '' }));
+                                  }
+                                }
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '0.4rem 0.65rem',
+                                borderRadius: '6px',
+                                border: '1px solid #cbd5e1',
+                                fontSize: '0.8rem',
+                                outline: 'none',
+                                backgroundColor: '#ffffff'
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = (newTagInput[opp.id] || '').trim();
+                                if (val) {
+                                  handleAddTagToLead(opp.id, val);
+                                  setNewTagInput(prev => ({ ...prev, [opp.id]: '' }));
+                                }
+                              }}
+                              style={{
+                                padding: '0.4rem 0.75rem',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: 'var(--primary)',
+                                color: 'white',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                transition: 'opacity 0.2s'
+                              }}
+                            >
+                              + Adicionar Tag
+                            </button>
+                          </div>
                         </div>
                       </div>
 

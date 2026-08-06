@@ -100,12 +100,23 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    const { id, status, observacao, markRead, assignedTo, addTag } = await request.json();
+    const { id, status, observacao, markRead, assignedTo, addTag, removeTag, setTags } = await request.json();
     if (!id) {
       return NextResponse.json({ error: 'ID da oportunidade é obrigatório' }, { status: 400 });
     }
 
-    if (addTag) {
+    if (setTags && Array.isArray(setTags)) {
+      try {
+        const { results: oppRes } = await d1Api.runQuery(`SELECT leadId FROM opportunities WHERE id = ? LIMIT 1`, [id]);
+        const targetLeadId = oppRes?.[0]?.leadId;
+        if (targetLeadId) {
+          const uniqueTags = Array.from(new Set(setTags.map(t => String(t).trim()).filter(Boolean)));
+          await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(uniqueTags), targetLeadId]);
+        }
+      } catch (tagErr) {
+        console.error('Erro ao definir tags do lead:', tagErr);
+      }
+    } else if (addTag) {
       try {
         const { results: oppRes } = await d1Api.runQuery(`SELECT leadId FROM opportunities WHERE id = ? LIMIT 1`, [id]);
         const targetLeadId = oppRes?.[0]?.leadId;
@@ -118,14 +129,36 @@ export async function PUT(request: Request) {
             } catch (e) {
               currentTags = [];
             }
-            if (!currentTags.includes(addTag)) {
-              currentTags.push(addTag);
+            const tagStr = String(addTag).trim();
+            if (tagStr && !currentTags.includes(tagStr)) {
+              currentTags.push(tagStr);
               await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(currentTags), targetLeadId]);
             }
           }
         }
       } catch (tagErr) {
         console.error('Erro ao adicionar tag ao lead:', tagErr);
+      }
+    } else if (removeTag) {
+      try {
+        const { results: oppRes } = await d1Api.runQuery(`SELECT leadId FROM opportunities WHERE id = ? LIMIT 1`, [id]);
+        const targetLeadId = oppRes?.[0]?.leadId;
+        if (targetLeadId) {
+          const { results: leadRes } = await d1Api.runQuery(`SELECT tags FROM leads WHERE id = ? LIMIT 1`, [targetLeadId]);
+          if (leadRes && leadRes.length > 0) {
+            let currentTags: string[] = [];
+            try {
+              currentTags = leadRes[0].tags ? JSON.parse(leadRes[0].tags) : [];
+            } catch (e) {
+              currentTags = [];
+            }
+            const tagStr = String(removeTag).trim();
+            const updatedTags = currentTags.filter(t => t !== tagStr);
+            await d1Api.executeRun(`UPDATE leads SET tags = ? WHERE id = ?`, [JSON.stringify(updatedTags), targetLeadId]);
+          }
+        }
+      } catch (tagErr) {
+        console.error('Erro ao remover tag do lead:', tagErr);
       }
     }
 
