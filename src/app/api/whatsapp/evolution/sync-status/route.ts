@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
         if (!instanceName) return;
 
         try {
-          // 1. Consultar estado da conexão na Evolution API
+          // 1. Consultar estado da conexão na Evolution API (Somente leitura - sem disparar connect)
           const statusRes = await fetch(`${apiUrl}/instance/connectionState/${instanceName}`, {
             method: 'GET',
             headers: { 'apikey': apiKey }
@@ -31,37 +31,32 @@ export async function GET(req: NextRequest) {
 
           if (statusRes.ok) {
             const statusData = await statusRes.json();
-            const state = statusData.instance?.state || statusData.state;
+            const rawState = (
+              statusData.instance?.state || 
+              statusData.state || 
+              statusData.instance?.status || 
+              statusData.status || 
+              statusData.instance?.connectionStatus || 
+              statusData.connectionStatus || 
+              ''
+            ).toString().toLowerCase().trim();
 
-            if (state === 'open') {
+            if (rawState === 'open' || rawState === 'connected') {
               if (conn.status !== 'connected') {
                 await d1Api.updateWhatsappConnection(conn.id, { status: 'connected' });
               }
-              return;
-            }
-
-            // 2. Se a conexão estiver em 'close' ou 'connecting', tentar auto-reconnect na Evolution
-            if (state === 'close' || state === 'connecting') {
-              try {
-                const connectRes = await fetch(`${apiUrl}/instance/connect/${instanceName}`, {
-                  method: 'GET',
-                  headers: { 'apikey': apiKey }
-                });
-                if (connectRes.ok) {
-                  const connectData = await connectRes.json();
-                  const newState = connectData.instance?.state || connectData.state;
-                  if (newState === 'open') {
-                    await d1Api.updateWhatsappConnection(conn.id, { status: 'connected' });
-                    return;
-                  }
-                }
-              } catch (connectErr) {
-                console.error(`[Evolution Sync] Erro ao reconectar instância ${instanceName}:`, connectErr);
-              }
-
-              if (conn.status !== 'pending' && conn.status !== 'disconnected') {
+            } else if (rawState === 'connecting' || rawState === 'qrcode') {
+              if (conn.status !== 'pending') {
                 await d1Api.updateWhatsappConnection(conn.id, { status: 'pending' });
               }
+            } else if (rawState === 'close' || rawState === 'closed' || rawState === 'disconnected' || rawState === 'refused') {
+              if (conn.status !== 'disconnected') {
+                await d1Api.updateWhatsappConnection(conn.id, { status: 'disconnected' });
+              }
+            }
+          } else if (statusRes.status === 404) {
+            if (conn.status !== 'disconnected') {
+              await d1Api.updateWhatsappConnection(conn.id, { status: 'disconnected' });
             }
           }
         } catch (err) {

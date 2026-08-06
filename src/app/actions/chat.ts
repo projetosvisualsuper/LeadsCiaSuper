@@ -316,36 +316,12 @@ export async function sendOmnichannelMessageAction(
         let data = await response.json();
         console.log('>>> Resposta da Evolution API:', JSON.stringify(data));
         
-        // Se falhou por instância fechada ou desconectada, tenta reconectar e reenviar 1 vez
-        if (!response.ok && instanceName) {
-          console.warn(`⚠️ Tentativa de envio falhou na instância ${instanceName}. Tentando reconectar...`);
-          try {
-            const reconnectRes = await fetch(`${apiUrl.replace(/\/$/, '')}/instance/connect/${instanceName}`, {
-              method: 'GET',
-              headers: { 'apikey': globalApiKey }
-            });
-            if (reconnectRes.ok) {
-              await new Promise(resolve => setTimeout(resolve, 1500));
-              const retryRes = await fetch(evolutionReqUrl, {
-                method: 'POST',
-                headers: {
-                  'apikey': globalApiKey,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-              });
-              if (retryRes.ok) {
-                const retryData = await retryRes.json();
-                await d1Api.updateWhatsappConnection(conn.id, { status: 'connected' }).catch(() => {});
-                return { success: true, data: retryData };
-              }
-            }
-          } catch (reconnectErr) {
-            console.error('Erro na tentativa de reconexão automática:', reconnectErr);
-          }
+        if (!response.ok) {
+          console.warn(`⚠️ Tentativa de envio falhou na instância ${instanceName}:`, data);
+          return { success: false, error: data.error || data.message || 'Erro no envio da Evolution API' };
         }
 
-        return response.ok ? { success: true, data } : { success: false, error: data.error || 'Erro no envio da Evolution API' };
+        return { success: true, data };
       }
     }
 

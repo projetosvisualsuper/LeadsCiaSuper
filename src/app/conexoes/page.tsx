@@ -556,13 +556,16 @@ export default function ConexoesPage() {
                           <CheckCircle2 size={16} /> Conectado
                         </span>
                       ) : conn.status === 'pending' || conn.status === 'qr_code_ready' ? (
-                        <button 
-                          className="btn btn-primary btn-sm"
-                          onClick={() => fetchQrCode(conn.id)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                        >
-                          <MessageSquare size={16} /> Gerar QR Code
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>Pendente</span>
+                          <button 
+                            className="btn btn-primary btn-sm"
+                            onClick={() => fetchQrCode(conn.id)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                          >
+                            <MessageSquare size={14} /> Gerar QR Code
+                          </button>
+                        </div>
                       ) : (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#ef4444', fontWeight: 600 }}>
                           <XCircle size={16} /> Desconectado
