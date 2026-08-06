@@ -76,6 +76,7 @@ export async function POST(request: Request) {
     }
 
     await d1Api.saveOpportunity({ leadId, assignedTo });
+    const connInfo = await d1Api.syncChatConnectionWithAssignedUser(leadId, assignedTo);
 
     try {
       const { automationEngine } = await import('@/services/automation-engine');
@@ -86,7 +87,12 @@ export async function POST(request: Request) {
       console.error('Erro ao disparar automação na criação da oportunidade:', err);
     }
 
-    return NextResponse.json({ success: true, message: 'Oportunidade criada com sucesso.' });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Oportunidade criada com sucesso.',
+      connectionId: connInfo?.connectionId,
+      connectionName: connInfo?.connectionName
+    });
   } catch (error: any) {
     console.error('Erro no POST /api/opportunities:', error);
     return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
@@ -280,11 +286,21 @@ export async function PUT(request: Request) {
       await d1Api.markOpportunityAsRead(id);
     }
 
+    let assignedConnInfo: { connectionId: string; connectionName: string } | null = null;
     if (assignedTo) {
       await d1Api.updateOpportunityAssignment(id, assignedTo);
+      const { results: oppRes } = await d1Api.runQuery(`SELECT leadId FROM opportunities WHERE id = ? LIMIT 1`, [id]);
+      if (oppRes && oppRes[0]?.leadId) {
+        assignedConnInfo = await d1Api.syncChatConnectionWithAssignedUser(oppRes[0].leadId, assignedTo);
+      }
     }
 
-    return NextResponse.json({ success: true, message: 'Oportunidade atualizada com sucesso.' });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Oportunidade atualizada com sucesso.',
+      connectionId: assignedConnInfo?.connectionId,
+      connectionName: assignedConnInfo?.connectionName
+    });
   } catch (error: any) {
     console.error('Erro no PUT /api/opportunities:', error);
     return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });

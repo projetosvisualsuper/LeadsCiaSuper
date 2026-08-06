@@ -678,9 +678,27 @@ export async function POST(req: NextRequest) {
         }
         activeAssignedTo = assignedTo;
 
+        let finalConnectionId = connectionId;
+        let finalConnectionName = connectionName;
+
+        if (assignedTo) {
+          try {
+            const consultantUser = await d1Api.getUserProfile(assignedTo);
+            if (consultantUser && consultantUser.whatsappConnectionId) {
+              const { results: connRes } = await d1Api.runQuery(`SELECT name, evolutionInstanceName FROM whatsapp_connections WHERE id = ? LIMIT 1`, [consultantUser.whatsappConnectionId]);
+              if (connRes && connRes.length > 0) {
+                finalConnectionId = consultantUser.whatsappConnectionId;
+                finalConnectionName = connRes[0].name || connRes[0].evolutionInstanceName || 'WhatsApp';
+              }
+            }
+          } catch (connErr) {
+            console.error('Erro ao resolver conexão do consultor no webhook Evolution:', connErr);
+          }
+        }
+
         await d1Api.executeRun(
           `UPDATE chats SET lastMessage = ?, lastTimestamp = ?, unreadCount = ?, status = 'active', connectionId = ?, connectionName = ?, leadName = ?, leadAvatar = ?, assignedTo = ? WHERE id = ?`,
-          [messageText, timestampIso, unreadCount, connectionId, connectionName, finalLeadName, leadAvatar, assignedTo || null, chatId]
+          [messageText, timestampIso, unreadCount, finalConnectionId, finalConnectionName, finalLeadName, leadAvatar, assignedTo || null, chatId]
         );
       }
 

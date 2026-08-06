@@ -51,28 +51,26 @@ export async function sendOmnichannelMessageAction(
 
       // Buscar se o lead está atribuído a algum consultor que tenha conexão própria
       try {
-        let leadId = recipientIdOrPhone;
-        // Encontrar o lead associado pelo telefone se for um número de WhatsApp
-        if (!recipientIdOrPhone.includes('@') && recipientIdOrPhone.replace(/\D/g, '').length >= 8) {
-          let cleanPhone = recipientIdOrPhone.replace(/\D/g, '');
-          let strippedPhone = cleanPhone;
-          if (cleanPhone.startsWith('55') && cleanPhone.length >= 12) {
-            strippedPhone = cleanPhone.substring(2);
-          }
-          const { results: leadRes } = await d1Api.runQuery(
-            `SELECT id FROM leads WHERE celular LIKE ? OR telefone LIKE ? LIMIT 1`,
-            [`%${strippedPhone}%`, `%${strippedPhone}%`]
-          );
-          if (leadRes && leadRes.length > 0) {
-            leadId = leadRes[0].id;
-          }
+        let cleanPhone = recipientIdOrPhone.replace(/\D/g, '');
+        let strippedPhone = cleanPhone;
+        if (cleanPhone.startsWith('55') && cleanPhone.length >= 12) {
+          strippedPhone = cleanPhone.substring(2);
         }
 
-        const { results: chatRes } = await d1Api.runQuery(`SELECT assignedTo FROM chats WHERE leadId = ? LIMIT 1`, [leadId]);
+        const { results: leadRes } = await d1Api.runQuery(
+          `SELECT id FROM leads WHERE id = ? OR celular LIKE ? OR telefone LIKE ? LIMIT 1`,
+          [recipientIdOrPhone, `%${strippedPhone}%`, `%${strippedPhone}%`]
+        );
+        const resolvedLeadId = leadRes?.[0]?.id || recipientIdOrPhone;
+
+        const { results: chatRes } = await d1Api.runQuery(
+          `SELECT assignedTo, connectionId FROM chats WHERE leadId = ? OR id = ? OR id = ? LIMIT 1`,
+          [resolvedLeadId, recipientIdOrPhone, `whatsapp_${cleanPhone}`]
+        );
         let assignedTo = chatRes?.[0]?.assignedTo;
         
         if (!assignedTo) {
-          const { results: oppRes } = await d1Api.runQuery(`SELECT assignedTo FROM opportunities WHERE leadId = ? LIMIT 1`, [leadId]);
+          const { results: oppRes } = await d1Api.runQuery(`SELECT assignedTo FROM opportunities WHERE leadId = ? LIMIT 1`, [resolvedLeadId]);
           assignedTo = oppRes?.[0]?.assignedTo;
         }
 
@@ -81,6 +79,8 @@ export async function sendOmnichannelMessageAction(
           if (userProfile && userProfile.whatsappConnectionId) {
             targetConnectionId = userProfile.whatsappConnectionId;
           }
+        } else if (!targetConnectionId && chatRes?.[0]?.connectionId) {
+          targetConnectionId = chatRes[0].connectionId;
         }
       } catch (err) {
         console.error('Erro ao resolver conexão do consultor no envio:', err);

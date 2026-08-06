@@ -3295,9 +3295,25 @@ function AtendimentoContent() {
                             body: JSON.stringify({ leadId: selectedLead.id, assignedTo: userId })
                           });
                           if (res.ok) {
+                            const resData = await res.json().catch(() => ({}));
                             showAlert('Lead encaminhado com sucesso!', 'success');
-                            // Atualizar o chat localmente
-                            setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, assignedTo: userId } : c));
+                            
+                            const newConnId = resData.connectionId || activeChat.connectionId;
+                            const newConnName = resData.connectionName || activeChat.connectionName;
+
+                            setChats(prev => prev.map(c => c.id === activeChat.id ? { 
+                              ...c, 
+                              assignedTo: userId,
+                              connectionId: newConnId || c.connectionId,
+                              connectionName: newConnName || c.connectionName
+                            } : c));
+
+                            if (newConnId) {
+                              activeChat.connectionId = newConnId;
+                              if (newConnName) activeChat.connectionName = newConnName;
+                            }
+                            activeChat.assignedTo = userId;
+
                             // Disparar evento para atualizar a sidebar
                             window.dispatchEvent(new CustomEvent('oportunidades-read'));
                           } else {

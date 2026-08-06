@@ -2180,23 +2180,54 @@ export const d1Api = {
     return results && results.length > 0 ? results[0].count : 0;
   },
 
-  syncChatConnectionWithAssignedUser: async (leadId: string, assignedTo: string): Promise<void> => {
+  syncChatConnectionWithAssignedUser: async (leadId: string, assignedTo: string): Promise<{ connectionId: string; connectionName: string } | null> => {
     try {
-      if (!assignedTo) return;
+      if (!assignedTo || !leadId) return null;
       const userProfile = await d1Api.getUserProfile(assignedTo);
       if (userProfile && userProfile.whatsappConnectionId) {
         const { results: connRes } = await runQuery(`SELECT name, evolutionInstanceName FROM whatsapp_connections WHERE id = ? LIMIT 1`, [userProfile.whatsappConnectionId]);
         if (connRes && connRes.length > 0) {
           const connName = connRes[0].name || connRes[0].evolutionInstanceName || 'WhatsApp';
-          await executeRun(
-            `UPDATE chats SET connectionId = ?, connectionName = ? WHERE leadId = ?`,
-            [userProfile.whatsappConnectionId, connName, leadId]
+          const connId = userProfile.whatsappConnectionId;
+
+          // Buscar telefones do lead para garantir que qualquer variação de id de chat seja atualizada
+          const { results: leadRes } = await runQuery(
+            `SELECT id, celular, telefone FROM leads WHERE id = ? OR celular LIKE ? OR telefone LIKE ? LIMIT 1`,
+            [leadId, `%${leadId.replace(/\D/g, '')}%`, `%${leadId.replace(/\D/g, '')}%`]
           );
+
+          const possibleIds = new Set<string>([leadId]);
+          if (leadRes && leadRes.length > 0) {
+            const l = leadRes[0];
+            if (l.id) possibleIds.add(l.id);
+            const cell = (l.celular || '').replace(/\D/g, '');
+            const tel = (l.telefone || '').replace(/\D/g, '');
+            if (cell) {
+              possibleIds.add(cell);
+              possibleIds.add(`whatsapp_${cell}`);
+            }
+            if (tel) {
+              possibleIds.add(tel);
+              possibleIds.add(`whatsapp_${tel}`);
+            }
+          }
+
+          const idArray = Array.from(possibleIds).filter(Boolean);
+          if (idArray.length > 0) {
+            const placeholders = idArray.map(() => '?').join(',');
+            await executeRun(
+              `UPDATE chats SET connectionId = ?, connectionName = ?, assignedTo = ? WHERE leadId IN (${placeholders}) OR id IN (${placeholders})`,
+              [connId, connName, assignedTo, ...idArray, ...idArray]
+            );
+          }
+
+          return { connectionId: connId, connectionName: connName };
         }
       }
     } catch (e) {
       console.error('Erro ao sincronizar conexão do chat com usuário atribuído:', e);
     }
+    return null;
   },
 
   deleteOpportunity: async (oppId: string): Promise<void> => {
