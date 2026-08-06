@@ -112,7 +112,10 @@ export async function GET(req: NextRequest) {
             status: 'novo',
             dataCriacao: timestamp,
             dataUltimaAtividade: timestamp,
-            tags: ['tiktok', 'omnichannel']
+            tags: ['tiktok', 'omnichannel'],
+            utm_source: 'tiktok',
+            utm_medium: 'social_comments',
+            utm_campaign: 'organico'
           });
         }
 

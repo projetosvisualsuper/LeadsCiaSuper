@@ -6,6 +6,7 @@ import { Lead, LandingPageInstance, BioLink, Settings } from '@/types/crm';
 import { CheckCircle2, ChevronRight, Check, Calendar, MessageCircle, X, User, Smartphone, Globe, ShoppingCart, Share2, Link as LinkIcon, Star, ChevronLeft, Copy, Mail } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { sendEmailBrevoAction } from '@/app/actions/brevo';
+import { extractUtmsFromUrl, getSavedUtmsFromStorage, saveUtmsToStorage } from '@/lib/utm-parser';
 
 // --- HELPERS ---
 const DEFAULT_BGS: Record<string, string> = {
@@ -392,9 +393,11 @@ function WhatsappWidget({ config, pageSlug }: { config: any, pageSlug: string })
     e.preventDefault();
     const leadId = Math.random().toString(36).substr(2, 9);
     const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-    const utm_source = searchParams.get('utm_source') || searchParams.get('source') || undefined;
-    const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || undefined;
-    const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || undefined;
+    const currentUtms = extractUtmsFromUrl(typeof window !== 'undefined' ? window.location.href : '');
+    const savedUtms = getSavedUtmsFromStorage();
+    const utm_source = searchParams.get('utm_source') || searchParams.get('source') || currentUtms.utm_source || savedUtms.utm_source || 'landing_page';
+    const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || currentUtms.utm_medium || savedUtms.utm_medium || 'organico';
+    const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || currentUtms.utm_campaign || savedUtms.utm_campaign || pageSlug || 'atendimento';
 
     await api.saveLead({ 
       id: leadId, 
@@ -554,9 +557,11 @@ function RenderLandingPage({ page }: { page: LandingPageInstance }) {
       observacoes = `[INTERESSE] Inscrito na lista de ofertas exclusivas.`;
     }
 
-    const utm_source = searchParams.get('utm_source') || searchParams.get('source') || undefined;
-    const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || undefined;
-    const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || undefined;
+    const currentUtms = extractUtmsFromUrl(typeof window !== 'undefined' ? window.location.href : '');
+    const savedUtms = getSavedUtmsFromStorage();
+    const utm_source = searchParams.get('utm_source') || searchParams.get('source') || currentUtms.utm_source || savedUtms.utm_source || 'landing_page';
+    const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || currentUtms.utm_medium || savedUtms.utm_medium || 'organico';
+    const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || currentUtms.utm_campaign || savedUtms.utm_campaign || page.slug || 'captura';
 
     const newLead: Lead = {
       id: Math.random().toString(36).substr(2, 9), 

@@ -115,6 +115,11 @@ export async function POST(request: Request) {
     let finalLeadId = '';
     let actionMessage = '';
 
+    const utm_source = body.utm_source || body.utmSource || body.source || (isCotacao ? 'cotacao_site' : 'venda_site');
+    const utm_medium = body.utm_medium || body.utmMedium || body.medium || 'website';
+    const utm_campaign = body.utm_campaign || body.utmCampaign || body.campaign || 'conversao_direta';
+    const utmsObj = { utm_source, utm_medium, utm_campaign };
+
     if (!checkResults || checkResults.length === 0) {
       // Se não encontrar por celular, tenta por telefone fixo se foi passado telefone
       let foundByFixo = false;
@@ -125,7 +130,7 @@ export async function POST(request: Request) {
         );
         if (checkResults2 && checkResults2.length > 0) {
           const lead = checkResults2[0];
-          await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId);
+          await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId, utmsObj);
           finalLeadId = lead.id;
           actionMessage = 'Lead de cotação/venda atualizado via telefone fixo.';
           foundByFixo = true;
@@ -148,10 +153,6 @@ export async function POST(request: Request) {
         } else {
           observacao = `[CONVERSÃO DIRETA] Cadastro automático via venda.${itensFormatados ? ` Produtos: ${itensFormatados}.` : ''}${valor ? ` Valor: R$ ${valor}.` : ''}${pedidoId ? ` Pedido: ${pedidoId}.` : ''}${mensagemCliente ? ` Observação do Cliente: "${mensagemCliente}".` : ''}`;
         }
-
-        const utm_source = body.utm_source || body.utmSource || body.source || undefined;
-        const utm_medium = body.utm_medium || body.utmMedium || body.medium || undefined;
-        const utm_campaign = body.utm_campaign || body.utmCampaign || body.campaign || undefined;
 
         await d1Api.saveLead({
           id: finalLeadId,
@@ -177,7 +178,7 @@ export async function POST(request: Request) {
     } else {
       // --- Atualizar o primeiro lead encontrado ---
       const lead = checkResults[0];
-      await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId);
+      await updateLead(lead.id, isCotacao, itensFormatados, mensagemCliente, nome, telefone, valor, pedidoId, utmsObj);
       finalLeadId = lead.id;
       actionMessage = `Lead existente atualizado (${isCotacao ? 'Cotação' : 'Venda'}).`;
     }
@@ -266,7 +267,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: string, mensagemCliente: string, nome?: string, celular?: string, valor?: string, pedidoId?: string) {
+async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: string, mensagemCliente: string, nome?: string, celular?: string, valor?: string, pedidoId?: string, utms?: { utm_source?: string, utm_medium?: string, utm_campaign?: string }) {
   const { results } = await d1Api.runQuery(`SELECT * FROM leads WHERE id = ? LIMIT 1`, [leadId]);
   if (!results || results.length === 0) return;
   const data = results[0];
@@ -304,7 +305,11 @@ async function updateLead(leadId: string, isCotacao: boolean, itensFormatados: s
   const finalStatus = isCotacao ? 'novo' : 'convertido';
 
   await d1Api.executeRun(
-    `UPDATE leads SET status = ?, dataUltimaAtividade = ?, dataUltimaConversao = ?, totalConversoes = ?, tags = ?, observacoes = ?, nome = ?, celular = ? WHERE id = ?`,
-    [finalStatus, now, now, totalConversoes, JSON.stringify(mergedTags), observations, finalNome, finalCelular, leadId]
+    `UPDATE leads SET status = ?, dataUltimaAtividade = ?, dataUltimaConversao = ?, totalConversoes = ?, tags = ?, observacoes = ?, nome = ?, celular = ?, utm_source = COALESCE(utm_source, ?), utm_medium = COALESCE(utm_medium, ?), utm_campaign = COALESCE(utm_campaign, ?) WHERE id = ?`,
+    [
+      finalStatus, now, now, totalConversoes, JSON.stringify(mergedTags), observations, finalNome, finalCelular,
+      utms?.utm_source || null, utms?.utm_medium || null, utms?.utm_campaign || null,
+      leadId
+    ]
   );
 }

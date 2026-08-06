@@ -219,14 +219,24 @@ export default function IntegracoesPage() {
   const embedCode = `<iframe src="${publicLink}" width="100%" height="700px" frameborder="0" style="border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></iframe>`;
   const waCode = `<script>
   (function() {
+    var search = window.location.search || '';
     var frame = document.createElement('iframe');
-    frame.src = "${typeof window !== 'undefined' ? window.location.origin : ''}/whatsapp-widget";
+    frame.src = "${typeof window !== 'undefined' ? window.location.origin : ''}/whatsapp-widget" + search;
     frame.style.cssText = "position:fixed;bottom:15px;right:15px;width:90px;height:90px;border:none;z-index:999999;background:transparent;transition:all 0.3s ease;color-scheme:light;";
     frame.setAttribute('allowTransparency', 'true');
     document.body.appendChild(frame);
 
+    frame.onload = function() {
+      try {
+        frame.contentWindow.postMessage({
+          type: 'cs-parent-info',
+          parentUrl: window.location.href
+        }, '*');
+      } catch(e) {}
+    };
+
     window.addEventListener('message', function(e) {
-      if (e.data.type === 'wa-widget-state') {
+      if (e.data && e.data.type === 'wa-widget-state') {
         frame.style.width = e.data.open ? '350px' : '90px';
         frame.style.height = e.data.open ? '650px' : '90px';
       }

@@ -128,9 +128,9 @@ async function processMetaMessage(
       isMetaLead: true,
       email: '',
       consentimentoLGPD: true,
-      utm_source: extractedUtms.utm_source,
-      utm_medium: extractedUtms.utm_medium,
-      utm_campaign: extractedUtms.utm_campaign
+      utm_source: extractedUtms.utm_source || (channel === 'instagram' ? 'instagram' : 'facebook'),
+      utm_medium: extractedUtms.utm_medium || 'social_direct',
+      utm_campaign: extractedUtms.utm_campaign || 'organico'
     } as any);
   } else {
     const leadData = existingLeads[0];
@@ -495,6 +495,18 @@ export async function POST(req: NextRequest) {
                       else if (name.includes('utm_campaign') || name === 'campaign') utm_campaign = val;
                       else observacoes.push(`${field.name}: ${val}`);
                     });
+
+                    if (!utm_source) utm_source = 'meta_lead_ads';
+                    if (!utm_medium && (leadData.ad_name || leadData.ad_id || leadData.form_name)) {
+                      utm_medium = leadData.ad_name || leadData.form_name || `ad_${leadData.ad_id}`;
+                    } else if (!utm_medium) {
+                      utm_medium = 'cpc';
+                    }
+                    if (!utm_campaign && (leadData.campaign_name || leadData.campaign_id)) {
+                      utm_campaign = leadData.campaign_name || `campaign_${leadData.campaign_id}`;
+                    } else if (!utm_campaign) {
+                      utm_campaign = 'formulario_meta';
+                    }
 
                     const cleanPhone = telefone ? (telefone.length === 10 || telefone.length === 11 ? '55' + telefone : telefone) : '';
                     await d1Api.saveLead({

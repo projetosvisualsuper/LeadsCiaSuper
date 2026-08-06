@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import { Settings, Lead } from '@/types/crm';
+import { extractUtmsFromUrl, getSavedUtmsFromStorage, saveUtmsToStorage } from '@/lib/utm-parser';
 import { MessageCircle, X, User, ChevronRight } from 'lucide-react';
 
 const renderOfficialWhatsappIcon = (size: number = 24, color: string = "currentColor") => (
@@ -21,6 +22,7 @@ export default function WhatsappWidgetStandalone() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ nome: '', email: '', telefone: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [parentUtms, setParentUtms] = useState<any>({});
 
   useEffect(() => {
     const load = async () => {
@@ -28,6 +30,23 @@ export default function WhatsappWidgetStandalone() {
       setSettings(s);
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    // Escutar informações da página pai (postMessage com a URL ou UTMs da página que carrega o iframe)
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data && (e.data.type === 'cs-parent-info' || e.data.parentUrl || e.data.search)) {
+        const parentUrl = e.data.parentUrl || e.data.url || e.data.search;
+        if (parentUrl) {
+          const utms = extractUtmsFromUrl(parentUrl);
+          setParentUtms(utms);
+          saveUtmsToStorage(utms);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   useEffect(() => {
@@ -75,10 +94,17 @@ export default function WhatsappWidgetStandalone() {
     // Tentar salvar o lead, mas não impedir a abertura do WhatsApp em caso de erro
     try {
       const leadId = Math.random().toString(36).substr(2, 9);
-      const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-      const utm_source = searchParams.get('utm_source') || searchParams.get('source') || undefined;
-      const utm_medium = searchParams.get('utm_medium') || searchParams.get('medium') || undefined;
-      const utm_campaign = searchParams.get('utm_campaign') || searchParams.get('campaign') || undefined;
+      
+      const searchString = typeof window !== 'undefined' ? window.location.search : '';
+      const referrerString = typeof document !== 'undefined' ? document.referrer : '';
+      
+      const utmsFromUrl = extractUtmsFromUrl(searchString);
+      const utmsFromReferrer = extractUtmsFromUrl(referrerString);
+      const utmsFromStorage = getSavedUtmsFromStorage();
+
+      const utm_source = parentUtms.utm_source || utmsFromUrl.utm_source || utmsFromReferrer.utm_source || utmsFromStorage.utm_source || 'widget_whatsapp';
+      const utm_medium = parentUtms.utm_medium || utmsFromUrl.utm_medium || utmsFromReferrer.utm_medium || utmsFromStorage.utm_medium || 'website';
+      const utm_campaign = parentUtms.utm_campaign || utmsFromUrl.utm_campaign || utmsFromReferrer.utm_campaign || utmsFromStorage.utm_campaign || 'atendimento';
 
       await api.saveLead({
         id: leadId,

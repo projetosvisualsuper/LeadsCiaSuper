@@ -53,9 +53,9 @@ export async function POST(
       tags.push('cupom pop-up');
     }
 
-    const utm_source = body.utm_source || body.utmSource || body.source || undefined;
-    const utm_medium = body.utm_medium || body.utmMedium || body.medium || undefined;
-    const utm_campaign = body.utm_campaign || body.utmCampaign || body.campaign || undefined;
+    const utm_source = body.utm_source || body.utmSource || body.source || 'popup';
+    const utm_medium = body.utm_medium || body.utmMedium || body.medium || 'website';
+    const utm_campaign = body.utm_campaign || body.utmCampaign || body.campaign || popup.name || 'captura';
 
     await api.saveLead({
       id: leadId,
@@ -204,12 +204,24 @@ export async function GET(
     const email = inputs[1].value;
     const telefone = inputs[2].value;
 
+    let utm_source = undefined, utm_medium = undefined, utm_campaign = undefined;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      utm_source = urlParams.get('utm_source') || urlParams.get('source') || undefined;
+      utm_medium = urlParams.get('utm_medium') || urlParams.get('medium') || undefined;
+      utm_campaign = urlParams.get('utm_campaign') || urlParams.get('campaign') || undefined;
+      
+      if (!utm_source && typeof sessionStorage !== 'undefined') utm_source = sessionStorage.getItem('cs_utm_source') || undefined;
+      if (!utm_medium && typeof sessionStorage !== 'undefined') utm_medium = sessionStorage.getItem('cs_utm_medium') || undefined;
+      if (!utm_campaign && typeof sessionStorage !== 'undefined') utm_campaign = sessionStorage.getItem('cs_utm_campaign') || undefined;
+    } catch (e) {}
+
     const baseUrl = 'https://leads.ciasuper.com.br';
     try {
       const res = await fetch(baseUrl + '/api/popup/' + popupData.id, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, telefone })
+        body: JSON.stringify({ nome, email, telefone, utm_source, utm_medium, utm_campaign })
       });
 
       if (!res.ok) throw new Error('Erro na requisição');

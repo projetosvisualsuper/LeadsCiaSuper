@@ -80,14 +80,20 @@ export function extractUtmsFromTextOrPayload(text?: string, referralPayload?: an
     if (!result.utm_source && (referralPayload.source_type || referralPayload.sourceType || referralPayload.source)) {
       const srcType = (referralPayload.source_type || referralPayload.sourceType || referralPayload.source || 'ad').toString().toLowerCase();
       result.utm_source = srcType === 'ad' || srcType === 'ads' ? 'meta_ads' : `meta_${srcType}`;
+    } else if (!result.utm_source) {
+      result.utm_source = 'meta_ads';
     }
 
     if (!result.utm_medium && (referralPayload.ad_id || referralPayload.adId || referralPayload.ad_name)) {
       result.utm_medium = referralPayload.ad_name || `ad_${referralPayload.ad_id || referralPayload.adId}`;
+    } else if (!result.utm_medium) {
+      result.utm_medium = 'cpc';
     }
 
     if (!result.utm_campaign && (referralPayload.headline || referralPayload.title || referralPayload.campaign_name || referralPayload.campaign_id || referralPayload.source_id || referralPayload.sourceId)) {
       result.utm_campaign = referralPayload.headline || referralPayload.title || referralPayload.campaign_name || `campaign_${referralPayload.campaign_id || referralPayload.source_id || referralPayload.sourceId}`;
+    } else if (!result.utm_campaign) {
+      result.utm_campaign = 'anuncio_meta';
     }
   }
 

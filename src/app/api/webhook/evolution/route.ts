@@ -525,9 +525,9 @@ export async function POST(req: NextRequest) {
           dataUltimaAtividade: agora,
           consentimentoLGPD: true,
           tags: ['whatsapp', 'evolution'],
-          utm_source: extractedUtms.utm_source,
-          utm_medium: extractedUtms.utm_medium,
-          utm_campaign: extractedUtms.utm_campaign
+          utm_source: extractedUtms.utm_source || 'whatsapp',
+          utm_medium: extractedUtms.utm_medium || 'messaging',
+          utm_campaign: extractedUtms.utm_campaign || 'organico'
         } as any);
       }
 
